@@ -16,15 +16,17 @@
 # @type	string
 DPK_ROOT="$(cd "$(dirname "$(readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE[0]}")")" && pwd)"
 
-# Name of the Dispak executable script on the command line.
-# @type	string
-DPK_EXEC=`basename $0`
-
 # List of options given on the command-line.
 declare -A DPK_OPTIONS
 
 # Name of the asked command to execute
 COMMAND=$1
+
+# Path to the root of the current git repository.
+GIT_REPO_PATH="$(git rev-parse --git-dir 2>/dev/null)"
+if [ "$GIT_REPO_PATH" != "" ]; then
+	GIT_REPO_PATH="$(dirname "$GIT_REPO_PATH")"
+fi
 
 # ########## INTERNAL VARIABLES ##########
 
@@ -42,22 +44,15 @@ declare -A _DPK_RULES_OPTIONAL_PARAMS
 # functions files
 . "$DPK_ROOT/lib/utils.sh"
 . "$DPK_ROOT/lib/rules.sh"
+. "$DPK_ROOT/lib/checks.sh"
 
 # import rules
-for FILE in $DPK_ROOT/rules/*.sh ; do
-	RULE_NAME=""
-	RULE_MANDATORY_PARAMS=""
-	RULE_OPTIONAL_PARAMS=""
-	. $FILE
-	if [ "$RULE_NAME" = "" ]; then
-		continue
-	fi
-	_dpk_rule_add $RULE_NAME
-	_dpk_rule_mandatory_params $RULE_NAME $RULE_MANDATORY_PARAMS
-	_dpk_rule_optional_params $RULE_NAME $RULE_OPTIONAL_PARAMS
-done
+_dpk_import_rules "$DPK_ROOT/rules"
+if [ -d "$GIT_REPO_PATH/etc/dispak/rules" ]; then
+	_dpk_import_rules "$GIT_REPO_PATH/etc/dispak/rules"
+fi
 
-# ########## MAIN EXECUTION ##########
+# ########## OPTIONS AND CONFIGURATION ##########
 # no option given: show help and quit
 if [ "$COMMAND" = "" ] || [ "$COMMAND" = "h" ] || [ "$COMMAND" = "help" ]; then
 	rule_help_exec
@@ -96,6 +91,9 @@ for _OPT in ${_DPK_RULES_MANDATORY_PARAMS[$COMMAND]}; do
 done
 # check if extraneous parameters are given
 for _OPT in "${!DPK_OPTIONS[@]}"; do
+	if [ "$_OPT" = "platform" ]; then
+		continue
+	fi
 	FOUND=0
 	for _KEY in ${_DPK_RULES_MANDATORY_PARAMS[$COMMAND]} ${_DPK_RULES_OPTIONAL_PARAMS[$COMMAND]}; do
 		if [ "$_KEY" = "$_OPT" ]; then
@@ -107,6 +105,16 @@ for _OPT in "${!DPK_OPTIONS[@]}"; do
 		abort "$(ansi red)Extraneous parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
 	fi
 done
+# read configuration file
+if [ "$GIT_REPO_PATH" != "" ]; then
+	if [ -f "$GIT_REPO_PATH/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
+	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
+	elif [ -f "$GIT_REPO_PATH/etc/dispak/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak/dispak.conf")"
+	fi
+fi
 
 # ########## EXECUTION ##########
 EXEC_FUNCTION="rule_${COMMAND}_exec"

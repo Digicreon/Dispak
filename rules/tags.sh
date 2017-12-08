@@ -21,13 +21,18 @@ rule_tags_help() {
 
 # Execution of the rule
 rule_tags_exec() {
+	check_git
 	LAST_MAJOR=""
 	LAST_MINOR=""
 	FIRST_REVISION=""
 	LAST_REVISION=""
 	LAST_DATE=""
 	SHOWN="no"
-	for TAG in `git tag | sort -V`; do
+	TAGS=$(git tag | sort -V)
+	if [ "$TAGS" = "" ]; then
+		abort "$(ansi red)No tag.$(ansi reset)"
+	fi
+	for TAG in $TAGS; do
 		TAG_DATE=`git log -1 --format=%ai $TAG`
 		TAG_MAJOR=`echo "$TAG" | cut -d"." -f1`
 		TAG_MINOR=`echo "$TAG" | cut -d"." -f2`

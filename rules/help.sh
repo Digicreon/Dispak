@@ -12,6 +12,9 @@ RULE_MANDATORY_PARAMS=""
 # Rule's optional parameters.
 RULE_OPTIONAL_PARAMS=""
 
+# Does this rule need to be executed inside a git repository?
+RULE_NEED_GIT=0
+
 # Show help for this rule.
 rule_help_help() {
 	# colon is the "do nothing" operator

@@ -91,11 +91,11 @@ ansi() {
 	esac
 }
 
-# log()
-# Write a character string to stdout.
+# warn()
+# Write a warning message.
 # @param	string	The text to write.
-log() {
-	(>&2 echo "$1")
+warn() {
+	echo "$(ansi yellow)⚠$(ansi reset) $1"
 }
 
 # success()

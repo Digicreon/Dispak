@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# _dpk_import_rules()
+# Import the rule files from a directory.
+# @param	string	Path to the directory which contains the rules files.
+_dpk_import_rules() {
+	for FILE in "$1"/*.sh ; do
+		RULE_NAME=""
+		RULE_MANDATORY_PARAMS=""
+		RULE_OPTIONAL_PARAMS=""
+		. "$FILE"
+		if [ "$RULE_NAME" != "" ]; then
+			_dpk_rule_add $RULE_NAME
+			_dpk_rule_mandatory_params $RULE_NAME $RULE_MANDATORY_PARAMS
+			_dpk_rule_optional_params $RULE_NAME $RULE_OPTIONAL_PARAMS
+		fi
+	done
+}
+
 # _dpk_rule_add()
 # Add a rule.
 # @param	string	Rule name.
