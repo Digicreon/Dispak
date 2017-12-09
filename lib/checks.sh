@@ -82,11 +82,13 @@ check_tag() {
 	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
 	git fetch --all --tags --prune --quiet
 	if [ "${DPK_OPTIONS["tag"]}" = "" ]; then
-		DPK_OPTIONS["tag"]=$(git tag | sort -V | tail -1)
+		_TAG=$(git tag | sort -V | tail -1)
+		if [ "$_TAG" = "" ]; then
+			abort "No tag found."
+		fi
+		DPK_OPTIONS["tag"]=$_TAG
 		echo "Using tag '$(ansi dim)${DPK_OPTIONS["tag"]}$(ansi reset)'."
-	elif [ "${DPK_OPTIONS["tag"]}" = "master" ]; then
-		DPK_OPTIONS["tag"]="master"
-	else
+	elif [ "${DPK_OPTIONS["tag"]}" != "master" ]; then
 		FOUND=$(git tag | grep "^${DPK_OPTIONS["tag"]}$" | wc -l)
 		if [ $FOUND -eq 0 ]; then
 			abort "$(ansi red)Bad value for 'tag' parameter (not an existing tag).$(ansi reset)"
@@ -97,7 +99,7 @@ check_tag() {
 # check_next_tag()
 # Ask for the next tag number.
 check_next_tag() {
-	echo "$$(tput bold)Fetching new tags and branches$$(ansi reset)"
+	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
 	git fetch --all --tags --prune --quiet
 	LAST_TAG=$(git tag | sort -V | tail -1)
 	LAST_MAJOR=$(echo "$LAST_TAG" | cut -d"." -f1)

@@ -52,7 +52,7 @@ rule_tags_exec() {
 			LAST_REVISION=""
 		fi
 		if [ "$TAG_MINOR" = "0" ] && [ "$TAG_REVISION" = "0" ]; then
-			echo " $(ansi red)$(ansi bold)$TAG_MAJOR.0.0$(tput sgr0)		$(ansi blue)$TAG_DATE$(tput sgr0) $(ansi dim)major stable$(ansi reset)"
+			echo " $(ansi red)$(ansi bold)$TAG_MAJOR.0.0$(ansi reset)		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi dim)major stable$(ansi reset)"
 			SHOWN="yes"
 			LAST_MAJOR=""
 			LAST_MINOR=""
