@@ -32,7 +32,7 @@ fi
 
 # List of rules.
 # @type	array
-declare -A _DPK_RULES
+declare -a _DPK_RULES
 
 # List of mandatory command-line parameters, indexed by rule.
 declare -A _DPK_RULES_MANDATORY_PARAMS
@@ -80,7 +80,13 @@ while getopts "h-:" OPTCHAR; do
 	esac
 done
 # check if the asked command is known
-if [ "${_DPK_RULES[$COMMAND]}" = "" ]; then
+CMD_FOUND=0
+for _CMD in ${_DPK_RULES[@]}; do
+	if [ "$_CMD" = "$COMMAND" ]; then
+		CMD_FOUND=1
+	fi
+done
+if [ $CMD_FOUND -eq 0 ]; then
 	abort "$(ansi red)Unknown command $(ansi reset)'$COMMAND'$(ansi red).$(ansi reset)"
 fi
 # check if all mandatory options are given

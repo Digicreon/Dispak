@@ -34,13 +34,15 @@ rule_exec_install() {
 			abort "$(ansi red)It's forbidden to install $(ansi reset)unstable$(ansi red) tags on production server.$(ansi reset)"
 		fi
 	fi
-	# remove symlink from the currently installed tag
-	if [ "$CONF_SYMLINK_DIR" != "" ] && [ "$CONF_SYMLINK_TARGET" != "" ]; then
-		CURRENT_TAG="$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
-		if [ "$CURRENT_TAG" != "master" ] && [ -L "$CONF_SYMLINK_DIR/$CURRENT_TAG" ]; then
-			echo "$(ansi bold)Removing symlink$(ansi reset) $(ansi dim)$CONF_SYMLINK_DIR/$CURRENT_TAG$(ansi reset)"
-			rm -f "$CONF_SYMLINK_DIR/$CURRENT_TAG"
-		fi
+	# remove symlinks from the currently installed tag
+	CURRENT_TAG="$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
+	if [ "$CURRENT_TAG" != "master" ] && [ ${#CONF_INSTALL_SYMLINK[@]} -ne 0 ]; then
+		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
+			if [ -L "$_SYMLINK/$CURRENT_TAG" ]; then
+				echo "$(ansi bold)Removing symlink $(ansi reset)$(ansi dim)$_SYMLINK/$CURRENT_TAG$(ansi reset)"
+				rm -f "$_SYMLINK/$CURRENT_TAG"
+			fi
+		done
 	fi
 	# execute pre-install scripts
 	_install_pre_scripts
@@ -59,7 +61,7 @@ rule_exec_install() {
 		# create symlinks
 		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
 			echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPTIONS["tag"]}$(ansi reset)"
-			ln -s "$_SYMLINK" "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPTIONS["tag"]}"
+			ln -s "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}" "$_SYMLINK/${DPK_OPTIONS["tag"]}"
 		done
 	fi
 	# install crontab

@@ -22,8 +22,7 @@ _dpk_import_rules() {
 # @param	string	Rule name.
 _dpk_rule_add() {
 	RULE_NAME=$(trim "$1")
-	#DPK_RULES[${#DPK_RULES[@]}]="$RULE_NAME"
-	_DPK_RULES[$RULE_NAME]=$RULE_NAME
+	_DPK_RULES[${#_DPK_RULES[@]}]="$RULE_NAME"
 }
 
 # _dpk_rule_mandatory_params()

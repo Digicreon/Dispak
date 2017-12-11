@@ -33,7 +33,10 @@ rule_exec_help() {
 	echo " $(ansi rev)                                                                     $(ansi reset)"
 	echo
 	for RULE in ${_DPK_RULES[@]}; do
-		HELP_FUNCTION="rule_${RULE}_help"
+		if [ "$RULE" = "help" ]; then
+			continue
+		fi
+		HELP_FUNCTION="rule_help_${RULE}"
 		$HELP_FUNCTION
 		echo
 	done
