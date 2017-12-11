@@ -48,14 +48,14 @@ declare -A _DPK_RULES_OPTIONAL_PARAMS
 
 # import rules
 _dpk_import_rules "$DPK_ROOT/rules"
-if [ -d "$GIT_REPO_PATH/etc/dispak/rules" ]; then
-	_dpk_import_rules "$GIT_REPO_PATH/etc/dispak/rules"
+if [ -d "$GIT_REPO_PATH/etc/dispak-rules" ]; then
+	_dpk_import_rules "$GIT_REPO_PATH/etc/dispak-rules"
 fi
 
 # ########## OPTIONS AND CONFIGURATION ##########
 # no option given: show help and quit
 if [ "$COMMAND" = "" ] || [ "$COMMAND" = "h" ] || [ "$COMMAND" = "help" ]; then
-	rule_help_exec
+	rule_exec_help
 	exit 0
 fi
 # fetch command-line options
@@ -71,7 +71,7 @@ while getopts "h-:" OPTCHAR; do
 			DPK_OPTIONS[$KEY]="$VALUE"
 			;;
 		"h")
-			rule_help_exec
+			rule_exec_help
 			exit 1
 			;;
 		*)
@@ -111,13 +111,15 @@ if [ "$GIT_REPO_PATH" != "" ]; then
 		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
 	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
 		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
-	elif [ -f "$GIT_REPO_PATH/etc/dispak/dispak.conf" ]; then
-		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak/dispak.conf")"
 	fi
 fi
 
 # ########## EXECUTION ##########
-EXEC_FUNCTION="rule_${COMMAND}_exec"
+# moving to root path
+if [ "$GIT_REPO_PATH" != "" ]; then
+	pushd "$GIT_REPO_PATH" > /dev/null
+fi
+EXEC_FUNCTION="rule_exec_${COMMAND}"
 $EXEC_FUNCTION
 success
 

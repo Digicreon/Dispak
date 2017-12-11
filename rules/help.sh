@@ -22,7 +22,7 @@ rule_help_help() {
 }
 
 # Execution of this rule
-rule_help_exec() {
+rule_exec_help() {
 	echo
 	echo " $(ansi rev)                                                                     $(ansi reset)"
 	echo " $(ansi rev) $(ansi reset)                                                                   $(ansi rev) $(ansi reset)"

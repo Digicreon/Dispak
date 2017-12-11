@@ -102,6 +102,10 @@ warn() {
 # Write a success message and exit.
 success() {
 	echo "$(ansi green)✓ Success$(ansi reset)"
+	# go back to previous directory
+	if [ "$GIT_REPO_PATH" != "" ]; then
+		popd > /dev/null
+	fi
 	exit 0
 }
 
@@ -109,5 +113,9 @@ success() {
 # Write an error message and exit.
 abort() {
 	echo "$(ansi red)⛔$(ansi reset) $1 $(ansi red)ABORT$(ansi reset)"
+	# go back to previous directory
+	if [ "$GIT_REPO_PATH" != "" ]; then
+		popd > /dev/null
+	fi
 	exit 1
 }

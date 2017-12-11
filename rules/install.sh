@@ -13,7 +13,7 @@ RULE_MANDATORY_PARAMS=""
 RULE_OPTIONAL_PARAMS="platform tag"
 
 # Show help for this rule.
-rule_install_help() {
+rule_help_install() {
 	echo "  dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod]$(ansi reset) $(ansi dim)[--tag=master|X.Y.Z]$(ansi reset)"
 	echo "      $(ansi dim)Deploy source code on a specified platform (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
 	echo "      $(ansi dim)Detect the current platform if the $(ansi reset)platform$(ansi dim) option is not set.$(ansi reset)"
@@ -22,7 +22,7 @@ rule_install_help() {
 }
 
 # Execution of the rule
-rule_install_exec() {
+rule_exec_install() {
 	check_git
 	check_sudo
 	check_tag
@@ -48,7 +48,6 @@ rule_install_exec() {
 	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
 	git fetch --all --tags --prune --quiet
 	echo "$(ansi bold)Updating source code repository$(ansi reset)"
-	pushd "$GIT_REPO_PATH"
 	if [ "${DPK_OPTIONS["tag"]}" = "master" ]; then
 		if ! git checkout master --quiet ; then
 			abort "$(ansi red)Failed to move back to master branch.$(ansi reset)"
@@ -57,13 +56,12 @@ rule_install_exec() {
 		if ! git checkout "tags/${DPK_OPTIONS["tag"]}" --quiet ; then
 			abort "$(ansi red)Failed to update repository to tag '${DPK_OPTIONS["tag"]}'.$(ansi reset)"
 		fi
-		# create symlink
-		if [ "$CONF_SYMLINK_DIR" != "" ] && [ "$CONF_SYMLINK_TARGET" != "" ]; then
-			echo "$(ansi bold)Create symlink$(ansi reset) $(ansi dim)$CONF_SYMLINK_DIR/${DPK_OPTIONS["tag"]}$(ansi reset)"
-			ln -s "$CONF_SYMLINK_TARGET" "$CONF_SYMLINK_DIR/${DPK_OPTIONS["tag"]}"
-		fi
+		# create symlinks
+		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
+			echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPTIONS["tag"]}$(ansi reset)"
+			ln -s "$_SYMLINK" "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPTIONS["tag"]}"
+		done
 	fi
-	popd
 	# install crontab
 	_install_crontab
 	# database migration
@@ -84,11 +82,10 @@ _install_pre_scripts() {
 	fi
 	echo "$(ansi bold)Execute pre-install scripts$(ansi reset)"
 	for _SCRIPT in $CONF_INSTALL_SCRIPTS_PRE; do
-		echo "$(ansi dim)> $_SCRIPT$(ansi reset)"
+		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_SCRIPT" ]; then
-			chmod +x $_SCRIPT
+			chmod +x "$_SCRIPT"
 		fi
-		echo " > $(ansi dim)$_SCRIPT$(ansi reset)"
 		$_SCRIPT
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
@@ -105,11 +102,10 @@ _install_post_scripts() {
 	fi
 	echo "$(ansi bold)Execute post-install scripts$(ansi reset)"
 	for _SCRIPT in $CONF_INSTALL_SCRIPTS_POST; do
-		echo "$(ansi dim)> $_SCRIPT$(ansi reset)"
+		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_SCRIPT" ]; then
-			chmod +x $_SCRIPT
+			chmod +x "$_SCRIPT"
 		fi
-		echo " > $(ansi dim)$_SCRIPT$(ansi reset)"
 		$_SCRIPT
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
@@ -143,14 +139,14 @@ _install_db_migration() {
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
-	for MIGRATION in $(ls $GIT_REPO_PATH/etc/database/migrations | grep -v current | sort -V); do
+	for MIGRATION in $(ls "$GIT_REPO_PATH/etc/database/migrations" | grep -v current | sort -V); do
 		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST | tail -1)
 		if [ "$NBR" != "0" ]; then
 			continue
 		fi
 		echo "$(ansi dim)Executing database migration file $(ansi blue)$GIT_REPO_PATH/etc/database/migrations/$MIGRATION$(ansi reset)"
 		MIGRATION_ID=$(echo "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST | tail -1)
-		MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h db.skriv.tech < $GIT_REPO_PATH/etc/database/migrations/$MIGRATION
+		MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h db.skriv.tech < "$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
 		echo "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST
 	done
 	echo "$(ansi green)Done$(ansi reset)"
@@ -174,10 +170,10 @@ _install_config_apache() {
 		echo "$(ansi blue)> $_CONF_FILE$(ansi reset)"
 		if [ -e "${_CONF_FILE}.gen" ]; then
 			echo -n "$(ansi dim)+ Generating... $(ansi reset)"
-			if [ ! -x $_CONF_FILE.gen ]; then
-				chmod +x $_CONF_FILE.gen
+			if [ ! -x "$_CONF_FILE.gen" ]; then
+				chmod +x "$_CONF_FILE.gen"
 			fi
-			${_CONF_FILE}.gen ${DPK_OPTIONS["platform"]} ${DPK_OPTIONS["tag"]} > $_CONF_FILE
+			"${_CONF_FILE}.gen" "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}" > "$_CONF_FILE"
 			if [ $? -ne 0 ]; then
 				echo
 				abort "$(ansi red)Apache configuration generation script $(ansi reset)$_CONF_FILE.gen$(ansi red) execution failed.$(ansi reset)"
@@ -199,9 +195,9 @@ _install_config_files() {
 		echo "$(ansi bold)Setting files access rights$(ansi reset)"
 		for _FILE in $CONF_INSTALL_FILES_777; do
 			echo "$(ansi dim)> $_FILE$(ansi reset)"
-			sudo chmod -R 777 $_FILE
+			sudo chmod -R 777 "$_FILE"
 			if [ -d "$_FILE" ]; then
-				git checkout -- $(find "$_FILE" -name ".gitignore") > /dev/null
+				git checkout -- "$(find "$_FILE" -name ".gitignore")" > /dev/null
 			fi
 		done
 	fi
@@ -216,7 +212,7 @@ _install_config_files() {
 			if [ ! -x "$_FILE.gen" ]; then
 				chmod +x "$_FILE.gen"
 			fi
-			${_FILE}.gen ${DPK_OPTIONS["platform"]} ${DPK_OPTIONS["tag"]} > "$_FILE"
+			"${_FILE}.gen" "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}" > "$_FILE"
 		done
 	fi
 }

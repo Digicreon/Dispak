@@ -32,16 +32,6 @@ check_sudo() {
 	sudo echo "$(ansi green)✓ sudo rights checked$(ansi reset)" || exit 3
 }
 
-# check_url()
-# Check if a configured URL responds correctly.
-check_url() {
-	if [ "$CONF_CHECK_URL" != "" ]; then
-		if [ "$(curl -I -k "$CONF_CHECK_URL" 2> /dev/null | head -1 | cut -d' ' -f 2)" != "200" ]; then
-			abort "$(ansi red)The URL $(ansi reset)$(ansi dim)$CONF_CHECK_URL$(ansi reset) $(ansi red)is returning an error.$(ansi reset)"
-		fi
-	fi
-}
-
 # check_git()
 # Check if we are in a git repository. Abort if not.
 check_git() {
