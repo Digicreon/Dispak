@@ -40,6 +40,9 @@ declare -A _DPK_RULES_MANDATORY_PARAMS
 # List of optional command-line parameters, indexed by rule.
 declare -A _DPK_RULES_OPTIONAL_PARAMS
 
+# Tell if the program has changed its curretn working directory.
+_NEED_POPD=0
+
 # ########## INCLUDE SOURCE FILES ##########
 # functions files
 . "$DPK_ROOT/lib/utils.sh"
@@ -92,7 +95,7 @@ fi
 # check if all mandatory options are given
 for _OPT in ${_DPK_RULES_MANDATORY_PARAMS[$COMMAND]}; do
 	if [ "${DPK_OPTIONS[$_OPT]}" = "" ]; then
-		abort "$(ansi red)Mising parameter $(ansi reset)--$i_OPT$(ansi red).$(ansi reset)"
+		abort "$(ansi red)Mising parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
 	fi
 done
 # check if extraneous parameters are given
@@ -123,6 +126,7 @@ fi
 # ########## EXECUTION ##########
 # moving to root path
 if [ "$GIT_REPO_PATH" != "" ]; then
+	_NEED_POPD=1
 	pushd "$GIT_REPO_PATH" > /dev/null
 fi
 EXEC_FUNCTION="rule_exec_${COMMAND}"
