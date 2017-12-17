@@ -30,18 +30,30 @@ fi
 
 # ########## INTERNAL VARIABLES ##########
 
-# List of rules.
-# @type	array
-declare -a _DPK_RULES
+# List of rules, indexed by section.
+# @type	associative array
+declare -A _DPK_RULES
 
 # List of mandatory command-line parameters, indexed by rule.
+# @type	associative array
 declare -A _DPK_RULES_MANDATORY_PARAMS
 
 # List of optional command-line parameters, indexed by rule.
+# @type	associative array
 declare -A _DPK_RULES_OPTIONAL_PARAMS
 
 # Tell if the program has changed its curretn working directory.
+# @type	bool
 _NEED_POPD=0
+
+# ########## READ CONFIGURATIONI FILE ##########
+if [ "$GIT_REPO_PATH" != "" ]; then
+	if [ -f "$GIT_REPO_PATH/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
+	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
+	fi
+fi
 
 # ########## INCLUDE SOURCE FILES ##########
 # functions files
@@ -84,10 +96,13 @@ while getopts "h-:" OPTCHAR; do
 done
 # check if the asked command is known
 CMD_FOUND=0
-for _CMD in ${_DPK_RULES[@]}; do
-	if [ "$_CMD" = "$COMMAND" ]; then
-		CMD_FOUND=1
-	fi
+for _SECTION in "${!_DPK_RULES[@]}"; do
+	for _RULE in ${_DPK_RULES["$_SECTION"]}; do
+		if [ "$_RULE" = "$COMMAND" ]; then
+			CMD_FOUND=1
+			break
+		fi
+	done
 done
 if [ $CMD_FOUND -eq 0 ]; then
 	abort "$(ansi red)Unknown command $(ansi reset)'$COMMAND'$(ansi red).$(ansi reset)"
@@ -114,14 +129,6 @@ for _OPT in "${!DPK_OPTIONS[@]}"; do
 		abort "$(ansi red)Extraneous parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
 	fi
 done
-# read configuration file
-if [ "$GIT_REPO_PATH" != "" ]; then
-	if [ -f "$GIT_REPO_PATH/dispak.conf" ]; then
-		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
-	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
-		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
-	fi
-fi
 
 # ########## EXECUTION ##########
 # moving to root path

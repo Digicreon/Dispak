@@ -14,8 +14,8 @@ RULE_OPTIONAL_PARAMS="tag"
 
 # Show help for this rule.
 rule_help_pkg() {
-	echo "  dpk $(ansi bold)pkg$(ansi reset) $(ansi dim)[--tag=X.Y.Z]$(ansi reset)"
-	echo "      $(ansi dim)Create a new tag. Upload files to AWS S3 (see configuration file) only if the tag is a stable version.$(ansi reset)"
+	echo "   dpk $(ansi bold)pkg$(ansi reset) $(ansi dim)[--tag=X.Y.Z]$(ansi reset)"
+	echo "       $(ansi dim)Create a new tag. Upload files to AWS S3 (see configuration file) only if the tag is a stable version.$(ansi reset)"
 }
 
 # Execution of the rule

@@ -14,11 +14,11 @@ RULE_OPTIONAL_PARAMS="platform tag"
 
 # Show help for this rule.
 rule_help_install() {
-	echo "  dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod]$(ansi reset) $(ansi dim)[--tag=master|X.Y.Z]$(ansi reset)"
-	echo "      $(ansi dim)Deploy source code on a specified platform (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
-	echo "      $(ansi dim)Detect the current platform if the $(ansi reset)platform$(ansi dim) option is not set.$(ansi reset)"
-	echo "      $(ansi dim)Install the last tagged version unless the $(ansi reset)tag$(ansi dim) option is used.$(ansi reset)"
-	echo "      $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod]$(ansi reset) $(ansi dim)[--tag=master|X.Y.Z]$(ansi reset)"
+	echo "       $(ansi dim)Deploy source code on a specified platform (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
+	echo "       $(ansi dim)Detect the current platform if the $(ansi reset)platform$(ansi dim) option is not set.$(ansi reset)"
+	echo "       $(ansi dim)Install the last tagged version unless the $(ansi reset)tag$(ansi dim) option is used.$(ansi reset)"
+	echo "       $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"
 }
 
 # Execution of the rule

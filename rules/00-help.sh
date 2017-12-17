@@ -32,12 +32,17 @@ rule_exec_help() {
 	echo " $(ansi rev) $(ansi reset)                                                                   $(ansi rev) $(ansi reset)"
 	echo " $(ansi rev)                                                                     $(ansi reset)"
 	echo
-	for RULE in ${_DPK_RULES[@]}; do
-		if [ "$RULE" = "help" ]; then
-			continue
+	for SECTION in "${!_DPK_RULES[@]}"; do
+		if [ ${#_DPK_RULES[@]} -gt 1 ]; then
+			echo " $(ansi under)$SECTION$(ansi reset)"
 		fi
-		HELP_FUNCTION="rule_help_${RULE}"
-		$HELP_FUNCTION
-		echo
+		for RULE in ${_DPK_RULES["$SECTION"]}; do
+			if [ "$RULE" = "help" ]; then
+				continue;
+			fi
+			HELP_FUNCTION="rule_help_${RULE}"
+			$HELP_FUNCTION
+			echo
+		done
 	done
 }
