@@ -26,7 +26,7 @@ Table of contents
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
-3. [How it works](#3(how-it-works)
+3. [How it works](#3how-it-works)
    1. [Database migrations](#31-database-migrations)
    2. [Files generation](#32-files-generation)
    3. [Static files, symlinks and Amazon S3](#33-static-files-symlinks-and-amazon-s3)
