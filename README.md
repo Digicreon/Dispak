@@ -52,6 +52,11 @@ Dispak manage three kinds of [deployment environments](https://en.wikipedia.org/
 - `test`: Testing/staging environment, used to validate a version.
 - `prod`: Production environment, where the live service is accessed by users.
 
+Sometimes, Dispak can guess the platform on which it is executed (see [Install tag](#15-install-tag)), using the local machine's name.
+- If the hostname starts with `test` followed by numbers, it assumes to be on a `test` platform.
+- If the hostname starts with `prod`, `web`, `db`, `cron`, `worker`, `front` or `back`, followed by numbers, it assumes to be on a `prod` platform.
+- Otherwise it assumes to be on a `dev` platform.
+
 #### 1.1.2 Version numbering
 Dispak is based on [semantic versioning](https://semver.org/) and [odd numbered versions for unstable releases](https://en.wikipedia.org/wiki/Software_versioning#Odd-numbered_versions_for_development_releases), which are common for software projects.
 
@@ -69,6 +74,10 @@ Only stable versions can be installed on production servers.
 
 To see the list of rules offered by Dispak (general and project-specific rules), you just have to type:
 ```shell
+$ dpk
+
+or
+
 $ dpk help
 ```
 
@@ -267,4 +276,28 @@ Here are the definable variables:
 ### 4.4 Advanced example
 
 ### 4.5 Provided functions
+
+**`check_aws`**
+Check if the `aws-cli` program is installed. Abort if not.
+
+**`check_dhbost`**
+Check if the database host is defined and reachable (using `ping`). Abort if not.
+
+**`check_sudo`**
+Check if the user has sudo rights. Abort if not.
+
+**`check_git`**
+Check if we are in a git repository. Abort if not.
+
+**`check_platform`**
+Check the platform given as parameter, or detect the platform.
+The current platform is set in the `$DPK_OPTIONS["platform"]` variable.
+
+**`check_tag`**
+Check if the tag given as a parameter already exists. Abort if not.
+If no tag is given, fetch the last created tag and put it in the `$DPK_OPTIONS["tag"]` variable.
+
+**`check_next_tag`**
+Check if the tag given as a parameter is valid as the next tag. If not or if no tag is given, a list of valid tags is shown to the user, who must choose between them.
+Then the tag is available in the `$DPK_OPTIONS["tag"]` variable.
 

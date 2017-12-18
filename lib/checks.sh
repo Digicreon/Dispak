@@ -15,7 +15,7 @@ check_aws() {
 }
 
 # check_dbhost()
-# Check if the database host is defined.
+# Check if the database host is defined and reachable.
 check_dbhost() {
 	if [ "$CONF_DB_HOST" = "" ]; then
 		abort "Empty configuration for database host name."
@@ -42,7 +42,7 @@ check_git() {
 }
 
 # check_platform()
-# Check if the platform given as a parameter is correct. Quit if not.
+# Check the platform given as a parameter, or detect the platform.
 check_platform() {
 	if [ "${DPK_OPTIONS["platform"]}" != "dev" ] && [ "${DPK_OPTIONS["platform"]}" != "test" ] && [ "${DPK_OPTIONS["platform"]}" != "prod" ]; then
 		if [ "$CONF_PLATFORM" = "dev" ] || [ "$CONF_PLATFORM" = "test" ] || [ "$CONF_PLATFORM" = "prod" ]; then
