@@ -193,16 +193,28 @@ _install_config_apache() {
 # _install_config_files()
 # Configure files.
 _install_config_files() {
-	if [ "$CONF_INSTALL_FILES_777" != "" ]; then
-		echo "$(ansi bold)Setting files access rights$(ansi reset)"
-		for _FILE in $CONF_INSTALL_FILES_777; do
-			echo "$(ansi dim)> $_FILE$(ansi reset)"
-			sudo chmod -R 777 "$_FILE"
-			if [ -d "$_FILE" ]; then
-				git checkout -- "$(find "$_FILE" -name ".gitignore")" > /dev/null
-			fi
+	# chown
+	if [ ${#CONF_INSTALL_CHOWN[@]} -ne 0 ]; then
+		echo "$(ansi bold)Setting files owner$(ansi reset)"
+		for LOGIN in "${!CONF_INSTALL_CHOWN[@]}"; do
+			echo "$(ansi dim)> $LOGIN$(ansi reset)"
+			sudo chown "$LOGIN" ${CONF_INSTALL_CHOWN["$LOGIN"]}
 		done
 	fi
+	# chmod
+	if [ ${#CONF_INSTALL_CHMOD[@]} -ne 0 ]; then
+		echo "$(ansi bold)Setting files access rights$(ansi reset)"
+		for RIGHTS in "${!CONF_INSTALL_CHMOD[@]}"; do
+			echo "$(ansi dim)> $RIGHTS$(ansi reset)"
+			sudo chmod -R "$RIGHTS" ${CONF_INSTALL_CHMOD["$RIGHTS"]}
+			for _FILE in ${CONF_INSTALL_CHMOD["$RIGHTS"]}; do
+				if [ -d "$_FILE" ]; then
+					git checkout -- "$(find "$_FILE" -name ".gitignore")" > /dev/null
+				fi
+			done
+		done
+	fi
+	# files generation
 	if [ "$CONF_INSTALL_GENERATE" != "" ]; then
 		echo "$(ansi bold)Generate files$(ansi reset)"
 		for _FILE in $CONF_INSTALL_GENERATE; do
