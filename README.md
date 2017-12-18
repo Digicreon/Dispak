@@ -46,11 +46,13 @@ Table of contents
 
 ### 1.1 Basics
 
+#### 1.1.1 Platform environments
 Dispak manage three kinds of [deployment environments](https://en.wikipedia.org/wiki/Deployment_environment):
 - `dev`: Development environment, like developers' workstations.
 - `test`: Testing/staging environment, used to validate a version.
 - `prod`: Production environment, where the live service is accessed by users.
 
+#### 1.1.2 Version numbering
 Dispak is based on [semantic versioning](https://semver.org/) and [odd numbered versions for unstable releases](https://en.wikipedia.org/wiki/Software_versioning#Odd-numbered_versions_for_development_releases), which are common for software projects.
 
 All tags are named in the form `X.Y.Z`:
