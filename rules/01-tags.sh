@@ -104,6 +104,6 @@ rule_exec_tags() {
 	elif [ $NBR_COMMITS -eq 1 ]; then
 		echo "1 commit since last tag."
 	else
-		echo "$NBR_COMMITS commits since last tags."
+		echo "$NBR_COMMITS commits since last tag."
 	fi
 }
