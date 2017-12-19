@@ -439,6 +439,10 @@ foobar
        Something smart
 ```
 
+**`git_fetch`**
+
+Fetch all tags and branches from distant git repository.
+
 **`check_aws`**
 
 Check if the `aws-cli` program is installed. Abort if not.
@@ -454,6 +458,18 @@ Check if the user has sudo rights. Abort if not.
 **`check_git`**
 
 Check if we are in a git repository. Abort if not.
+
+**`check_git_master`**
+
+Check if we are on the master branch. Abort if not.
+
+**`check_git_committed`**
+
+Check if all files are committed. If a "strict mode" parameter is given with a value of 1, it will abort if some uncommitted files exist; otherwise, it will ask the user.
+
+**`check_git_pushed`**
+
+Check if all committed files have been pushed to the remote git repository. Abort if not.
 
 **`check_platform`**
 

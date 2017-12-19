@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# git_fetch
+# Fetch new tags and branches.
+git_fetch() {
+	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
+	git fetch --all --tags --prune --quiet
+}
+
 # align_spaces()
 # Print as many spaces as the string given in parameter.
 # @param	string	The string which length will be used.

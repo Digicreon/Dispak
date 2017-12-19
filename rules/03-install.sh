@@ -50,8 +50,7 @@ rule_exec_install() {
 	# execute pre-install scripts
 	_install_pre_scripts
 	# deploy source code
-	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
-	git fetch --all --tags --prune --quiet
+	git_fetch
 	echo "$(ansi bold)Updating source code repository$(ansi reset)"
 	if [ "${DPK_OPT["tag"]}" = "master" ]; then
 		if ! git checkout master --quiet ; then

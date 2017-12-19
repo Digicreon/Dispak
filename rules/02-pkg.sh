@@ -34,27 +34,11 @@ rule_exec_pkg() {
 	# check URL
 	_pkg_check_url
 	# check master branch
-	if [ "$(git rev-parse --abbrev-ref HEAD)" != "master" ]; then
-		abort "$(ansi red)You have to be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
-	fi
+	check_git_master
 	# check uncommitted files
-	if [ "$(git status -s)" != "" ]; then
-		warn "$(ansi yellow)There is some uncommitted files.$(ansi reset)"
-		git status -s
-		read -p "Do you want to proceed anyway? [y/N] " ANSWER
-		if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
-			abort
-		fi
-	fi
+	check_git_committed
 	# check unpushed files
-	if [ "$(git diff --stat origin/master..)" != "" ]; then
-		warn "$(ansi yellow)Some committed files have not been pushed to the remote git repository.$(ansi reset)"
-		git diff --stat origin/master..
-		echo
-		abort "$(ansi red)Please, push them with the command$(ansi reset)
-  git push origin master
-"
-	fi
+	check_git_pushed
 	# execute pre-packaging scripts
 	_pkg_pre_scripts
 	# commit database migration file

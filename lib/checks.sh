@@ -41,6 +41,46 @@ check_git() {
 	fi
 }
 
+# check_git_master()
+# Check if we are on the master branch. Abort if not.
+check_git_master() {
+	if [ "$(git rev-parse --abbrev-ref HEAD)" != "master" ]; then
+		abort "$(ansi red)You have to be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
+	fi
+}
+
+# check_git_committed()
+# Check if all files are committed.
+# @param	bool	Strict mode: If equal 1, abort if there is uncommitted files. Otherwise ask the user.
+check_git_committed() {
+	if [ "$(git status -s)" != "" ]; then
+		if [ "$1" != "" ] && [ "$1" != "0" ]; then
+			abort "There is some uncommitted files.
+$(git status -s)
+"
+		fi
+		warn "$(ansi yellow)There is some uncommitted files.$(ansi reset)"
+		git status -s
+		read -p "Do you want to proceed anyway? [y/N] " ANSWER
+		if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
+			abort
+		fi
+	fi
+}
+
+# check_git_pushed()
+# Check if all files have been pushed to the remote repository. Abort if not.
+check_git_pushed() {
+	if [ "$(git diff --stat origin/master..)" != "" ]; then
+		warn "$(ansi yellow)Some committed files have not been pushed to the remote git repository.$(ansi reset)"
+		git diff --stat origin/master..
+		echo
+		abort "$(ansi red)Please, push them with the command$(ansi reset)
+  git push origin master
+"
+	fi
+}
+
 # check_platform()
 # Check the platform given as a parameter, or detect the platform.
 check_platform() {
@@ -69,8 +109,7 @@ check_platform() {
 # Check if the tag given as a parameter already exists. Quit if not.
 # If no tag is given, use the last created tag.
 check_tag() {
-	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
-	git fetch --all --tags --prune --quiet
+	git_fetch
 	if [ "${DPK_OPT["tag"]}" = "" ]; then
 		_TAG=$(git tag | sort -V | tail -1)
 		if [ "$_TAG" = "" ]; then
@@ -89,8 +128,7 @@ check_tag() {
 # check_next_tag()
 # Ask for the next tag number.
 check_next_tag() {
-	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
-	git fetch --all --tags --prune --quiet
+	git_fetch
 	LAST_TAG=$(git tag | sort -V | tail -1)
 	# no existing tag
 	if [ "$LAST_TAG" = "" ]; then
