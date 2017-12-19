@@ -34,7 +34,7 @@ rule_exec_pkg() {
 		git status -s
 		read -p "Do you want to proceed anyway? [y/N] " ANSWER
 		if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
-			exit 11
+			abort
 		fi
 	fi
 	# execute pre-packaging scripts
