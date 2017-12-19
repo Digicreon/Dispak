@@ -88,7 +88,7 @@ _install_pre_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT
+		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -108,7 +108,7 @@ _install_post_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT
+		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi

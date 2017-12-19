@@ -21,6 +21,7 @@ rule_help_pkg() {
 # Execution of the rule
 rule_exec_pkg() {
 	check_git
+	check_platform
 	# check if there was some commits since the last tag
 	if [ "$(git tag)" != "" ] && [ "$(git describe --long | cut -d"-" -f 2)" -eq 0 ]; then
 		abort "No file committed since last tag."
@@ -91,7 +92,7 @@ _pkg_pre_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT
+		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -111,7 +112,7 @@ _pkg_post_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT
+		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
