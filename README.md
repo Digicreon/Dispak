@@ -29,7 +29,7 @@ Table of contents
 3. [How it works](#3how-it-works)
    1. [Database migrations](#31-database-migrations)
    2. [Crontab installation](#32-crontab-installation)
-   3. [Pre/post scripts execution](#33(pre-post-scripts-execution)
+   3. [Pre/post scripts execution](#33-pre-post-scripts-execution)
    4. [Files generation](#34-files-generation)
    5. [Static files, symlinks and Amazon S3](#35-static-files-symlinks-and-amazon-s3)
    6. [Apache configuration](#36-apache-configuration)
