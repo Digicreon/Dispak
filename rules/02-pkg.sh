@@ -21,6 +21,11 @@ rule_help_pkg() {
 # Execution of the rule
 rule_exec_pkg() {
 	check_git
+	# check if there was some commits since the last tag
+	if [ "$(git tag)" != "" ] && [ "$(git describe --long | cut -d"-" -f 2)" -eq 0 ]; then
+		abort "No file committed since last tag."
+	fi
+	# get next tags number
 	check_next_tag
 	# check URL
 	_pkg_check_url
@@ -36,6 +41,15 @@ rule_exec_pkg() {
 		if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
 			abort
 		fi
+	fi
+	# check unpushed files
+	if [ "$(git diff --stat origin/master..)" != "" ]; then
+		warn "$(ansi yellow)Some committed files have not been pushed to the remote git repository.$(ansi reset)"
+		git diff --stat origin/master..
+		echo
+		abort "$(ansi red)Please, push them with the command$(ansi reset)
+  git push origin master
+"
 	fi
 	# execute pre-packaging scripts
 	_pkg_pre_scripts
@@ -135,7 +149,7 @@ _pkg_minify() {
 	# checks modified files
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
-			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but is is locally modified.i
+			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but is is locally modified.
   $(ansi yellow)Please, commit/stash/rollback the file.$(ansi reset)
 "
 		fi
@@ -144,7 +158,7 @@ _pkg_minify() {
 	echo "$(ansi bold)Files minification$(ansi reset)"
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		echo "$(ansi dim)> $_FILE$(ansi reset)"
-		minify --output "$_FILE" "${CONF_PKG_MINIFY["$_FILE"]}" > /dev/null
+		minify --output "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		if [ $? -ne 0 ]; then
 			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'."
 		fi

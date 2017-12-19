@@ -97,4 +97,13 @@ rule_exec_tags() {
 		SPACES=`printf "%0.s " $(seq 1 $LEN)`
 		echo " $(ansi dim)$SPACES.$LAST_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"
 	fi
+	NBR_COMMITS=$(git describe --long | cut -d"-" -f 2)
+	echo
+	if [ $NBR_COMMITS -eq 0 ]; then
+		echo "No commit since last tag."
+	elif [ $NBR_COMMITS -eq 1 ]; then
+		echo "1 commit since last tag."
+	else
+		echo "$NBR_COMMITS commits since last tags."
+	fi
 }
