@@ -330,7 +330,6 @@ There is three kind of configuration variables:
 Here are the definable variables:
 - **Main configuration**
   - `CONF_PLATFORM`: IF you don't want Dispak to detect the platform, you can set what is the current environment (`dev`, `test` or `prod`).
-  - `CONF_DEFAULT_SECTION`: Rules (actions the Dispak can execute) are listed using the `dpk help` command. They are grouped by section. Every rules that don't define a specific section are grouped in a `Default` one, and this name can be overridden using the `CONF_DEFAULT_SECTION` variable.
 - **pkg rule**
   - `CONF_PKG_CHECK_URL`: You can ask Dispak to check the return status of the given URL before creating a new tag. This is convenient if you have a local page that show the result of your unit tests; if the HTTP status of this page is an error (not equal to 200), the tag is not created.
   - `CONF_PKG_SCRIPTS_PRE`: You can ask Dispak to execute a list of scripts before creating a new tag.
@@ -366,27 +365,108 @@ Here are the definable variables:
 
 ### 4.5 Provided functions
 
+**`warn`**
+
+Write a yellow warning sign, followed by your message.
+
+Example:
+```shell
+warn "Something went wrong."
+```
+
+**`abort`**
+
+You *must* call this function when your rule failed. It displays a red "⛔" (no entry) character, followed by your message, followed by a red "ABORT" string. Then it exits with a status of 1 (which means an error).
+
+Example:
+```shell
+abort "Something went really bad."
+```
+
+**`trim`**
+
+Remove spaces at the beginning and the end of a string.
+
+Example:
+```shell
+VAR="$(trim "$VAR")"
+```
+
+**`filenamize`**
+
+Convert a string that contains a path to a file, and return a string suitable as a file name. Replace slashes and spaces by dashes.
+
+Example:
+```shell
+FILENAME="$(filenamize "$PATH_TO_FILE")"
+```
+
+**`ansi`**
+
+Write [ANSI](https://en.wikipedia.org/wiki/ANSI_escape_code)-compatible statements.
+
+Take at least one parameter:
+- `reset`: Remove all previously defined text decoration.
+- `bold`: Write text in bold.
+- `dim`: Write faint text.
+- `under`: Write underlined text.
+- `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`: Change the text color.
+- `rev`: Write text in reverse video. Could take another parameter with the background color (see previous item for the list of colors).
+
+Example:
+```shell
+echo "$(ansi red)Some colored text$(ansi reset), $(ansi bold)some important text$(ansi reset)"
+echo "$(ansi bold)$(ansi under)Some very important text$(ansi reset)"
+```
+
+Don't forget to always end with a `reset`!
+
+**`align_spaces`**
+
+This function helps you to align texts. Call it with a text as first parameter, and it will display as many spaces as the string length. You can modify the length by given a second parameter like "+2" or "-3".
+
+Example:
+```shell
+VAR=foobar
+echo $VAR
+align_spaces $VAR "+1"
+echo "Something smart"
+```
+
+Result:
+```
+foobar
+       Something smart
+```
+
 **`check_aws`**
+
 Check if the `aws-cli` program is installed. Abort if not.
 
 **`check_dhbost`**
+
 Check if the database host is defined and reachable (using `ping`). Abort if not.
 
 **`check_sudo`**
+
 Check if the user has sudo rights. Abort if not.
 
 **`check_git`**
+
 Check if we are in a git repository. Abort if not.
 
 **`check_platform`**
+
 Check the platform given as parameter, or detect the platform.
 The current platform is set in the `${DPK_OPT["platform"]}` variable.
 
 **`check_tag`**
+
 Check if the tag given as a parameter already exists. Abort if not.
 If no tag is given, fetch the last created tag and put it in the `${DPK_OPT["tag"]}` variable.
 
 **`check_next_tag`**
+
 Check if the tag given as a parameter is valid as the next tag. If not or if no tag is given, a list of valid tags is shown to the user, who must choose between them.
 Then the tag is available in the `${DPK_OPT["tag"]}` variable.
 

@@ -6,14 +6,14 @@
 # Rule's name
 RULE_NAME="help"
 
+# Rule's section (for documentation).
+RULE_SECTION=""
+
 # Rule's mandatory parameters.
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
 RULE_OPTIONAL_PARAMS=""
-
-# Does this rule need to be executed inside a git repository?
-RULE_NEED_GIT=0
 
 # Show help for this rule.
 rule_help_help() {

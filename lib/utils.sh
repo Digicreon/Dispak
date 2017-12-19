@@ -98,17 +98,6 @@ warn() {
 	echo "$(ansi yellow)⚠$(ansi reset) $1"
 }
 
-# success()
-# Write a success message and exit.
-success() {
-	echo "$(ansi green)✓ Success$(ansi reset)"
-	# go back to previous directory
-	if [ "$_NEED_POPD" -eq 1 ]; then
-		popd > /dev/null
-	fi
-	exit 0
-}
-
 # abort()
 # Write an error message and exit.
 abort() {
@@ -119,3 +108,15 @@ abort() {
 	fi
 	exit 1
 }
+
+# success()
+# Write a success message and exit. Called by Dispak itself, no need to call it from inside a rule.
+success() {
+	echo "$(ansi green)✓ Success$(ansi reset)"
+	# go back to previous directory
+	if [ "$_NEED_POPD" -eq 1 ]; then
+		popd > /dev/null
+	fi
+	exit 0
+}
+

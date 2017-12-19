@@ -7,7 +7,7 @@
 RULE_NAME="config"
 
 # Rule's section (for documentation).
-RULE_SECTION=""
+RULE_SECTION="Tag management"
 
 # Rule's mandatory parameters.
 RULE_MANDATORY_PARAMS=""

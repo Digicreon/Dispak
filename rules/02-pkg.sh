@@ -6,6 +6,9 @@
 # Rule's name.
 RULE_NAME="pkg"
 
+# Rule's section (for documentation).
+RULE_SECTION="Tag management"
+
 # Rule's mandatory parameters.
 RULE_MANDATORY_PARAMS=""
 

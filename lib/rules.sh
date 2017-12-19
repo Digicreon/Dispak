@@ -10,7 +10,7 @@ _dpk_import_rules() {
 		RULE_MANDATORY_PARAMS=""
 		RULE_OPTIONAL_PARAMS=""
 		. "$FILE"
-		if [ "$RULE_NAME" != "" ]; then
+		if [ "$RULE_NAME" != "" ] && [ "$RULE_NAME" != "help" ]; then
 			_dpk_rule_add $RULE_NAME "$RULE_SECTION"
 			_dpk_rule_mandatory_params $RULE_NAME $RULE_MANDATORY_PARAMS
 			_dpk_rule_optional_params $RULE_NAME $RULE_OPTIONAL_PARAMS
@@ -26,11 +26,7 @@ _dpk_rule_add() {
 	RULE_NAME="$(trim "$1")"
 	SECTION_NAME="$(trim "$2")"
 	if [ "$SECTION_NAME" = "" ]; then
-		if [ "$CONF_DEFAULT_SECTION" != "" ]; then
-			SECTION_NAME="$CONF_DEFAULT_SECTION"
-		else
-			SECTION_NAME="Default"
-		fi
+		SECTION_NAME="Default"
 	fi
 	SECTION_RULES="${_DPK_RULES["$SECTION_NAME"]} $RULE_NAME"
 	_DPK_RULES["$SECTION_NAME"]="$(trim "$SECTION_RULES")"
