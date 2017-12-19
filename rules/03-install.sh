@@ -28,8 +28,8 @@ rule_exec_install() {
 	check_tag
 	check_platform
 	# check that only stable tag is installed on production servers
-	if [ "${DPK_OPTIONS["platform"]}" = "prod" ]; then
-		TAG_MINOR=$(echo "${DPK_OPTIONS["tag"]}" | cut -d"." -f2)
+	if [ "${DPK_OPT["platform"]}" = "prod" ]; then
+		TAG_MINOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f2)
 		if [ "$(($TAG_MINOR % 2))" != "0" ]; then
 			abort "$(ansi red)It's forbidden to install $(ansi reset)unstable$(ansi red) tags on production server.$(ansi reset)"
 		fi
@@ -50,18 +50,18 @@ rule_exec_install() {
 	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
 	git fetch --all --tags --prune --quiet
 	echo "$(ansi bold)Updating source code repository$(ansi reset)"
-	if [ "${DPK_OPTIONS["tag"]}" = "master" ]; then
+	if [ "${DPK_OPT["tag"]}" = "master" ]; then
 		if ! git checkout master --quiet ; then
 			abort "$(ansi red)Failed to move back to master branch.$(ansi reset)"
 		fi
 	else
-		if ! git checkout "tags/${DPK_OPTIONS["tag"]}" --quiet ; then
-			abort "$(ansi red)Failed to update repository to tag '${DPK_OPTIONS["tag"]}'.$(ansi reset)"
+		if ! git checkout "tags/${DPK_OPT["tag"]}" --quiet ; then
+			abort "$(ansi red)Failed to update repository to tag '${DPK_OPT["tag"]}'.$(ansi reset)"
 		fi
 		# create symlinks
 		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
-			echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPTIONS["tag"]}$(ansi reset)"
-			ln -s "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}" "$_SYMLINK/${DPK_OPTIONS["tag"]}"
+			echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPT["tag"]}$(ansi reset)"
+			ln -s "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}" "$_SYMLINK/${DPK_OPT["tag"]}"
 		done
 	fi
 	# install crontab
@@ -88,7 +88,7 @@ _install_pre_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -108,7 +108,7 @@ _install_post_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -175,7 +175,7 @@ _install_config_apache() {
 			if [ ! -x "$_CONF_FILE.gen" ]; then
 				chmod +x "$_CONF_FILE.gen"
 			fi
-			"${_CONF_FILE}.gen" "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}" > "$_CONF_FILE"
+			"${_CONF_FILE}.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$_CONF_FILE"
 			if [ $? -ne 0 ]; then
 				echo
 				abort "$(ansi red)Apache configuration generation script $(ansi reset)$_CONF_FILE.gen$(ansi red) execution failed.$(ansi reset)"
@@ -226,7 +226,7 @@ _install_config_files() {
 			if [ ! -x "$_FILE.gen" ]; then
 				chmod +x "$_FILE.gen"
 			fi
-			"${_FILE}.gen" "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}" > "$_FILE"
+			"${_FILE}.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$_FILE"
 		done
 	fi
 }

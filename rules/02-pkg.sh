@@ -59,19 +59,19 @@ rule_exec_pkg() {
 		if [ "$(git status -s | grep "^A" | wc -l)" != "0" ]; then
 			abort "$(ansi red)Need to commit database migration files, but you have files waiting to be committed.$(ansi reset)"
 		fi
-		git mv "$GIT_REPO_PATH/etc/database/migrations/current" "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPTIONS["tag"]}"
+		git mv "$GIT_REPO_PATH/etc/database/migrations/current" "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPT["tag"]}"
 		touch "$GIT_REPO_PATH/etc/database/migrations/current"
-		git add "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPTIONS["tag"]}" "$GIT_REPO_PATH/etc/database/migrations/current"
-		git commit -m "Added database migration file for version ${DPK_OPTIONS["tag"]}"
+		git add "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPT["tag"]}" "$GIT_REPO_PATH/etc/database/migrations/current"
+		git commit -m "Added database migration file for version ${DPK_OPT["tag"]}"
 		git push origin master
 	fi
 	# minify files
 	_pkg_minify
 	# create tag
-	echo "$(ansi bold)Creating local tag '${DPK_OPTIONS["tag"]}'...$(ansi reset)"
-	git tag -a "${DPK_OPTIONS["tag"]}"
+	echo "$(ansi bold)Creating local tag '${DPK_OPT["tag"]}'...$(ansi reset)"
+	git tag -a "${DPK_OPT["tag"]}"
 	echo "$(ansi bold)Pushing tag to server...$(ansi reset)"
-	git push origin "${DPK_OPTIONS["tag"]}"
+	git push origin "${DPK_OPT["tag"]}"
 	# send static files to Amazon S3
 	_pkg_s3
 	# unminify (remove minified files that are not version controlled)
@@ -92,7 +92,7 @@ _pkg_pre_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -112,7 +112,7 @@ _pkg_post_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT "${DPK_OPTIONS["platform"]}" "${DPK_OPTIONS["tag"]}"
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -173,7 +173,7 @@ _pkg_minify() {
 		fi
 	done
 	if [ $NEED_COMMIT -ne 0 ]; then
-		git commit -m "Added minified files for version ${DPK_OPTIONS["tag"]}."
+		git commit -m "Added minified files for version ${DPK_OPT["tag"]}."
 		git push origin master
 	fi
 }
@@ -181,10 +181,10 @@ _pkg_minify() {
 # _pkg_s3()
 # Send static files to Amazon S3
 _pkg_s3() {
-	if [ "${DPK_OPTIONS["tag"]}" = "" ] || [ "${DPK_OPTIONS["tag"]}" = "master" ]; then
+	if [ "${DPK_OPT["tag"]}" = "" ] || [ "${DPK_OPT["tag"]}" = "master" ]; then
 		return
 	fi
-	TAG_MINOR=$(echo "${DPK_OPTIONS["tag"]}" | cut -d"." -f2)
+	TAG_MINOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f2)
 	if [ "$(($TAG_MINOR % 2))" != "0" ]; then
 		# not a stable tag
 		return
@@ -204,7 +204,7 @@ _pkg_s3() {
 			FOUND_MASTER_LINK=1
 		fi
 		echo "$(ansi dim)> $_S3$(ansi reset)"
-		aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPTIONS["tag"]}" --acl public-read
+		aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read
 		if [ $FOUND_MASTER_LINK -eq 1 ]; then
 			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/master"
 		fi

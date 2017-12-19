@@ -3,13 +3,13 @@ Dispak
 
 Simple code and server/services management tool.
 
-Dispak is a very easy-to-use command-line tool. Its primary goal is to manage versions of any software projet (which source code is managed using [git](https://en.wikipedia.org/wiki/Git)), by helping to list existing tags, create new tags and install tags on servers.
+Dispak is a very easy-to-use command-line tool. Its primary goal is to manage versions of any software projet (which source code is managed using [git](https://en.wikipedia.org/wiki/Git)), by helping to list existing tags, create new tags and install tags on servers. It handles MySQL [database migrations](https://en.wikipedia.org/wiki/Schema_migration), JS/CSS files concatenation and minification, [crontab](https://en.wikipedia.org/wiki/Cron) installation, [Apache](https://en.wikipedia.org/wiki/Apache_HTTP_Server) configuration files installation, static files versioned access (locally or copied on [Amazon S3](https://aws.amazon.com/s3/)).
 
 Furthermore, it is very easy to add custom rules; then Dispak becomes a central tool that centralizes all the scripts needed by your projects.
 
 It is written in pure shell, so it can be used on any Unix/Linux machine.
 
-Dispak was created by [Amaury Bouchard](http://amaury.net) and is [open-source software](#what-is-arkivs-license).
+Dispak was created by [Amaury Bouchard](http://amaury.net) and is [open-source software](https://en.wikipedia.org/wiki/MIT_License).
 
 
 ************************************************************************
@@ -313,6 +313,11 @@ Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [con
 
 ### 3.7 Apache configuration
 
+If you list your Apache configuration files in the [Dispak configuration file](#38-configuration-file), Dispak will check if they are already added in the system configuration. If not, Dispak will add the needed files in the Apache configuration tree (`/etc/apache2/sites-available` and `/etc/apache2/sites-enabled`).
+
+See the `CONF_INSTALL_APACHE_FILES` variable in the [configuration file](#38-configuration-file).
+
+
 ### 3.8 Configuration file
 
 In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/master/dispak-example.conf) example file in the Dispak source repository.
@@ -375,13 +380,13 @@ Check if we are in a git repository. Abort if not.
 
 **`check_platform`**
 Check the platform given as parameter, or detect the platform.
-The current platform is set in the `$DPK_OPTIONS["platform"]` variable.
+The current platform is set in the `${DPK_OPT["platform"]}` variable.
 
 **`check_tag`**
 Check if the tag given as a parameter already exists. Abort if not.
-If no tag is given, fetch the last created tag and put it in the `$DPK_OPTIONS["tag"]` variable.
+If no tag is given, fetch the last created tag and put it in the `${DPK_OPT["tag"]}` variable.
 
 **`check_next_tag`**
 Check if the tag given as a parameter is valid as the next tag. If not or if no tag is given, a list of valid tags is shown to the user, who must choose between them.
-Then the tag is available in the `$DPK_OPTIONS["tag"]` variable.
+Then the tag is available in the `${DPK_OPT["tag"]}` variable.
 

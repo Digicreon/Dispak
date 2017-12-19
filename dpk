@@ -17,7 +17,7 @@
 DPK_ROOT="$(cd "$(dirname "$(readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE[0]}")")" && pwd)"
 
 # List of options given on the command-line.
-declare -A DPK_OPTIONS
+declare -A DPK_OPT
 
 # Name of the asked command to execute
 COMMAND=$1
@@ -83,7 +83,7 @@ while getopts "h-:" OPTCHAR; do
 			if [ "$VALUE" = "" ]; then
 				VALUE=1
 			fi
-			DPK_OPTIONS[$KEY]="$VALUE"
+			DPK_OPT[$KEY]="$VALUE"
 			;;
 		"h")
 			rule_exec_help
@@ -109,12 +109,12 @@ if [ $CMD_FOUND -eq 0 ]; then
 fi
 # check if all mandatory options are given
 for _OPT in ${_DPK_RULES_MANDATORY_PARAMS[$COMMAND]}; do
-	if [ "${DPK_OPTIONS[$_OPT]}" = "" ]; then
+	if [ "${DPK_OPT[$_OPT]}" = "" ]; then
 		abort "$(ansi red)Mising parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
 	fi
 done
 # check if extraneous parameters are given
-for _OPT in "${!DPK_OPTIONS[@]}"; do
+for _OPT in "${!DPK_OPT[@]}"; do
 	if [ "$_OPT" = "platform" ]; then
 		continue
 	fi

@@ -70,17 +70,17 @@ rule_exec_tags() {
 			FIRST_REVISION=""
 			LAST_REVISION=""
 		else
-			if [ "${DPK_OPTIONS[all]}" != "" ] || [ "$FIRST_REVISION" = "" ]; then
+			if [ "${DPK_OPT["all"]}" != "" ] || [ "$FIRST_REVISION" = "" ]; then
 				FIRST_REVISION="$TAG_REVISION"
 			fi
-			if [ "${DPK_OPTIONS[all]}" != "" ]; then
+			if [ "${DPK_OPT["all"]}" != "" ]; then
 				echo " $(ansi dim)$TAG_MAJOR.$TAG_MINOR.$TAG_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"
 				SHOWN="yes"
 			fi
 			LAST_REVISION="$TAG_REVISION"
 		fi
 		# show tag's annotation if needed
-		if [ "$SHOWN" = "yes" ] && [ "${DPK_OPTIONS[all]}" != "" ]; then
+		if [ "$SHOWN" = "yes" ] && [ "${DPK_OPT["all"]}" != "" ]; then
 			TAGGER="$(git tag -n --format='%(tagger)' $TAG | cut -d'>' -f 1)>"
 			if [ "$(echo "$TAGGER" | grep "@" | wc -l)" == "1" ]; then
 				echo "		$(ansi dim)$TAGGER$(ansi reset)"
@@ -92,7 +92,7 @@ rule_exec_tags() {
 		fi
 		LAST_DATE="$TAG_DATE"
 	done
-	if [ "${DPK_OPTIONS[all]}" = "" ] && [ "$SHOWN" = "no" ]; then
+	if [ "${DPK_OPT["all"]}" = "" ] && [ "$SHOWN" = "no" ]; then
 		LEN=$((${#LAST_MAJOR} + ${#LAST_MINOR} + 1))
 		SPACES=`printf "%0.s " $(seq 1 $LEN)`
 		echo " $(ansi dim)$SPACES.$LAST_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"

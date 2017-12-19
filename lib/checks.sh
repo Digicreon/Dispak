@@ -44,23 +44,23 @@ check_git() {
 # check_platform()
 # Check the platform given as a parameter, or detect the platform.
 check_platform() {
-	if [ "${DPK_OPTIONS["platform"]}" != "dev" ] && [ "${DPK_OPTIONS["platform"]}" != "test" ] && [ "${DPK_OPTIONS["platform"]}" != "prod" ]; then
+	if [ "${DPK_OPT["platform"]}" != "dev" ] && [ "${DPK_OPT["platform"]}" != "test" ] && [ "${DPK_OPT["platform"]}" != "prod" ]; then
 		if [ "$CONF_PLATFORM" = "dev" ] || [ "$CONF_PLATFORM" = "test" ] || [ "$CONF_PLATFORM" = "prod" ]; then
-			DPK_OPTIONS["platform"]=$CONF_PLATFORM
+			DPK_OPT["platform"]="$CONF_PLATFORM"
 		else
 			HOSTNAME=$(hostname)
 			echo "$HOSTNAME" | grep -Eq "^test[0-9]+$"
 			if [ $? -eq 0 ]; then
-				DPK_OPTIONS["platform"]="test"
+				DPK_OPT["platform"]="test"
 			else
 				echo "$HOSTNAME" | grep -Eq "^prod[0-9]+$|^web[0-9]+$|^db[0-9]+$|^cron[0-9]+$|^worker[0-9]+$|^front[0-9]+$|^back[0-9]+$"
 				if [ $? -eq 0 ]; then
-					DPK_OPTIONS["platform"]="prod"
+					DPK_OPT["platform"]="prod"
 				else
-					DPK_OPTIONS["platform"]="dev"
+					DPK_OPT["platform"]="dev"
 				fi
 			fi
-			warn "$(ansi yellow)No platform given, $(ansi reset)$PLATFORM$(ansi yellow) detected.$(ansi reset)"
+			warn "$(ansi yellow)No platform given, $(ansi reset)${DPK_OPT["platform"]}$(ansi yellow) detected.$(ansi reset)"
 		fi
 	fi
 }
@@ -71,15 +71,15 @@ check_platform() {
 check_tag() {
 	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
 	git fetch --all --tags --prune --quiet
-	if [ "${DPK_OPTIONS["tag"]}" = "" ]; then
+	if [ "${DPK_OPT["tag"]}" = "" ]; then
 		_TAG=$(git tag | sort -V | tail -1)
 		if [ "$_TAG" = "" ]; then
 			abort "No tag found."
 		fi
-		DPK_OPTIONS["tag"]=$_TAG
-		echo "Using tag '$(ansi dim)${DPK_OPTIONS["tag"]}$(ansi reset)'."
-	elif [ "${DPK_OPTIONS["tag"]}" != "master" ]; then
-		FOUND=$(git tag | grep "^${DPK_OPTIONS["tag"]}$" | wc -l)
+		DPK_OPT["tag"]=$_TAG
+		echo "Using tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)'."
+	elif [ "${DPK_OPT["tag"]}" != "master" ]; then
+		FOUND=$(git tag | grep "^${DPK_OPT["tag"]}$" | wc -l)
 		if [ $FOUND -eq 0 ]; then
 			abort "$(ansi red)Bad value for 'tag' parameter (not an existing tag).$(ansi reset)"
 		fi
@@ -94,8 +94,8 @@ check_next_tag() {
 	LAST_TAG=$(git tag | sort -V | tail -1)
 	# no existing tag
 	if [ "$LAST_TAG" = "" ]; then
-		if [ "${DPK_OPTIONS["tag"]}" = "1.0.0" ] || [ "${DPK_OPTIONS["tag"]}" = "0.1.0" ] || [ "${DPK_OPTIONS["tag"]}" = "0.0.1" ]; then
-			echo "Tag '$(ansi dim)${DPK_OPTIONS["tag"]}$(ansi reset)' validated."
+		if [ "${DPK_OPT["tag"]}" = "1.0.0" ] || [ "${DPK_OPT["tag"]}" = "0.1.0" ] || [ "${DPK_OPT["tag"]}" = "0.0.1" ]; then
+			echo "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' validated."
 			return
 		fi
 		echo "$(ansi yellow)No existing tag.$(ansi reset)"
@@ -105,13 +105,13 @@ check_next_tag() {
 		echo " C. 1.0.0 $(ansi dim)(first major version)$(ansi reset)"
 		read -p "[A] " ANSWER
 		if [ "$ANSWER" = "1.0.0" ] || [ "$ANSWER" = "0.1.0" ] || [ "$ANSWER" = "0.0.1" ]; then
-			DPK_OPTIONS["tag"]="$ANSWER"
+			DPK_OPT["tag"]="$ANSWER"
 		elif [ "$ANSWER" = "" ] || [ "$ANSWER" = "a" ] || [ "$ANSWER" = "A" ]; then
-			DPK_OPTIONS["tag"]="0.0.1"
+			DPK_OPT["tag"]="0.0.1"
 		elif [ "$ANSWER" = "b" ] || [ "$ANSWER" = "B" ]; then
-			DPK_OPTIONS["tag"]="0.1.0"
+			DPK_OPT["tag"]="0.1.0"
 		elif [ "$ANSWER" = "c" ] || [ "$ANSWER" = "C" ]; then
-			DPK_OPTIONS["tag"]="1.0.0"
+			DPK_OPT["tag"]="1.0.0"
 		else
 			abort "$(ansi red)Bad choice.$(ansi reset)"
 		fi
@@ -135,20 +135,32 @@ check_next_tag() {
 		NEXT_MINOR_UNSTABLE="$LAST_MAJOR.$(($LAST_MINOR + 2)).0"
 	fi
 	# if a tag number was given, check if it's valid
-	if [ "${DPK_OPTIONS["tag"]}" = "$NEXT_MAJOR" ] || [ "${DPK_OPTIONS["tag"]}" = "$NEXT_MINOR_STABLE" ] || [ "${DPK_OPTIONS["tag"]}" = "$NEXT_MINOR_UNSTABLE" ] || [ "${DPK_OPTIONS["tag"]}" = "$NEXT_REVISION" ]; then
-		echo "Tag '$(ansi dim)${DPK_OPTIONS["tag"]}$(ansi reset)' validated."
+	if [ "${DPK_OPT["tag"]}" = "$NEXT_MAJOR" ] || [ "${DPK_OPT["tag"]}" = "$NEXT_MINOR_STABLE" ] || [ "${DPK_OPT["tag"]}" = "$NEXT_MINOR_UNSTABLE" ] || [ "${DPK_OPT["tag"]}" = "$NEXT_REVISION" ]; then
+		echo "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' validated."
 		return
 	fi
 	# no valid version number given, ask the user
 	echo -n "Last version number: $(ansi dim)$LAST_TAG$(ansi reset) "
-	if [ "$VERSION_TYPE" = "stable" ]; then
-		echo "($(ansi green)stable$(ansi rerset))"
+	if [ "$LAST_MAJOR" = "0" ] && [ "$LAST_MINOR" = "0" ]; then
+		echo "($(ansi red)pre-alpha$(ansi reset))"
+	elif [ "$LAST_MAJOR" = "0" ]; then
+		if [ "$VERSION_TYPE" = "stable" ]; then
+			echo "($(ansi green)stable $(ansi red)alpha$(ansi reset))"
+		else
+			echo "($(ansi yellow)unstable $(ansi red)alpha$(ansi reset))"
+		fi
+	elif [ "$VERSION_TYPE" = "stable" ]; then
+		echo "($(ansi green)stable$(ansi reset))"
 	else
 		echo "($(ansi yellow)unstable$(ansi reset))"
 	fi
 	echo
 	echo "$(ansi bold)What is the number of the new version?$(ansi reset)"
-	echo " A. $NEXT_REVISION $(ansi dim)(new revision)$(ansi reset)"
+	if [ "$LAST_MAJOR" = "0" ] && [ "$LAST_MINOR" = "0" ]; then
+		echo " A. $NEXT_REVISION $(ansi dim)(new $(ansi red)pre-alpha$(ansi reset)$(ansi dim) revision)$(ansi reset)"
+	else
+		echo " A. $NEXT_REVISION $(ansi dim)(new revision)$(ansi reset)"
+	fi
 	if [ "$VERSION_TYPE" = "stable" ]; then
 		echo " B. $NEXT_MINOR_UNSTABLE $(ansi dim)(new $(ansi yellow)unstable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
 		echo " C. $NEXT_MINOR_STABLE $(ansi dim)(new $(ansi green)stable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
@@ -159,23 +171,23 @@ check_next_tag() {
 	echo " D. $NEXT_MAJOR $(ansi dim)(new major version)$(ansi reset)"
 	read -p "[A] " ANSWER
 	if [ "$ANSWER" = "$NEXT_MAJOR" ] || [ "$ANSWER" = "$NEXT_MINOR_STABLE" ] || [ "$ANSWER" = "$NEXT_MINOR_UNSTABLE" ] || [ "$ANSWER" = "$NEXT_REVISION" ]; then
-		DPK_OPTIONS["tag"]="$ANSWER"
+		DPK_OPT["tag"]="$ANSWER"
 	elif [ "$ANSWER" = "" ] || [ "$ANSWER" = "a" ] || [ "$ANSWER" = "A" ]; then
-		DPK_OPTIONS["tag"]="$NEXT_REVISION"
+		DPK_OPT["tag"]="$NEXT_REVISION"
 	elif [ "$ANSWER" = "b" ] || [ "$ANSWER" = "B" ]; then
 		if [ "$VERSION_TYPE" = "stable" ]; then
-			DPK_OPTIONS["tag"]="$NEXT_MINOR_UNSTABLE"
+			DPK_OPT["tag"]="$NEXT_MINOR_UNSTABLE"
 		else
-			DPK_OPTIONS["tag"]="$NEXT_MINOR_STABLE"
+			DPK_OPT["tag"]="$NEXT_MINOR_STABLE"
 		fi
 	elif [ "$ANSWER" = "c" ] || [ "$ANSWER" = "C" ]; then
 		if [ "$VERSION_TYPE" = "stable" ]; then
-			DPK_OPTIONS["tag"]="$NEXT_MINOR_STABLE"
+			DPK_OPT["tag"]="$NEXT_MINOR_STABLE"
 		else
-			DPK_OPTIONS["tag"]="$NEXT_MINOR_UNSTABLE"
+			DPK_OPT["tag"]="$NEXT_MINOR_UNSTABLE"
 		fi
 	elif [ "$ANSWER" = "d" ] || [ "$ANSWER" = "D" ]; then
-		DPK_OPTIONS["tag"]="$NEXT_MAJOR"
+		DPK_OPT["tag"]="$NEXT_MAJOR"
 	else
 		abort "$(ansi red)Bad choice.$(ansi reset)"
 	fi

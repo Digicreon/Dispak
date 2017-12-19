@@ -21,8 +21,8 @@ rule_help_adduser() {
 # Execution of the rule
 rule_exec_adduser() {
 	check_dbhost
-	EMAIL="${DPK_OPTIONS["email"]}"
-	NAME="${DPK_OPTIONS["name"]}"
+	EMAIL="${DPK_OPT["email"]}"
+	NAME="${DPK_OPT["name"]}"
 	if [ "$EMAIL" = "" ] || [ "$EMAIL" = "1" ] || [ "$EMAIL" = "email" ]; then
 		abort "Empty email parameter."
 	fi
