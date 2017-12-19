@@ -32,8 +32,9 @@ Table of contents
    3. [Pre/post scripts execution](#33-pre-post-scripts-execution)
    4. [Files generation](#34-files-generation)
    5. [Static files, symlinks and Amazon S3](#35-static-files-symlinks-and-amazon-s3)
-   6. [Apache configuration](#36-apache-configuration)
-   7. [Configuration file](#37-configuration-file)
+   6. [Javascript and CSS files concatenation and minification](#36-javascript-and-css-files-concatenation-and-minification)
+   7. [Apache configuration](#37-apache-configuration)
+   8. [Configuration file](#38-configuration-file)
 4. [Create your own rules](#4-create-your-own-rules)
    1. [Why should you create your own rules?](#41-why-should-you-create-your-own-rules)
    2. [Where to put the rule?](#42-where-to-put-the-rule)
@@ -117,13 +118,13 @@ In any case, it is *not possible* to "jump" version numbers (for example, going 
 Dispak will check several things and perform some operations, depending of the configuration (see below):
 - Check if you are on the `master` branch.
 - Check for uncommitted and unpushed files.
-- Execute pre-packaging scripts.
-- Commit the database migration file.
-- Minify JS/CSS files.
+- Execute pre-packaging scripts (see [below](#33-pre-post-scripts-execution)).
+- Commit the database migration file (see [below](#31-database-migrations)).
+- Minify JS/CSS files (see [below](#36-javascript-and-css-files-concatenation-and-minification)).
 - **Create the tag.**
-- Send static files to Amazon S3.
+- Send static files to Amazon S3 (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Unminify files (delete minified files if they are not version controlled).
-- Execute post-packaging files.
+- Execute post-packaging files (see [below](#33-pre-post-scripts-execution)).
 
 
 ### 1.5 Install tag
@@ -142,12 +143,16 @@ $ dpk install --platform=test --tag=3.2.1
 
 Dispak will perform these operations:
 - Ensure that no unstable tag is installed on a production server.
-- Remove previously created symlink (see below).
-- Execute pre-install scripts.
-- Deploy new version's source code.
-- Install crontab file.
-- Perform database migration.
-- 
+- Remove previously created symlink (see [below](#35-static-files-symlinks-and-amazon-s3)).
+- Execute pre-install scripts (see [below](#33-pre-post-scripts-execution)).
+- **Deploy new version's source code.**
+- Install crontab file (see [below](#32-crontab-installation)).
+- Perform database migration (see [below](#31-database-migrations)).
+- Install Apache configuration files (see [below](#37-apache-configuration)).
+- Set files ownership (see [configuration](#38-configuration-file)).
+- Set files access rights (see [configuration](#38-configuration-file)).
+- Generate files (see [below](#34-files-generation)).
+- Execute post-install scripts (see [below](#33-pre-post-scripts-execution)).
 
 
 ************************************************************************
@@ -250,15 +255,38 @@ The rest of the process is fairly simple:
 
 ### 3.2 Crontab installation
 
+In your project's git repository, you can create an `etc/crontab` file. During install, Dispak will add the content of this file to the crontab of the user who is performing the installation. This operation is done every time you install a new tagged version, so you just have to keep your `etc/crontab` file up-to-date. The previous content is replaced by the new file's content.
+Your `etc/crontab` file must contain a [cron](https://en.wikipedia.org/wiki/Cron)-compatible content, including scheduling information.
+
+You can add other commands in the user's crontab. Dispak add the content of the `etc/crontab` file between markers.
+So your crontab will end looking like that:
+```shell
+# your commands
+* * * * * local_command1
+* * * * * local_command2
+
+### DISPAK CRONTAB START ###
+* * * * * dispak_command1
+* * * * * dispak_command2
+### DISPAK CRONTAB END ###
+
+# other commands
+* * * * * local_command3
+* * * * * local_command4
+```
+
+
 ### 3.3 Pre/post scripts execution
 
 ### 3.4 Files generation
 
 ### 3.5 Static files, symlinks and Amazon S3
 
-### 3.6 Apache configuration
+### 3.6 Javascript and CSS files concatenation and minification
 
-### 3.7 Configuration file
+### 3.7 Apache configuration
+
+### 3.8 Configuration file
 
 In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/master/dispak-example.conf) example file in the Dispak source repository.
 
