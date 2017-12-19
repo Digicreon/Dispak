@@ -28,10 +28,12 @@ Table of contents
    2. [Source installation](#22-source-installation)
 3. [How it works](#3how-it-works)
    1. [Database migrations](#31-database-migrations)
-   2. [Files generation](#32-files-generation)
-   3. [Static files, symlinks and Amazon S3](#33-static-files-symlinks-and-amazon-s3)
-   4. [Apache configuration](#34-apache-configuration)
-   5. [Configuration file](#35-configuration-file)
+   2. [Crontab installation](#32-crontab-installation)
+   3. [Pre/post scripts execution](#33(pre-post-scripts-execution)
+   4. [Files generation](#34-files-generation)
+   5. [Static files, symlinks and Amazon S3](#35-static-files-symlinks-and-amazon-s3)
+   6. [Apache configuration](#36-apache-configuration)
+   7. [Configuration file](#37-configuration-file)
 4. [Create your own rules](#4-create-your-own-rules)
    1. [Why should you create your own rules?](#41-why-should-you-create-your-own-rules)
    2. [Where to put the rule?](#42-where-to-put-the-rule)
@@ -96,6 +98,8 @@ To see all revisions, with their detailed annotation messages:
 $ dpk tags --all
 ```
 
+This command also tells the number of commits since the last tag.
+
 
 ### 1.4 Create tag
 
@@ -104,10 +108,22 @@ You can easily create a new tagged version:
 $ dpk pkg
 ```
 
-Dispak will check several things, depending of the configuration (see below). Dispak will ask you which version number you want to use (new revision, new stable minor, new unstable minor, new major); otherwise you can give the desired version number directly:
+Dispak will ask you which version number you want to use (new revision, new stable minor, new unstable minor, new major); otherwise you can give the desired version number directly:
 ```shell
 $ dpk pkg --tag=3.2.0
 ```
+In any case, it is *not possible* to "jump" version numbers (for example, going from 1.2.0 to 1.2.5, or from 2.0.0 to 2.3.0).
+
+Dispak will check several things and perform some operations, depending of the configuration (see below):
+- Check if you are on the `master` branch.
+- Check for uncommitted and unpushed files.
+- Execute pre-packaging scripts.
+- Commit the database migration file.
+- Minify JS/CSS files.
+- **Create the tag.**
+- Send static files to Amazon S3.
+- Unminify files (delete minified files if they are not version controlled).
+- Execute post-packaging files.
 
 
 ### 1.5 Install tag
@@ -123,6 +139,15 @@ Alternatively, you can specify the tag and/or the local platform:
 ```shell
 $ dpk install --platform=test --tag=3.2.1
 ```
+
+Dispak will perform these operations:
+- Ensure that no unstable tag is installed on a production server.
+- Remove previously created symlink (see below).
+- Execute pre-install scripts.
+- Deploy new version's source code.
+- Install crontab file.
+- Perform database migration.
+- 
 
 
 ************************************************************************
@@ -223,13 +248,17 @@ The rest of the process is fairly simple:
 5. When you deploy a tag on a server (`dpk install` command), Dispak will check in the migration table which was the last migration executed; then it will process every migration files that are not already processed, in their creation order.
 
 
-### 3.2 Files generation
+### 3.2 Crontab installation
 
-### 3.3 Static files, symlinks and Amazon S3
+### 3.3 Pre/post scripts execution
 
-### 3.4 Apache configuration
+### 3.4 Files generation
 
-### 3.5 Configuration file
+### 3.5 Static files, symlinks and Amazon S3
+
+### 3.6 Apache configuration
+
+### 3.7 Configuration file
 
 In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/master/dispak-example.conf) example file in the Dispak source repository.
 
