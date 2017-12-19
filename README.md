@@ -252,6 +252,9 @@ The rest of the process is fairly simple:
 4. When you create a new tag with `dpk pkg`, the `current` file will be renamed with the tag version number(`X.Y.Z`), and a new empty `current` file is created.
 5. When you deploy a tag on a server (`dpk install` command), Dispak will check in the migration table which was the last migration executed; then it will process every migration files that are not already processed, in their creation order.
 
+As you can see, there is no process for migration roll-back. The main reason is to keep the system simple, by only writing  `ALTER` commands in plain SQL (whereas other database migration tools are usually using code written in a more complex programming language).
+If you need to roll-back easily, maybe you should spend more time on your testing/staging platform. Anyway, you can do database backups before migrations. The recommended way to do that is to add the execution of [Arkiv](https://github.com/Amaury/Arkiv) in a pre-install script.
+
 
 ### 3.2 Crontab installation
 
@@ -278,7 +281,31 @@ So your crontab will end looking like that:
 
 ### 3.3 Pre/post scripts execution
 
+Dispak can execute scripts before and after packaging (the action of creating a new tag) and install.
+
+These scripts could be written in any language. Their return status must be equal to 0 (zero); any other value will make Dispak to abort its processing.
+
+Dispak gives two parameters to these scripts:
+1. The platform environment (`dev`, `test` or `prod`).
+2. The tag version number. For pre/post-packing scripts it is the number of the created tag; for pre/post-install scripts it is the number of the installed tag.
+
+See these variables in the [configuration file](#38-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
+
+
 ### 3.4 Files generation
+
+Dispak can generate files when it is installing a new tag. Usually it is used for configuration files, but it could be used for any file that must be generated on-the-fly.
+
+Like the pre/post scripts (see the previous section), these scripts could be written in any language, and any return value different than 0 (zero) will stop Dispak processing.
+
+Generator scripts must be placed in the same directory than the generated files, and must have the same name with the `.gen` extension at the end.
+
+Again like the pre/post scripts (see the previous section), the generator scripts receive two arguments:
+1. The platform environment (`dev`, `test` or `prod`).
+2. The tag version number. For pre/post-packing scripts it is the number of the created tag; for pre/post-install scripts it is the number of the installed tag.
+
+Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [configuration file](#38-cconfiguration-file).
+
 
 ### 3.5 Static files, symlinks and Amazon S3
 
@@ -312,7 +339,7 @@ Here are the definable variables:
   - `CONF_INSTALL_APACHE_FILES`: This variable must contain a list of Apache configuration files. These files are listed in the system configuration (in `/etc/apache2/sites-available` and linked in `/etc/apache2/sites-enabled`) if they are not already.
   - `CONF_INSTALL_CHOWN`: Associative array. The keys are user logins, and the values are path to files and/or directories that must be changed of owner.
   - `CONF_INSTALL_CHMOD`: Associative array. The keys are a `chmod` file right (like `+x` or `644`), and the values are lists of files and/or directories that must be `chmod`'ed.
-  - `CONF_INSTALL_GENERATE`: The variable must contain a list of files that must be *generated* after install. Each entry of the list must be the path to the *generated* file. For each one of them, a *generator* script must exist with the same name and a `.gen` extension. When a generator script is executed, everything coming out from its STDOUT will be written in the generated file. For their execution, the generator scripts receive two parameters; the first one is the platform environment type (`dev`, `test` or `prod`); the second one is the installed tag version number.
+  - `CONF_INSTALL_GENERATE`: The variable must contain a list of files that must be *generated* after install. Each entry of the list must be the path to the *generated* file. For each one of them, a *generator* script must exist with the same name and a `.gen` extension. When a generator script is executed, everything coming out from its STDOUT will be written in the generated file.
 - **Database management**
   - `CONF_DB_HOST`: Database host name.
   - `CONF_DB_USER`: Database connection user name.
