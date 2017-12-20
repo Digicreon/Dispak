@@ -6,6 +6,9 @@
 # Rule's name.
 RULE_NAME="restart"
 
+# Rule's section (for documentation).
+RULE_SECTION="System administration"
+
 # Show help for this rule.
 rule_help_restart() {
 	echo "   dpk $(ansi bold)restart$(ansi reset)"

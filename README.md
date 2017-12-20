@@ -23,6 +23,7 @@ Table of contents
    3. [List tags](#13-list-tags)
    4. [Create tag](#14-create-tag)
    5. [Install tag](#15-install-tag)
+   6. [Branch management](#16-branch-management)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
@@ -39,8 +40,10 @@ Table of contents
    1. [Why should you create your own rules?](#41-why-should-you-create-your-own-rules)
    2. [Where to put the rule?](#42-where-to-put-the-rule)
    3. [Simple example](#43-simple-example)
-   4. [Advanced example](#44-advanced-example)
-   5. [Provided functions](#45-provided-functions)
+   4. [Parameters management](#44-parameters-management)
+   5. [Documentation section](#45-documentation-section)
+   6. [Advanced example](#46-advanced-example)
+   7. [Provided functions](#47-provided-functions)
 
 
 ************************************************************************
@@ -160,6 +163,48 @@ Dispak will perform these operations:
 - Generate files (see [below](#34-files-generation)).
 - Execute post-install scripts (see [below](#33-pre-post-scripts-execution)).
 
+### 1.6 Branches management
+
+Dispak helps you to do basic branches management.
+
+#### List
+You can list all existing tags:
+```shell
+$ dpk branch --list
+```
+
+#### Create branches
+You can create a new branch. Branches are created from the last commit of the `master` branch, or from a given tag if the option `--tag` is used.
+```shell
+# create a branch from the last commit of the master branch
+$ dpk branch --create=name_of_the_branch
+
+# create a branch from a tag
+$ dpk branch --create=name_of_the_branch --tag=X.Y.Z
+```
+Branches are created locally and on the remote git repository.
+
+#### Remove branches
+You can delete a previously created branch:
+```shell
+$ dpk branch --remove=name_of_the_branch
+```
+Branches are deleted locally and from the remote git repository.
+
+#### Merge
+You can merge the current branch on the `master` branch:
+```shell
+$ dpk branch --merge
+```
+The merged result is pushed to the remote git repository.
+
+#### Backport
+You can merge the `master` branch on the current branch:
+```shell
+$ dpk branch --backport
+```
+The merged result is pushed to the remote git repository.
+
 
 ************************************************************************
 
@@ -201,15 +246,17 @@ Configure the program (you will be asked for the AWS user's access key and secre
 
 ### 2.2 Source installation
 
+You can install Dispak anywhere on your disk drive. The preferred path (if you have sudo rights) is `/opt/Dispak`, but it can be under your own home.
+
 Get the last version:
 ```shell
-$ wget https://github.com/Amaury/Dispak/archive/0.1.0.zip
-$ unzip Dispak-0.9.1.zip
+$ wget https://github.com/Amaury/Dispak/archive/0.3.0.zip
+$ unzip Dispak-0.3.0.zip
 
 or
 
-$ wget https://github.com/Amaury/Dispak/archive/0.1.0.tar.gz
-$ tar xzf Dispak-0.9.1.tar.gz
+$ wget https://github.com/Amaury/Dispak/archive/0.3.0.tar.gz
+$ tar xzf Dispak-0.3.0.tar.gz
 ```
 
 You can also clone the git source code repository:
@@ -315,7 +362,13 @@ Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [con
 
 ### 3.5 Static files, symlinks and Amazon S3
 
+
+
+
 ### 3.6 Javascript and CSS files concatenation and minification
+
+
+
 
 ### 3.7 Apache configuration
 
@@ -363,13 +416,93 @@ Here are the definable variables:
 
 ### 4.1 Why should you create your own rules?
 
+Dispak's default rules are focused on source code management (create a tag, deploy a tag). Even the most advanced features (database migration, static files management) are dedicated to code deployment.
+
+But Dispak can be as a central entry point for managing all your command-line scripts. You can imagine an infinite list of additional capabilities:
+- Manage users in a database.
+- Manage daemons.
+- Display data from a database.
+- Generate configuration files or documentation.
+- ...
+
+Some examples are given in the [`example-rules/`](https://github.com/Amaury/Dispak/tree/master/example-rules) directory.
+
+
 ### 4.2 Where to put the rule?
+
+Rules are simple Bash scripts. You can name the files as you want, as long as their names end with `.sh`.
+
+You can put your rules files in two different places:
+- In the `rules/` subdirectory of your Dispak installation tree. Then the rules will be shared with every other users who are using the same Dispak install. It's the preferred place to put general-usage rules.
+- In the `etc/dispak-rules/` subdirectory of a git repository. Then the rules will be available to anybody working on this repository, but only when the current working directory in under this file tree. It's the dedicated place to put project-specific rules.
+
 
 ### 4.3 Simple example
 
-### 4.4 Advanced example
+You can take a look to the [`example-rules/minimal.sh`](https://github.com/Amaury/Dispak/blob/master/example-rules/minimal.sh) file:
+```shell
+#!/bin/bash
 
-### 4.5 Provided functions
+# "minimal" example rule for Dispak
+# © 2017, Amaury Bouchard <amaury@amaury.net>
+
+# Rule's name.
+RULE_NAME="minimal"
+
+# Show help for this rule.
+rule_help_minimal() {
+	echo "   dpk $(ansi bold)minimal$(ansi reset)"
+	echo "       $(ansi dim)Minimal rule that displays the current user login and the current working directory.$(ansi reset)"
+}
+
+# Execution of the rule
+rule_exec_minimal() {
+	USER_LOGIN="$(id -un)"
+	WORKING_DIR="$(pwd)"
+	echo "Current user login:        $(ansi blue)$USER_LOGIN$(ansi reset)"
+	echo "Current working directory: $(ansi yellow)$WORKING_DIR$(ansi reset)"
+}
+```
+
+Here you can see the four minimal things in a Dispak rule:
+1. The Bash [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) on the first line (`#!/bin/sh`).
+2. The `RULE_NAME` variable, which contains the name of the rule. This name must be unique.
+3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#47-provided-functions)) to change text color and decoration.
+4. The function called when the rule is executed. It must be called `rule_exec_` followed by the rule's name.
+
+As you can see, when you execute this command:
+```shell
+$ dpk minimal
+```
+you will see the current user login and the current working directory (the first one written in blue, the second one in yellow).
+
+
+### 4.4 Parameters management
+
+Dispak checks the options given on the command-line, to be sure that all mandatory parameters are given and no unknown parameter is provided.
+
+In your rule, declare the list of mandatory parameters (separated with space or carriage return characters) in the `RULE_MANDATORY_PARAMS` variable, and the list of optional parameters in the `RULE_OPTIONAL_PARAMS` variable.
+
+If an option can get a value, it will be available in `${DPK_OPT["option_name"]}`. If an option is used without a value on the command line, a value of `1` will be assigned.
+
+
+### 4.5 Documentation section
+
+When you execute `dpk` or `dpk help`, rules are grouped under sections. You can specify your rule's section using the `RULE_SECTION` variable.
+
+If you don't define the section, your rule will be shown under the `Default` section.
+
+
+### 4.6 Advanced example
+
+You can take a look to the [`example-rules/adduser.sh`](https://github.com/Amaury/Dispak/blob/master/example-rules/adduser.sh) file.
+
+It's a rule that can be used to create a new user in database. It has two mandatory parameters (`name` and `email`) and one optional parameter (`admin`).
+
+The parameters are checked and then a request is sent to a MySQL server.
+
+
+### 4.7 Provided functions
 
 **`warn`**
 
