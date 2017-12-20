@@ -49,6 +49,14 @@ check_git_master() {
 	fi
 }
 
+# check_git_branch()
+# Check if we are on a branch (not the master branch). Abort if not.
+check_git_branch() {
+	if [ "$(git rev-parse --abbrev-ref HEAD)" = "master" ]; then
+		abort "$(ansi red)You must not be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
+	fi
+}
+
 # check_git_committed()
 # Check if all files are committed.
 # @param	bool	Strict mode: If equal 1, abort if there is uncommitted files. Otherwise ask the user.

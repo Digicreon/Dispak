@@ -7,6 +7,12 @@ git_fetch() {
 	git fetch --all --tags --prune --quiet
 }
 
+# get_git_branch()
+# Return the name of the current branch.
+get_git_branch() {
+	git rev-parse --abbrev-ref HEAD
+}
+
 # align_spaces()
 # Print as many spaces as the string given in parameter.
 # @param	string	The string which length will be used.

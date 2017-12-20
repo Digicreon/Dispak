@@ -23,6 +23,11 @@ rule_help_help() {
 
 # Execution of this rule
 rule_exec_help() {
+	if [ "$1" != "" ]; then
+		HELP_FUNCTION="rule_help_$1"
+		$HELP_FUNCTION
+		return
+	fi
 	echo
 	echo " $(ansi rev)                                                                     $(ansi reset)"
 	echo " $(ansi rev) $(ansi reset)                                                                   $(ansi rev) $(ansi reset)"

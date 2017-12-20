@@ -84,6 +84,12 @@ or
 $ dpk help
 ```
 
+You can see the documentation of a single rule:
+```shell
+$ dpk help tags
+$ dpk help install
+```
+
 
 ### 1.3 List tags
 
@@ -443,6 +449,10 @@ foobar
 
 Fetch all tags and branches from distant git repository.
 
+**`get_git_branch`**
+
+Return the name of the current branch.
+
 **`check_aws`**
 
 Check if the `aws-cli` program is installed. Abort if not.
@@ -462,6 +472,10 @@ Check if we are in a git repository. Abort if not.
 **`check_git_master`**
 
 Check if we are on the master branch. Abort if not.
+
+**`check_git_branch`**
+
+Check if we are on a branch (not the master branch). Abort if not.
 
 **`check_git_committed`**
 
