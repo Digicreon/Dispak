@@ -67,7 +67,7 @@ _branch_create() {
 	if [ "$(git branch | grep "${DPK_OPT["create"]}")" != "" ]; then
 		abort "$(ansi red)A branch already exists with this name.$(ansi reset)"
 	fi
-	if [ "$(git rev-parse --abbrev-ref HEAD)" != "master" ]; then
+	if [ "$(get_git_branch)" != "master" ]; then
 		echo "$(ansi bold)Move to master branch$(ansi reset)"
 		git checkout master
 	fi
@@ -95,8 +95,10 @@ _branch_remove() {
 	if [ "$(git branch | grep "{$DPK_OPT["remove"]}")" = "" ]; then
 		abort "$(ansi red)No branch exists with this name.$(ansi reset)"
 	fi
-	echo "$(ansi bold)Move to master branch$(ansi reset)"
-	git checkout master
+	if [ "$(get_git_branch)" != "master" ]; then
+		echo "$(ansi bold)Move to master branch$(ansi reset)"
+		git checkout master
+	fi
 	echo "$(ansi bold)Delete the branch locally$(ansi reset)"
 	git branch -d "${DPK_OPT["remove"]}"
 	echo "$(ansi bold)Delete the branch on the remote git repository$(ansi reset)"
@@ -107,6 +109,8 @@ _branch_remove() {
 # Merge the current branch on the master branch.
 _branch_merge() {
 	check_git_branch
+	check_git_committed
+	check_git_pushed
 	BRANCH="$(get_git_branch)"
 	echo "$(ansi bold)Checking out to master branch$(ansi reset)"
 	git checkout master
@@ -122,6 +126,8 @@ _branch_merge() {
 # Merge the master branch on the current branch.
 _branch_backport() {
 	check_git_branch
+	check_git_committed
+	check_git_pushed
 	BRANCH="$(get_git_branch)"
 	echo "$(ansi bold)Merging master branch$(ansi reset)"
 	git merge master
