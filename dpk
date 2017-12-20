@@ -70,7 +70,7 @@ fi
 # ########## OPTIONS AND CONFIGURATION ##########
 # no option given: show help and quit
 if [ "$COMMAND" = "" ] || [ "$COMMAND" = "h" ] || [ "$COMMAND" = "help" ]; then
-	rule_exec_help
+	rule_exec_help $2
 	exit 0
 fi
 # fetch command-line options
