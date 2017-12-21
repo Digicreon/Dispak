@@ -15,6 +15,10 @@ RULE_MANDATORY_PARAMS=""
 # Rule's optional parameters.
 RULE_OPTIONAL_PARAMS="tag"
 
+# Definition of configuration associative arrays.
+declare -A CONF_PKG_MINIFY
+declare -A CONF_PKG_S3
+
 # Show help for this rule.
 rule_help_pkg() {
 	echo "   dpk $(ansi bold)pkg$(ansi reset) $(ansi dim)[--tag=X.Y.Z]$(ansi reset)"

@@ -42,18 +42,9 @@ declare -A _DPK_RULES_MANDATORY_PARAMS
 # @type	associative array
 declare -A _DPK_RULES_OPTIONAL_PARAMS
 
-# Tell if the program has changed its curretn working directory.
+# Tell if the program has changed its current working directory.
 # @type	bool
 _NEED_POPD=0
-
-# ########## READ CONFIGURATIONI FILE ##########
-if [ "$GIT_REPO_PATH" != "" ]; then
-	if [ -f "$GIT_REPO_PATH/dispak.conf" ]; then
-		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
-	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
-		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
-	fi
-fi
 
 # ########## INCLUDE SOURCE FILES ##########
 # functions files
@@ -65,6 +56,15 @@ fi
 _dpk_import_rules "$DPK_ROOT/rules"
 if [ -d "$GIT_REPO_PATH/etc/dispak-rules" ]; then
 	_dpk_import_rules "$GIT_REPO_PATH/etc/dispak-rules"
+fi
+
+# ########## READ CONFIGURATIONI FILE ##########
+if [ "$GIT_REPO_PATH" != "" ]; then
+	if [ -f "$GIT_REPO_PATH/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
+	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
+		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
+	fi
 fi
 
 # ########## OPTIONS AND CONFIGURATION ##########

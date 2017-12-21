@@ -15,6 +15,11 @@ RULE_MANDATORY_PARAMS=""
 # Rule's optional parameters.
 RULE_OPTIONAL_PARAMS="platform tag"
 
+# Definition of configuration associative arrays.
+declare -A CONF_INSTALL_SYMLINK
+declare -A CONF_INSTALL_CHOWN
+declare -A CONF_INSTALL_CHMOD
+
 # Show help for this rule.
 rule_help_install() {
 	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod]$(ansi reset) $(ansi dim)[--tag=master|X.Y.Z]$(ansi reset)"

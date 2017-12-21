@@ -42,8 +42,9 @@ Table of contents
    3. [Simple example](#43-simple-example)
    4. [Parameters management](#44-parameters-management)
    5. [Documentation section](#45-documentation-section)
-   6. [Advanced example](#46-advanced-example)
-   7. [Provided functions](#47-provided-functions)
+   6. [Configuration](#46-configuration)
+   7. [Advanced example](#46-advanced-example)
+   8. [Provided functions](#48-provided-functions)
 
 
 ************************************************************************
@@ -467,7 +468,7 @@ rule_exec_minimal() {
 Here you can see the four minimal things in a Dispak rule:
 1. The Bash [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) on the first line (`#!/bin/sh`).
 2. The `RULE_NAME` variable, which contains the name of the rule. This name must be unique.
-3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#47-provided-functions)) to change text color and decoration.
+3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#48-provided-functions)) to change text color and decoration.
 4. The function called when the rule is executed. It must be called `rule_exec_` followed by the rule's name.
 
 As you can see, when you execute this command:
@@ -492,17 +493,26 @@ When you execute `dpk` or `dpk help`, rules are grouped under sections. You can 
 
 If you don't define the section, your rule will be shown under the `Default` section.
 
+### 4.6 Configuration
 
-### 4.6 Advanced example
+If needed, your rules can be configured thanks to the `dispak.conf` file.
+
+There is three different kind of configuration variables:
+- Simple strings. These variables could be used (or not) without further ado.
+- Arrays. These variables must be defined by including a declaration (`declare -a VAR_NAME`) in the rule's file.
+- Associative arrays. These variables must also be defined (`declare -A VAR_NAME`) in the rule's file.
+
+
+### 4.7 Advanced example
 
 You can take a look to the [`example-rules/adduser.sh`](https://github.com/Amaury/Dispak/blob/master/example-rules/adduser.sh) file.
 
-It's a rule that can be used to create a new user in database. It has two mandatory parameters (`name` and `email`) and one optional parameter (`admin`).
+It's a rule that can be used to create a new user in database. It has two mandatory parameters (`app` and `name`) and one optional parameter (`admin`).
 
-The parameters are checked and then a request is sent to a MySQL server.
+The parameters are checked and then a request is sent to a MySQL server. You can see the declaration of a configuration variable (associative array) and a private function.
 
 
-### 4.7 Provided functions
+### 4.8 Provided functions
 
 **`warn`**
 
