@@ -363,7 +363,34 @@ Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [con
 
 ### 3.5 Static files, symlinks and Amazon S3
 
+Dispak helps you to manage the static files of your web projects.
 
+There is two (non-mutually exclusive) ways to manage these files: Using symlink, and copying files to Amazon S3.
+
+#### Symbolink links
+You can define a list of symbolic links in the [configuration file](#38-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are giong to be created. The created links are named with the installed version's number.
+
+Example: Let's say your configuration file contains this line:
+```shell
+CONF_INSTALL_SYMLINK["www/css"]="www/css"
+```
+
+Now, when the version `1.2.0` is installed, the following link will be created:
+```shell
+$ ls -l www/css/1.2.0
+www/css/1.2.0 -> .
+```
+
+Then you can adapt your templates:
+```html
+<link href="/css/{$conf.version}/style.css" rel="stylesheet">
+```
+(in this example, the `$conf.version` variable have been defined in the framework's configuration file, thanks to the [file generation](#34-files-generation) feature)
+
+#### Amazon S3
+It is also possible to define a bucket on Amazon S3 where your static files will be copied each time you create a *stable* version (or even for *unstable* version if you defined the `CONF_PKG_S3_UNSTABLE` configuration variable). A subdirectory will be created, named as the tag version number, and all configured files will be copied there.
+
+Then, you can adapt your templates (see previous section) to use the copied assets.
 
 
 ### 3.6 Javascript and CSS files concatenation and minification
