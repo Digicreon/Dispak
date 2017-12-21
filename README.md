@@ -343,7 +343,12 @@ Dispak gives two parameters to these scripts:
 1. The platform environment (`dev`, `test` or `prod`).
 2. The tag version number. For pre/post-packing scripts it is the number of the created tag; for pre/post-install scripts it is the number of the installed tag.
 
-See these variables in the [configuration file](#38-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
+Pre/post installation scripts get two additional parameters:
+1. The old tag version number.
+2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
+These two extra parameters are empty if the installation is done over a `master` branch install.
+
+See all these variables in the [configuration file](#38-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
 
 
 ### 3.4 Files generation
@@ -622,6 +627,10 @@ Fetch all tags and branches from distant git repository.
 **`get_git_branch`**
 
 Return the name of the current branch.
+
+**`get_git_tag`**
+
+Return the name of the currently installed tag.
 
 **`check_aws`**
 

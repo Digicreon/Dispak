@@ -35,9 +35,27 @@ rule_exec_install() {
 	check_sudo
 	check_tag
 	check_platform
+	# chunk the new tag number
+	TAG_MAJOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f 1)
+	TAG_MINOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f 2)
+	TAG_REVISION=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f 3)
+	# get currently installed version number
+	CURRENT_TAG="$(get_git_tag)"
+	if [ "$CURRENT_TAG" != "" ]; then
+		CURRENT_TAG_MAJOR=$(echo "$CURRENT_TAG" | cut -d"." -f 1)
+		CURRENT_TAG_MINOR=$(echo "$CURRENT_TAG" | cut -d"." -f 2)
+		CURRENT_TAG_REVISION=$(echo "$CURRENT_TAG" | cut -d"." -f 3)
+		TAG_EVOLUTION="+"
+		if [ $TAG_MAJOR -lt $CURRENT_TAG_MAJOR ]; then
+			TAG_EVOLUTION="-"
+		elif [ $TAG_MAJOR -eq $CURRENT_TAG_MAJOR ] && [ $TAG_MINOR -lt $CURRENT_TAG_MINOR ]; then
+			TAG_EVOLUTION="-"
+		elif [ $TAG_MAJOR -eq $CURRENT_TAG_MAJOR ] && [ $TAG_MINOR -eq $CURRENT_TAG_MINOR ] && [ $TAG_REVISION -lt $CURRENT_TAG_REVISION ]; then
+			TAG_EVOLUTION="-"
+		fi
+	fi
 	# check that only stable tag is installed on production servers
 	if [ "${DPK_OPT["platform"]}" = "prod" ]; then
-		TAG_MINOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f2)
 		if [ "$(($TAG_MINOR % 2))" != "0" ]; then
 			abort "$(ansi red)It's forbidden to install $(ansi reset)unstable$(ansi red) tags on production server.$(ansi reset)"
 		fi
@@ -95,7 +113,7 @@ _install_pre_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi
@@ -115,7 +133,7 @@ _install_post_scripts() {
 		if [ ! -x "$_SCRIPT" ]; then
 			chmod +x "$_SCRIPT"
 		fi
-		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)"
 		fi

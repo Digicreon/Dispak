@@ -13,6 +13,12 @@ get_git_branch() {
 	git rev-parse --abbrev-ref HEAD
 }
 
+# get_git_tag()
+# REturn the name of the currently installed tag.
+get_git_tag() {
+	git describe | grep -v "-"
+}
+
 # align_spaces()
 # Print as many spaces as the string given in parameter.
 # @param	string	The string which length will be used.
