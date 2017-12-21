@@ -176,7 +176,7 @@ _pkg_s3() {
 		return
 	fi
 	TAG_MINOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f2)
-	if [ "$(($TAG_MINOR % 2))" != "0" ]; then
+	if [ "$(($TAG_MINOR % 2))" != "0" ] && [ "$CONF_PKG_S3_UNSTABLE" != "1" ]; then
 		# not a stable tag
 		return
 	fi
