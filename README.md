@@ -251,13 +251,13 @@ You can install Dispak anywhere on your disk drive. The preferred path (if you h
 
 Get the last version:
 ```shell
-$ wget https://github.com/Amaury/Dispak/archive/0.3.0.zip
-$ unzip Dispak-0.3.0.zip
+$ wget https://github.com/Amaury/Dispak/archive/0.5.0.zip
+$ unzip Dispak-0.5.0.zip
 
 or
 
-$ wget https://github.com/Amaury/Dispak/archive/0.3.0.tar.gz
-$ tar xzf Dispak-0.3.0.tar.gz
+$ wget https://github.com/Amaury/Dispak/archive/0.5.0.tar.gz
+$ tar xzf Dispak-0.5.0.tar.gz
 ```
 
 You can also clone the git source code repository:
@@ -427,6 +427,7 @@ Here are the definable variables:
   - `CONF_PKG_SCRIPTS_PRE`: You can ask Dispak to execute a list of scripts before creating a new tag.
   - `CONF_PKG_SCRIPTS_POST`: You can ask Dispak to execute a list of scripts after creating a new tag. These scripts are not executed if there was an error during the process.
   - `CONF_PKG_MINIFY`: It is possible to concatenate many files into one Javacript or CSS file, and then to minify this file. The `CONF_PKG_MINIFY` variable is an associative array. For each entry, the key is the path to the generated file, and the value is the list of source files.
+  - `CONF_PKG_S3_UNSTABLE`: Set this variable to 1 if you want to copy static files to Amazon S3 for stable *and* unstable versions (not only for stable versions).
   - `CONF_PKG_S3`: If you want to copy static files to Amazon S3, use this variable. It is an associative array; for each entry, the key is the S3 bucket where the files will be copied, and the value is the path to the file or the directory that will be recursively copied. The files are copied in a sub-directory of the bucket's root, which name is the tag's version number.
 - **install rule**
   - `CONF_INSTALL_SYMLINK`: Use this variable if you need to create symlinks when you install a new version. It is an associative array; the key is the path to the link's directory; the value is the path pointed by the link. The link will be created in its destination directory, and its name is the installed tag's version number.
