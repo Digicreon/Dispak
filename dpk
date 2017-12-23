@@ -52,10 +52,34 @@ _NEED_POPD=0
 . "$DPK_ROOT/lib/rules.sh"
 . "$DPK_ROOT/lib/checks.sh"
 
-# import rules
-_dpk_import_rules "$DPK_ROOT/rules"
+# (rules can't be imported from a function, because defined arrays will be not defined)
+# import rules from Dispak distribution
+for FILE in "$DPK_ROOT"/rules/*.sh ; do
+	RULE_NAME=""
+	RULE_SECTION=""
+	RULE_MANDATORY_PARAMS=""
+	RULE_OPTIONAL_PARAMS=""
+	. "$FILE"
+	if [ "$RULE_NAME" != "" ] && [ "$RULE_NAME" != "help" ]; then
+		_dpk_rule_add $RULE_NAME "$RULE_SECTION"
+		_dpk_rule_mandatory_params $RULE_NAME $RULE_MANDATORY_PARAMS
+		_dpk_rule_optional_params $RULE_NAME $RULE_OPTIONAL_PARAMS
+	fi
+done
+# import rules from repository source tree
 if [ -d "$GIT_REPO_PATH/etc/dispak-rules" ]; then
-	_dpk_import_rules "$GIT_REPO_PATH/etc/dispak-rules"
+	for FILE in "$GIT_REPO_PATH"/etc/dispak-rules/*.sh ; do
+		RULE_NAME=""
+		RULE_SECTION=""
+		RULE_MANDATORY_PARAMS=""
+		RULE_OPTIONAL_PARAMS=""
+		. "$FILE"
+		if [ "$RULE_NAME" != "" ] && [ "$RULE_NAME" != "help" ]; then
+			_dpk_rule_add $RULE_NAME "$RULE_SECTION"
+			_dpk_rule_mandatory_params $RULE_NAME $RULE_MANDATORY_PARAMS
+			_dpk_rule_optional_params $RULE_NAME $RULE_OPTIONAL_PARAMS
+		fi
+	done
 fi
 
 # ########## READ CONFIGURATIONI FILE ##########
