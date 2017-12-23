@@ -215,9 +215,21 @@ The merged result is pushed to the remote git repository.
 
 #### 2.1.1 Basic
 These tools are nedded by Dispak to work correctly. They are usually installed by default on every Unix/Linux distributions.
-- A not-so-old [`bash`](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) Shell interpreter located on `/bin/bash` (mandatory)
+- [`bash`](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) Shell interpreter version >= 4.0, located on `/bin/bash` (mandatory)
 - [`git`](https://en.wikipedia.org/wiki/Git) (mandatory)
 - [`tput`](https://en.wikipedia.org/wiki/Tput) for [ANSI text formatting](https://en.wikipedia.org/wiki/ANSI_escape_code) (optional: automatically deactivated if not installed)
+
+On Mac OS X, the installed version of `bash` is obsolete. You need to install a recent version using `brew`, and then change the `/bin/bash` symlink:
+```shell
+# brew install bash
+# rm -f /bin/bash
+# ln -s /usr/local/bin/bash /bin/bash
+```
+
+To install `git` on Ubuntu:
+```shell
+# apt-get install git
+```
 
 #### 2.1.2 Minifier
 If you want to use Dispak for Javascript and/or CSS files minification, you need to install [`NodeJS`](https://en.wikipedia.org/wiki/Node.js) with the [`minifier` package](https://www.npmjs.com/package/minifier).
