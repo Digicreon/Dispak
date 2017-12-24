@@ -166,6 +166,7 @@ _install_db_migration() {
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
+	# loop on migration files
 	for MIGRATION in $(ls "$GIT_REPO_PATH/etc/database/migrations" | grep -v current | sort -V); do
 		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST | tail -1)
 		if [ "$NBR" != "0" ]; then

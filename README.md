@@ -645,6 +645,10 @@ Return the name of the current branch.
 
 Return the name of the currently installed tag.
 
+**`find_in_list`**
+
+Tell if an item exists in a list.
+
 **`check_aws`**
 
 Check if the `aws-cli` program is installed. Abort if not.

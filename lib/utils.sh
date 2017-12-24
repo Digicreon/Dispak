@@ -14,9 +14,23 @@ get_git_branch() {
 }
 
 # get_git_tag()
-# REturn the name of the currently installed tag.
+# Return the name of the currently installed tag.
 get_git_tag() {
 	git describe | grep -v "-"
+}
+
+# find_in_list()
+# Tell if a string is an item of a list.
+# @param	string	The list.
+# @param	string	The item to search.
+# @return	string	The item if it was found.
+find_in_list() {
+	for ITEM in $1; do
+		if [ "$ITEM" = "$2" ]; then
+			echo "$ITEM"
+			return
+		fi
+	done
 }
 
 # align_spaces()
