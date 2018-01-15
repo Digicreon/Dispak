@@ -540,7 +540,7 @@ Dispak checks the options given on the command-line, to be sure that all mandato
 
 In your rule, declare the list of mandatory parameters (separated with space or carriage return characters) in the `RULE_MANDATORY_PARAMS` variable, and the list of optional parameters in the `RULE_OPTIONAL_PARAMS` variable.
 
-If an option can get a value, it will be available in `${DPK_OPT["option_name"]}`. If an option is used without a value on the command line, a value of `1` will be assigned.
+If an option can get a value, it will be available in `${DPK_OPT["option_name"]}`. If an option is used without a value on the command line, the value is then set to the option's name.
 
 
 ### 4.5 Documentation section
