@@ -164,6 +164,12 @@ Dispak will perform these operations:
 - Generate files (see [below](#34-files-generation)).
 - Execute post-install scripts (see [below](#33-pre-post-scripts-execution)).
 
+Options are available to disable some operations:
+- `--no-apache`: Apache configuration files are *not* installed, even if Apache is installed on the current machine.
+- `--no-crontab`: Crontab file is not installed.
+- `--no-db-migration`: Database migration is not performed.
+
+
 ### 1.6 Branches management
 
 Dispak helps you to do basic branches management.
@@ -412,7 +418,11 @@ Then, you can adapt your templates (see previous section) to use the copied asse
 
 ### 3.6 Javascript and CSS files concatenation and minification
 
+Dispak can concatenate and minify Javascript and CSS files, using the [`minifier` program](https://www.npmjs.com/package/minifier) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
 
+In the [Dispak configuration file](#38-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
+
+If a generated (concatenated and minified) file is version controlled, it is automatically committed after generation. Otherwise it is deleted after the packaging process.
 
 
 ### 3.7 Apache configuration
