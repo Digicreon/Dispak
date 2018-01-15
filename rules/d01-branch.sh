@@ -92,7 +92,7 @@ _branch_create() {
 # Delete a branch.
 _branch_remove() {
 	# check if a branch exists with this name
-	if [ "$(git branch | grep "{$DPK_OPT["remove"]}")" = "" ]; then
+	if [ "$(git branch | grep "${DPK_OPT["remove"]}")" = "" ]; then
 		abort "$(ansi red)No branch exists with this name.$(ansi reset)"
 	fi
 	if [ "$(get_git_branch)" != "master" ]; then
