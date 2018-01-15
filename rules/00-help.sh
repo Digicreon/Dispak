@@ -29,13 +29,13 @@ rule_exec_help() {
 		return
 	fi
 	echo
-	echo " $(ansi rev)                                                                     $(ansi reset)"
-	echo " $(ansi rev) $(ansi reset)                                                                   $(ansi rev) $(ansi reset)"
-	echo " $(ansi rev) $(ansi reset) $(ansi rev blue)                                                                 $(ansi reset) $(ansi rev) $(ansi reset)"
-	echo " $(ansi rev) $(ansi reset) $(ansi rev blue)                             DISPAK                              $(ansi reset) $(ansi rev) $(ansi reset)"
-	echo " $(ansi rev) $(ansi reset) $(ansi rev blue)                                                                 $(ansi reset) $(ansi rev) $(ansi reset)"
-	echo " $(ansi rev) $(ansi reset)                                                                   $(ansi rev) $(ansi reset)"
-	echo " $(ansi rev)                                                                     $(ansi reset)"
+	echo " $(ansi rev)                                                                       $(ansi reset)"
+	echo " $(ansi rev)  $(ansi reset)                                                                   $(ansi rev)  $(ansi reset)"
+	echo " $(ansi rev)  $(ansi reset)  $(ansi rev blue)                                                               $(ansi reset)  $(ansi rev)  $(ansi reset)"
+	echo " $(ansi rev)  $(ansi reset)  $(ansi rev blue)$(ansi bold)                            DISPAK                             $(ansi reset)  $(ansi rev)  $(ansi reset)"
+	echo " $(ansi rev)  $(ansi reset)  $(ansi rev blue)                                                               $(ansi reset)  $(ansi rev)  $(ansi reset)"
+	echo " $(ansi rev)  $(ansi reset)                                                                   $(ansi rev)  $(ansi reset)"
+	echo " $(ansi rev)                                                                       $(ansi reset)"
 	echo
 	for SECTION in "${!_DPK_RULES[@]}"; do
 		if [ ${#_DPK_RULES[@]} -gt 1 ]; then
