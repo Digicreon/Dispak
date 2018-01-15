@@ -18,13 +18,13 @@ RULE_OPTIONAL_PARAMS="list create remove merge backport"
 # Show help for this rule.
 rule_help_branch() {
 	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)] [$(ansi reset)--backport$(ansi dim)] [--tag=X.Y.Z]$(ansi reset)"
-	echo "       $(ansi dim)Manage branches. At least one of the parameters must be given:$(ansi reset)"
+	echo "       $(ansi dim)Manage branches. At least one of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
 	echo "       --create   $(ansi dim)Name of the branch to create (locally and remotely). Move to the branch after its creation.$(ansi reset)"
 	echo "                  $(ansi dim)Branches are always created from the $(ansi reset)master$(ansi dim) branch.$(ansi reset)"
 	echo "                  $(ansi dim)The new branch could be created from a given tag, using the $(ansi reset)--tag$(ansi dim) parameter.$(ansi reset)"
 	echo "       --remove   $(ansi dim)Name of the branch to delete.$(ansi reset)"
-	echo "       --merge    $(ansi dim)Merge the current branch on the $(ansi reset)master$(ansi faint) branch.$(ansi reset)"
+	echo "       --merge    $(ansi dim)Merge the current branch on the $(ansi reset)master$(ansi dim) branch.$(ansi reset)"
 	echo "       --backport $(ansi dim)Merge the $(ansi reset)master$(ansi dim) branch on the current branch.$(ansi reset)"
 }
 
