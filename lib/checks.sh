@@ -20,7 +20,7 @@ check_dbhost() {
 	if [ "$CONF_DB_HOST" = "" ]; then
 		abort "Empty configuration for database host name."
 	fi
-	ping -c 1 db.skriv.tech > /dev/null
+	ping -c 1 "$CONF_DB_HOST" > /dev/null
 	if [ $? -ne 0 ]; then
 		abort "$(ansi red)Unable to ping database hostname$(ansi reset) $DATABASE_HOSTNAME $(ansi red).$(ansi reset)"
 	fi

@@ -22,10 +22,13 @@ declare -A CONF_INSTALL_CHMOD
 
 # Show help for this rule.
 rule_help_install() {
-	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod]$(ansi reset) $(ansi dim)[--tag=master|X.Y.Z]$(ansi reset)"
-	echo "       $(ansi dim)Deploy source code on a specified platform (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
-	echo "       $(ansi dim)Detect the current platform if the $(ansi reset)platform$(ansi dim) option is not set.$(ansi reset)"
-	echo "       $(ansi dim)Install the last tagged version unless the $(ansi reset)tag$(ansi dim) option is used.$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod] [--tag=master|X.Y.Z] [--no-apache] [--no-crontab] [--no-db-migration]$(ansi reset)"
+	echo "       $(ansi dim)Deploy source code (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
+	echo "       --platform        $(ansi dim)Definition of the current platform. Otherwise, Dispak will try to detect it.$(ansi reset)"
+	echo "       --tag             $(ansi dim)Tag to install (or 'master'). Otherwise, the last tagged version will be installed.$(ansi reset)"
+	echo "       --no-apache       $(ansi dim)Don't install Apache configuration files, even if Apache is installed on the current machine.$(ansi reset)"
+	echo "       --no-crontab      $(ansi dim)Don't install crontab configuration.$(ansi reset)"
+	echo "       --no-db-migration $(ansi dim)Don't perform database migration.$(ansi reset)"
 	echo "       $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"
 }
 
@@ -144,7 +147,7 @@ _install_post_scripts() {
 # _install_crontab()
 # Install new crontab file.
 _install_crontab() {
-	if [ ! -f "$GIT_REPO_PATH/etc/crontab" ]; then
+	if [ "${DPK_OPT["no-crontab"]}" = "1" ] || [ ! -f "$GIT_REPO_PATH/etc/crontab" ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing crontab$(ansi reset)"
@@ -162,20 +165,20 @@ _install_crontab() {
 # _install_db_migration()
 # Do the migration of a new version of the database.
 _install_db_migration() {
-	if [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
+	if [ "${DPK_OPT["no-db-migration"]}" = "1" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
 	# loop on migration files
 	for MIGRATION in $(ls "$GIT_REPO_PATH/etc/database/migrations" | grep -v current | sort -V); do
-		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST | tail -1)
+		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" | tail -1)
 		if [ "$NBR" != "0" ]; then
 			continue
 		fi
 		echo "$(ansi dim)Executing database migration file $(ansi blue)$GIT_REPO_PATH/etc/database/migrations/$MIGRATION$(ansi reset)"
-		MIGRATION_ID=$(echo "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST | tail -1)
-		MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h db.skriv.tech < "$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
-		echo "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST
+		MIGRATION_ID=$(echo "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" | tail -1)
+		MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" < "$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
+		echo "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST"
 	done
 	echo "$(ansi green)Done$(ansi reset)"
 }
@@ -183,7 +186,7 @@ _install_db_migration() {
 # _install_config_apache()
 # Generation and installation of Apache files.
 _install_config_apache() {
-	if [ "$CONF_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
+	if [ "${DPK_OPT["no-apache"]}" = "1" ] || [ "$CONF_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
@@ -224,7 +227,7 @@ _install_config_files() {
 		echo "$(ansi bold)Setting files owner$(ansi reset)"
 		for LOGIN in "${!CONF_INSTALL_CHOWN[@]}"; do
 			echo "$(ansi dim)> $LOGIN$(ansi reset)"
-			sudo chown "$LOGIN" ${CONF_INSTALL_CHOWN["$LOGIN"]}
+			sudo chown "$LOGIN" "${CONF_INSTALL_CHOWN["$LOGIN"]}"
 		done
 	fi
 	# chmod
@@ -232,7 +235,7 @@ _install_config_files() {
 		echo "$(ansi bold)Setting files access rights$(ansi reset)"
 		for RIGHTS in "${!CONF_INSTALL_CHMOD[@]}"; do
 			echo "$(ansi dim)> $RIGHTS$(ansi reset)"
-			sudo chmod -R "$RIGHTS" ${CONF_INSTALL_CHMOD["$RIGHTS"]}
+			sudo chmod -R "$RIGHTS" "${CONF_INSTALL_CHMOD["$RIGHTS"]}"
 			for _FILE in ${CONF_INSTALL_CHMOD["$RIGHTS"]}; do
 				if [ -d "$_FILE" ]; then
 					git checkout -- "$(find "$_FILE" -name ".gitignore")" > /dev/null
