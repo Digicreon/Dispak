@@ -13,7 +13,7 @@ RULE_SECTION="Tag management"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="platform tag"
+RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-db-migration"
 
 # Definition of configuration associative arrays.
 declare -A CONF_INSTALL_SYMLINK
