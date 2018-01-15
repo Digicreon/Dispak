@@ -104,9 +104,6 @@ while getopts "h-:" OPTCHAR; do
 		"-")
 			KEY=$(echo $OPTARG | cut -d"=" -f 1)
 			VALUE=${OPTARG#*=}
-			if [ "$VALUE" = "" ]; then
-				VALUE=1
-			fi
 			DPK_OPT[$KEY]="$VALUE"
 			;;
 		"h")
