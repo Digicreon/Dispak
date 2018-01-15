@@ -183,7 +183,7 @@ _install_db_migration() {
 # _install_config_apache()
 # Generation and installation of Apache files.
 _install_config_apache() {
-	if [ "$CONF_APACHE_FILES" = "" ]; then
+	if [ "$CONF_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
