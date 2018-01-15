@@ -186,7 +186,7 @@ _install_db_migration() {
 # _install_config_apache()
 # Generation and installation of Apache files.
 _install_config_apache() {
-	if [ "${DPK_OPT["no-apache"]}" != "" ] || [ "$CONF_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
+	if [ "${DPK_OPT["no-apache"]}" != "" ] || [ "$CONF_INSTALL_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
@@ -197,7 +197,7 @@ _install_config_apache() {
 	if [ ! -e /etc/apache2/sites-enabled/001-dispak.conf ]; then
 		sudo ln -s /etc/apache2/sites-available/dispak.conf /etc/apache2/sites-enabled/001-dispak.conf
 	fi
-	for _CONF_FILE in $CONF_APACHE_FILES; do
+	for _CONF_FILE in $CONF_INSTALL_APACHE_FILES; do
 		echo "$(ansi blue)> $_CONF_FILE$(ansi reset)"
 		if [ -e "${_CONF_FILE}.gen" ]; then
 			echo -n "$(ansi dim)+ Generating... $(ansi reset)"
