@@ -44,7 +44,8 @@ Table of contents
    5. [Documentation section](#45-documentation-section)
    6. [Configuration](#46-configuration)
    7. [Advanced example](#46-advanced-example)
-   8. [Provided functions](#48-provided-functions)
+   8. [Provided variables](#48-provided-variables)
+   9. [Provided functions](#49-provided-functions)
 
 
 ************************************************************************
@@ -523,7 +524,7 @@ rule_exec_minimal() {
 Here you can see the four minimal things in a Dispak rule:
 1. The Bash [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) on the first line (`#!/bin/sh`).
 2. The `RULE_NAME` variable, which contains the name of the rule. This name must be unique.
-3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#48-provided-functions)) to change text color and decoration.
+3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#49-provided-functions)) to change text color and decoration.
 4. The function called when the rule is executed. It must be called `rule_exec_` followed by the rule's name.
 
 As you can see, when you execute this command:
@@ -567,16 +568,26 @@ It's a rule that can be used to create a new user in database. It has two mandat
 The parameters are checked and then a request is sent to a MySQL server. You can see the declaration of a configuration variable (associative array) and a private function.
 
 
-### 4.8 Provided functions
+### 4.8 Provided variables
+
+Some variables are set by Dispak and avaiable to your rule:
+- `DPK_ROOT`: Path to the root of the used Dispak installation.
+- `GIT_REPO_PATH`: When Dispak is called from inside a Git repository, this variable contains the root path to this repository.
+- `DPK_OPT`: Contains the options given on the command-line (see [above](#44-parameters-management)).
+
+
+### 4.9 Provided functions
 
 **`warn`**
 
-Write a yellow warning sign, followed by your message.
+Write a yellow "⚠" (warning sign) character, followed by your message.
 
 Example:
 ```shell
 warn "Something went wrong."
 ```
+
+Your message should be written in yellow, but it's up to you (using the `ansi` function, see below).
 
 **`abort`**
 
@@ -586,6 +597,8 @@ Example:
 ```shell
 abort "Something went really bad."
 ```
+
+Your message should be written in red, but it's up to you (using the `ansi` function, see below).
 
 **`trim`**
 
@@ -633,14 +646,14 @@ Example:
 ```shell
 VAR=foobar
 echo $VAR
-align_spaces $VAR "+1"
+align_spaces $VAR "+3"
 echo "Something smart"
 ```
 
 Result:
 ```
 foobar
-       Something smart
+         Something smart
 ```
 
 **`git_fetch`**
@@ -693,16 +706,19 @@ Check if all committed files have been pushed to the remote git repository. Abor
 
 **`check_platform`**
 
-Check the platform given as parameter, or detect the platform.
+Check the platform given as parameter (using `--platform` option), or detect the platform.
+
 The current platform is set in the `${DPK_OPT["platform"]}` variable.
 
 **`check_tag`**
 
 Check if the tag given as a parameter already exists. Abort if not.
+
 If no tag is given, fetch the last created tag and put it in the `${DPK_OPT["tag"]}` variable.
 
 **`check_next_tag`**
 
 Check if the tag given as a parameter is valid as the next tag. If not or if no tag is given, a list of valid tags is shown to the user, who must choose between them.
+
 Then the tag is available in the `${DPK_OPT["tag"]}` variable.
 
