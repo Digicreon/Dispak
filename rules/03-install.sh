@@ -238,7 +238,7 @@ _install_config_files() {
 			sudo chmod -R "$RIGHTS" ${CONF_INSTALL_CHMOD["$RIGHTS"]}
 			for _FILE in ${CONF_INSTALL_CHMOD["$RIGHTS"]}; do
 				if [ -d "$_FILE" ]; then
-					git checkout -- "$(find "$_FILE" -name ".gitignore")" > /dev/null
+					git checkout -- $(find "$_FILE" -name ".gitignore") > /dev/null
 				fi
 			done
 		done
