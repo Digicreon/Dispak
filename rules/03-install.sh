@@ -147,7 +147,7 @@ _install_post_scripts() {
 # _install_crontab()
 # Install new crontab file.
 _install_crontab() {
-	if [ "${DPK_OPT["no-crontab"]}" = "1" ] || [ ! -f "$GIT_REPO_PATH/etc/crontab" ]; then
+	if [ "${DPK_OPT["no-crontab"]}" != "" ] || [ ! -f "$GIT_REPO_PATH/etc/crontab" ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing crontab$(ansi reset)"
@@ -165,7 +165,7 @@ _install_crontab() {
 # _install_db_migration()
 # Do the migration of a new version of the database.
 _install_db_migration() {
-	if [ "${DPK_OPT["no-db-migration"]}" = "1" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
+	if [ "${DPK_OPT["no-db-migration"]}" != "" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
@@ -186,7 +186,7 @@ _install_db_migration() {
 # _install_config_apache()
 # Generation and installation of Apache files.
 _install_config_apache() {
-	if [ "${DPK_OPT["no-apache"]}" = "1" ] || [ "$CONF_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
+	if [ "${DPK_OPT["no-apache"]}" != "" ] || [ "$CONF_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
