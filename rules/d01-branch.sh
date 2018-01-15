@@ -73,19 +73,13 @@ _branch_create() {
 	fi
 	# was a tag given?
 	if [ "${DPK_OPT["tag"]}" != "" ]; then
-		# create branch from a given tag
+		# to create branch from a given tag, check if the given tag exists
 		check_tag
-		echo "$(andi bold)Create the new branch$(ansi reset)"
-		git checkout -b "${DPK_OPT["create"]}" "${DPK_OPT["tag"]}"
-		echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
-		git push origin "${DPK_OPT["create"]}"
-		return
 	fi
-	# no tag given
 	echo "$(ansi bold)Create the new branch$(ansi reset)"
-	git checkout -b "${DPK_OPT["create"]}"
+	git checkout -b "${DPK_OPT["create"]}" "${DPK_OPT["tag"]}"
 	echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
-	git push origin "${DPK_OPT["create"]}"
+	git push --set-upstream origin "${DPK_OPT["create"]}"
 }
 
 # _branch_remove()
