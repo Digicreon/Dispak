@@ -80,6 +80,8 @@ Only stable versions can be installed on production servers.
 
 ### 1.2 Help
 
+![Dispak help](http://www.geek-directeur-technique.com/wp-content/uploads/2018/01/help-1024x511.png)
+
 To see the list of rules offered by Dispak (general and project-specific rules), you just have to type:
 ```shell
 $ dpk
@@ -103,12 +105,16 @@ To see the list of existing tags already created for the current project:
 $ dpk tags
 ```
 
+![Dispak list tags](http://www.geek-directeur-technique.com/wp-content/uploads/2018/01/tags-300x282.png)
+
 This command displays a condensed list (intermediate revisions are not shown).
 
 To see all revisions, with their detailed annotation messages:
 ```shell
 $ dpk tags --all
 ```
+
+![Dispak list tags full](http://www.geek-directeur-technique.com/wp-content/uploads/2018/01/tags-all-300x222.png)
 
 This command also tells the number of commits since the last tag.
 
