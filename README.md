@@ -5,7 +5,7 @@ Simple code and server/services management tool.
 
 Dispak is a very easy-to-use command-line tool. Its primary goal is to manage versions of any software projet (which source code is managed using [git](https://en.wikipedia.org/wiki/Git)), by helping to list existing tags, create new tags and install tags on servers. It handles MySQL [database migrations](https://en.wikipedia.org/wiki/Schema_migration), JS/CSS files concatenation and minification, [crontab](https://en.wikipedia.org/wiki/Cron) installation, [Apache](https://en.wikipedia.org/wiki/Apache_HTTP_Server) configuration files installation, static files versioned access (locally or copied on [Amazon S3](https://aws.amazon.com/s3/)).
 
-Furthermore, it is very easy to add custom rules; then Dispak becomes a central tool that centralizes all the scripts needed by your projects.
+Furthermore, it is very easy to add custom rules; then Dispak becomes a central tool that brings together all the scripts needed by your projects.
 
 It is written in pure shell, so it can be used on any Unix/Linux machine.
 
@@ -481,7 +481,7 @@ Here are the definable variables:
 
 Dispak's default rules are focused on source code management (create a tag, deploy a tag). Even the most advanced features (database migration, static files management) are dedicated to code deployment.
 
-But Dispak can be as a central entry point for managing all your command-line scripts. You can imagine an infinite list of additional capabilities:
+But Dispak can be used as a central entry point for managing all your command-line scripts. You can imagine an infinite list of additional capabilities:
 - Manage users in a database.
 - Manage daemons.
 - Display data from a database.
