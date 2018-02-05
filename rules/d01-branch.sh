@@ -77,7 +77,11 @@ _branch_create() {
 		check_tag
 	fi
 	echo "$(ansi bold)Create the new branch$(ansi reset)"
-	git checkout -b "${DPK_OPT["create"]}" "${DPK_OPT["tag"]}"
+	if [ "${DPK_OPT["tag"]}" = "" ]; then
+		git checkout -b "${DPK_OPT["create"]}"
+	else
+		git checkout -b "${DPK_OPT["create"]}" "${DPK_OPT["tag"]}"
+	fi
 	echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
 	git push --set-upstream origin "${DPK_OPT["create"]}"
 }
