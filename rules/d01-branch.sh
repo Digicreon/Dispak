@@ -127,6 +127,10 @@ _branch_backport() {
 	check_git_committed
 	check_git_pushed
 	BRANCH="$(get_git_branch)"
+	echo "$(ansi bold)Updating master branch$(ansi reset)"
+	git checkout master
+	git pull
+	git checkout "$BRANCH"
 	echo "$(ansi bold)Merging master branch$(ansi reset)"
 	git merge master
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
