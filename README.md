@@ -27,6 +27,7 @@ Table of contents
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
+   3. [Post-install](#23-post-install)
 3. [How it works](#3how-it-works)
    1. [Database migrations](#31-database-migrations)
    2. [Crontab installation](#32-crontab-installation)
@@ -290,12 +291,27 @@ You can also clone the git source code repository:
 $ git clone https://github.com/Amaury/Dispak
 ```
 
-Then you can add an alias in your `~/.bashrc` or `~/.bash_aliases` file:
+
+### 2.3 Post-install
+
+Once Dispak is installer, you can add an alias in your `~/.bashrc` or `~/.bash_aliases` file:
 ```shell
 alias dpk='/path/to/Dispak/dpk'
 ```
 
 This alias is very useful, it allows you to simply type `dpk` from anywhere in a git repository tree.
+
+More, if you are using Bash as your command-line shell, you can take advantage of the bundled automatic completion script.
+
+First, ensure to have the package `bash-completion` installed on your computer:
+```shell
+# apt-get install bash-completion
+```
+
+After that, you have to add this line to the file `~/.bash_completion` (adapt the path to your installation):
+```shell
+. /opt/Dispak/dispak_completion.bash
+```
 
 
 ************************************************************************
