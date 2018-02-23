@@ -57,7 +57,7 @@ rule_exec_branch() {
 # _branch_list()
 # List all existing branches, with the tag from wich they were created.
 _branch_list() {
-	git branch --list
+	git ls-remote --heads 2> /dev/null | sed 's/.*\///'
 }
 
 # _branch_create()
