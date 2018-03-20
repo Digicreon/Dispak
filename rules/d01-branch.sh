@@ -57,7 +57,14 @@ rule_exec_branch() {
 # _branch_list()
 # List all existing branches, with the tag from wich they were created.
 _branch_list() {
-	git ls-remote --heads 2> /dev/null | sed 's/.*\///'
+	CURRENT_BRANCH="$(get_git_branch)"
+	for BRANCH in `git ls-remote --heads 2> /dev/null | sed 's/.*\///'`; do
+		if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
+			echo "* $(ansi red)$BRANCH$(ansi reset)"
+		else
+			echo "  $BRANCH"
+		fi
+	done
 }
 
 # _branch_create()
@@ -112,6 +119,7 @@ _branch_merge() {
 	BRANCH="$(get_git_branch)"
 	echo "$(ansi bold)Checking out to master branch$(ansi reset)"
 	git checkout master
+	git pull
 	echo "$(ansi bold)Merging '$BRANCH'$(ansi reset)"
 	git merge "$BRANCH"
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
