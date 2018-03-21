@@ -57,22 +57,24 @@ check_git_branch() {
 	fi
 }
 
-# check_git_committed()
-# Check if all files are committed.
+# check_git_clean()
+# Check if the Git repository is clean (all files are committed, no new file and no modified file).
 # @param	bool	Strict mode: If equal 1, abort if there is uncommitted files. Otherwise ask the user.
-check_git_committed() {
-	if [ "$(git status -s)" != "" ]; then
-		if [ "$1" != "" ] && [ "$1" != "0" ]; then
-			abort "There is some uncommitted files.
+check_git_clean() {
+	if [ "$(git status --porcelain)" = "" ]; then
+		# everything is clean
+		return
+	fi
+	if [ "$1" != "" ] && [ "$1" != "0" ]; then
+		abort "There is some uncommitted files.
 $(git status -s)
 "
-		fi
-		warn "$(ansi yellow)There is some uncommitted files.$(ansi reset)"
-		git status -s
-		read -p "Do you want to proceed anyway? [y/N] " ANSWER
-		if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
-			abort
-		fi
+	fi
+	warn "$(ansi yellow)There is some uncommitted files.$(ansi reset)"
+	git status -s
+	read -p "Do you want to proceed anyway? [y/N] " ANSWER
+	if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
+		abort
 	fi
 }
 

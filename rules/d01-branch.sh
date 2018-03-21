@@ -114,7 +114,7 @@ _branch_remove() {
 # Merge the current branch on the master branch.
 _branch_merge() {
 	check_git_branch
-	check_git_committed
+	check_git_clean
 	check_git_pushed
 	BRANCH="$(get_git_branch)"
 	echo "$(ansi bold)Checking out to master branch$(ansi reset)"
@@ -132,7 +132,7 @@ _branch_merge() {
 # Merge the master branch on the current branch.
 _branch_backport() {
 	check_git_branch
-	check_git_committed
+	check_git_clean
 	check_git_pushed
 	BRANCH="$(get_git_branch)"
 	echo "$(ansi bold)Updating master branch$(ansi reset)"

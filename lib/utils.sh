@@ -7,6 +7,17 @@ git_fetch() {
 	git fetch --all --tags --prune --quiet
 }
 
+# is_git_clean()
+# Tell if the current Git repository is clean (no new file or modified file waiting to be committed).
+# @return	int	0 if the repo is clean, 1 if it's dirty.
+is_git_clean() {
+	if [ "$(git status --porcelain)" != "" ]; then
+		echo 1
+		return
+	fi
+	echo 0
+}
+
 # get_git_branch()
 # Return the name of the current branch.
 get_git_branch() {

@@ -39,8 +39,8 @@ rule_exec_pkg() {
 	_pkg_check_url
 	# check master branch
 	check_git_master
-	# check uncommitted files
-	check_git_committed
+	# check the repo is clean
+	check_git_clean
 	# check unpushed files
 	check_git_pushed
 	# execute pre-packaging scripts

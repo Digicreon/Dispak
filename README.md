@@ -718,9 +718,9 @@ Check if we are on the master branch. Abort if not.
 
 Check if we are on a branch (not the master branch). Abort if not.
 
-**`check_git_committed`**
+**`check_git_clean`**
 
-Check if all files are committed. If a "strict mode" parameter is given with a value of 1, it will abort if some uncommitted files exist; otherwise, it will ask the user.
+Check if the git repository is clean (all files are committed, no new file and no modified file). If a "strict mode" parameter is given with a value of 1, it will abort if some uncommitted files exist; otherwise, it will ask the user.
 
 **`check_git_pushed`**
 
