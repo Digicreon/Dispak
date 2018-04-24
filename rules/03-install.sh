@@ -112,9 +112,11 @@ _install_pre_scripts() {
 	fi
 	echo "$(ansi bold)Execute pre-install scripts$(ansi reset)"
 	for _SCRIPT in $CONF_INSTALL_SCRIPTS_PRE; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
 		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
-		if [ ! -x "$_SCRIPT" ]; then
-			chmod +x "$_SCRIPT"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
@@ -132,9 +134,11 @@ _install_post_scripts() {
 	fi
 	echo "$(ansi bold)Execute post-install scripts$(ansi reset)"
 	for _SCRIPT in $CONF_INSTALL_SCRIPTS_POST; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
 		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
-		if [ ! -x "$_SCRIPT" ]; then
-			chmod +x "$_SCRIPT"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
