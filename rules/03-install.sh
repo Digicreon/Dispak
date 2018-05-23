@@ -155,7 +155,7 @@ _install_crontab() {
 		return
 	fi
 	echo "$(ansi bold)Installing crontab$(ansi reset)"
-	echo "$(crontab -l 2>/dev/null)" | grep "^### DISPAK CRONTAB START ###$$" > /dev/null
+	echo "$(crontab -l 2>/dev/null)" | grep "^### DISPAK CRONTAB START ###$" > /dev/null
 	if [ $? -ne 0 ]; then
 		(crontab -l 2>/dev/null; echo; echo "### DISPAK CRONTAB START ###"; echo; cat "$GIT_REPO_PATH/etc/crontab"; echo "### DISPAK CRONTAB END ###") | crontab -
 	else
