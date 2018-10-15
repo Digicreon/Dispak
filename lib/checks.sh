@@ -44,7 +44,7 @@ check_git() {
 # check_git_master()
 # Check if we are on the master branch. Abort if not.
 check_git_master() {
-	if [ "$(get_git_branch)" != "master" ]; then
+	if [ "$(git_get_current_branch)" != "master" ]; then
 		abort "$(ansi red)You have to be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
 	fi
 }
@@ -52,7 +52,7 @@ check_git_master() {
 # check_git_branch()
 # Check if we are on a branch (not the master branch). Abort if not.
 check_git_branch() {
-	if [ "$(get_git_branch)" = "master" ]; then
+	if [ "$(git_get_current_branch)" = "master" ]; then
 		abort "$(ansi red)You must not be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
 	fi
 }
@@ -81,7 +81,7 @@ $(git status -s)
 # check_git_pushed()
 # Check if all files have been pushed to the remote repository. Abort if not.
 check_git_pushed() {
-	BRANCH="$(get_git_branch)"
+	BRANCH="$(git_get_current_branch)"
 	if [ "$(git diff --stat origin/$BRANCH..)" != "" ]; then
 		warn "$(ansi yellow)Some committed files have not been pushed to the remote git repository.$(ansi reset)"
 		git diff --stat origin/$BRANCH..

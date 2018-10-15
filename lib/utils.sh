@@ -7,10 +7,10 @@ git_fetch() {
 	git fetch --all --tags --prune --quiet
 }
 
-# is_git_clean()
+# git_is_clean()
 # Tell if the current Git repository is clean (no new file or modified file waiting to be committed).
 # @return	int	0 if the repo is clean, 1 if it's dirty.
-is_git_clean() {
+git_is_clean() {
 	if [ "$(git status --porcelain)" != "" ]; then
 		echo 1
 		return
@@ -18,15 +18,21 @@ is_git_clean() {
 	echo 0
 }
 
-# get_git_branch()
+# git_get_current_branch()
 # Return the name of the current branch.
-get_git_branch() {
+git_get_current_branch() {
 	git rev-parse --abbrev-ref HEAD
 }
 
-# get_git_tag()
+# git_get_branches()
+# Return the list of existing branches.
+git_get_branches() {
+	git ls-remote --heads 2> /dev/null | sed 's/.*\///'
+}
+
+# git_get_current_tag()
 # Return the name of the currently installed tag.
-get_git_tag() {
+git_get_current_tag() {
 	git describe | grep -v "-"
 }
 

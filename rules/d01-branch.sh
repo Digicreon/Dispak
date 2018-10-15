@@ -57,8 +57,8 @@ rule_exec_branch() {
 # _branch_list()
 # List all existing branches, with the tag from wich they were created.
 _branch_list() {
-	CURRENT_BRANCH="$(get_git_branch)"
-	for BRANCH in `git ls-remote --heads 2> /dev/null | sed 's/.*\///'`; do
+	CURRENT_BRANCH="$(git_get_current_branch)"
+	for BRANCH in $(git_get_branches); do
 		if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
 			echo "* $(ansi red)$BRANCH$(ansi reset)"
 		else
@@ -71,10 +71,11 @@ _branch_list() {
 # Create a new branch.
 _branch_create() {
 	# check if a branch already exists with this name
-	if [ "$(git branch | grep "${DPK_OPT["create"]}")" != "" ]; then
+	if [ "$(git_get_branches | grep "${DPK_OPT["remove"]}" | wc -l)" -ne 0 ]; then
 		abort "$(ansi red)A branch already exists with this name.$(ansi reset)"
 	fi
-	if [ "$(get_git_branch)" != "master" ]; then
+	# move to master branch if needed
+	if [ "$(git_get_current_branch)" != "master" ]; then
 		echo "$(ansi bold)Move to master branch$(ansi reset)"
 		git checkout master
 	fi
@@ -83,6 +84,7 @@ _branch_create() {
 		# to create branch from a given tag, check if the given tag exists
 		check_tag
 	fi
+	# create the new branch
 	echo "$(ansi bold)Create the new branch$(ansi reset)"
 	if [ "${DPK_OPT["tag"]}" = "" ]; then
 		git checkout -b "${DPK_OPT["create"]}"
@@ -97,13 +99,15 @@ _branch_create() {
 # Delete a branch.
 _branch_remove() {
 	# check if a branch exists with this name
-	if [ "$(git branch | grep "${DPK_OPT["remove"]}")" = "" ]; then
-		abort "$(ansi red)No branch exists with this name.$(ansi reset)"
+	if [ "$(git_get_branches | grep "${DPK_OPT["remove"]}" | wc -l)" -eq 0 ]; then
+		abort "$(ansi red) No branch exists with this name.$(ansi reset)"
 	fi
-	if [ "$(get_git_branch)" != "master" ]; then
+	# move to master branch if needed
+	if [ "$(git_get_current_branch)" != "master" ]; then
 		echo "$(ansi bold)Move to master branch$(ansi reset)"
 		git checkout master
 	fi
+	# delete the branch
 	echo "$(ansi bold)Delete the branch locally$(ansi reset)"
 	git branch -d "${DPK_OPT["remove"]}"
 	echo "$(ansi bold)Delete the branch on the remote git repository$(ansi reset)"
@@ -116,7 +120,7 @@ _branch_merge() {
 	check_git_branch
 	check_git_clean
 	check_git_pushed
-	BRANCH="$(get_git_branch)"
+	BRANCH="$(git_get_current_branch)"
 	echo "$(ansi bold)Checking out to master branch$(ansi reset)"
 	git checkout master
 	git pull
@@ -134,7 +138,7 @@ _branch_backport() {
 	check_git_branch
 	check_git_clean
 	check_git_pushed
-	BRANCH="$(get_git_branch)"
+	BRANCH="$(git_get_current_branch)"
 	echo "$(ansi bold)Updating master branch$(ansi reset)"
 	git checkout master
 	git pull

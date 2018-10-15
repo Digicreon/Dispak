@@ -682,11 +682,19 @@ foobar
 
 Fetch all tags and branches from distant git repository.
 
-**`get_git_branch`**
+**`git_is_clean`**
+
+Tell if the current Git repository is clean (all files are committed, no new file and no modified file).
+
+**`git_get_current_branch`**
 
 Return the name of the current branch.
 
-**`get_git_tag`**
+**`git_get_branches`**
+
+Return the list of branches.
+
+**`git_get_current_tag`**
 
 Return the name of the currently installed tag.
 
