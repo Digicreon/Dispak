@@ -71,7 +71,7 @@ _branch_list() {
 # Create a new branch.
 _branch_create() {
 	# check if a branch already exists with this name
-	if [ "$(git_get_branches | grep "${DPK_OPT["remove"]}" | wc -l)" -ne 0 ]; then
+	if [ "$(git_get_branches | grep "${DPK_OPT["create"]}" | wc -l)" -ne 0 ]; then
 		abort "$(ansi red)A branch already exists with this name.$(ansi reset)"
 	fi
 	# move to master branch if needed
