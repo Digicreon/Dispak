@@ -87,11 +87,11 @@ rule_exec_tags() {
 			TAGGER="$(git tag -n --format='%(tagger)' $TAG | cut -d'>' -f 1)>"
 			if [ "$(echo "$TAGGER" | grep "@" | wc -l)" == "1" ]; then
 				echo "		$(ansi dim)$TAGGER$(ansi reset)"
-				git tag -n99 $TAG | sed -e "s/^$TAG//" -e 's/^\s*//' | while read -r LINE; do
-					echo "		$(ansi dim)$LINE$(ansi reset)"
-				done
-				echo
 			fi
+			git tag -n99 $TAG | sed -e "s/^$TAG//" -e 's/^\s*//' | while read -r LINE; do
+				echo "		$(ansi dim)$LINE$(ansi reset)"
+			done
+			echo
 		fi
 		LAST_DATE="$TAG_DATE"
 	done
