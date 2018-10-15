@@ -277,13 +277,13 @@ You can install Dispak anywhere on your disk drive. The preferred path (if you h
 
 Get the last version:
 ```shell
-$ wget https://github.com/Amaury/Dispak/archive/0.6.4.zip
-$ unzip Dispak-0.6.4.zip
+$ wget https://github.com/Amaury/Dispak/archive/0.6.5.zip
+$ unzip Dispak-0.6.5.zip
 
 or
 
-$ wget https://github.com/Amaury/Dispak/archive/0.6.4.tar.gz
-$ tar xzf Dispak-0.6.4.tar.gz
+$ wget https://github.com/Amaury/Dispak/archive/0.6.5.tar.gz
+$ tar xzf Dispak-0.6.5.tar.gz
 ```
 
 You can also clone the git source code repository:
