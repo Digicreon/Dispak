@@ -7,7 +7,9 @@ check_aws() {
 	if [ $? -ne 0 ] ; then
 		abort "$(ansi red)No 'aws' CLI program found.
    You need to install the AWS command-line tool to send file to Amazon S3.$(ansi reset)
-     Installation:  $(ansi dim)\$ sudo apt-get install awscli$(ansi reset)
+     Installation:  $(ansi dim)\$ sudo apt install awscli$(ansi reset) (Debian/Ubuntu)
+                    $(ansi dim)\$ sudo yum install awscli$(ansi reset) (CentOS/RedHat)
+                    $(ansi dim)\$ sudo pip install awscli$(ansi reset) (Python installer)
      Configuration: $(ansi dim)http://docs.aws.amazon.com/fr_fr/cli/latest/userguide/cli-chap-getting-started.html$(ansi reset)
      Usage:         $(ansi dim)http://docs.aws.amazon.com/fr_fr/cli/latest/userguide/cli-chap-using.html$(ansi reset)
   "
