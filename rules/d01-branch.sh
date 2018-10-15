@@ -107,9 +107,12 @@ _branch_remove() {
 		echo "$(ansi bold)Move to master branch$(ansi reset)"
 		git checkout master
 	fi
-	# delete the branch
-	echo "$(ansi bold)Delete the branch locally$(ansi reset)"
-	git branch -d "${DPK_OPT["remove"]}"
+	# delete the local branch
+	if [ "$(git branch | grep "${DPK_OPT["remove"]}" | wc -l)" -ne 0 ]; then
+		echo "$(ansi bold)Delete the branch locally$(ansi reset)"
+		git branch -d "${DPK_OPT["remove"]}"
+	fi
+	# delete the remote branch
 	echo "$(ansi bold)Delete the branch on the remote git repository$(ansi reset)"
 	git push origin ":${DPK_OPT["remove"]}"
 }
