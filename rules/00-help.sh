@@ -37,6 +37,11 @@ rule_exec_help() {
 	echo " $(ansi rev)  $(ansi reset)                                                                   $(ansi rev)  $(ansi reset)"
 	echo " $(ansi rev)                                                                       $(ansi reset)"
 	echo
+	if [ "$COMMAND" == "" ]; then
+		echo " $(ansi dim)For detailed information about all commands:$(ansi reset) $(ansi bold)dpk help$(ansi reset)"
+		echo " $(ansi dim)For detailed information about one command:$(ansi reset)  $(ansi bold)dpk help$(ansi reset) command_name"
+		echo
+	fi
 	for SECTION in "${!_DPK_RULES[@]}"; do
 		if [ ${#_DPK_RULES[@]} -gt 1 ]; then
 			echo " $(ansi under)$SECTION$(ansi reset)"
@@ -45,9 +50,16 @@ rule_exec_help() {
 			if [ "$RULE" = "help" ]; then
 				continue;
 			fi
-			HELP_FUNCTION="rule_help_${RULE}"
-			$HELP_FUNCTION
-			echo
+			if [ "$COMMAND" == "" ]; then
+				echo "   dpk $(ansi bold)${RULE}$(ansi reset)"
+			else
+				HELP_FUNCTION="rule_help_${RULE}"
+				$HELP_FUNCTION
+				echo
+			fi
 		done
+		if [ "$COMMAND" == "" ]; then
+			echo
+		fi
 	done
 }
