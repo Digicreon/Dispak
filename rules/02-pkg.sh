@@ -58,9 +58,28 @@ rule_exec_pkg() {
 	fi
 	# minify files
 	_pkg_minify
+	# create log file
+	echo "$(ansi bold)Creating default log message...$(ansi reset)"
+	TAGLOGFILE="$(mktemp --tmpdir=/tmp dispak-log.XXXXXXXXXX)"
+	git log "$(git tag | sort -V | tail -1)"..HEAD --pretty=format:%s | tac > $TAGLOGFILE
+	echo >> $TAGLOGFILE
+	echo "#" >> $TAGLOGFILE
+	echo "# Write log message for tag: ${DPK_OPT["tag"]}" >> $TAGLOGFILE
+	echo "#     Lines starting with '#' will be ignored." >> $TAGLOGFILE
+	EDITOR_PROGRAM="vim"
+	if [ "${!EDITOR}" != "" ]; then
+		EDITOR_PROGRAM="${!EDITOR}"
+	elif [ "${!VISUAL}" != "" ]; then
+		EDITOR_PROGRAM="${!VISUAL}"
+	fi
+	$EDITOR_PROGRAM $TAGLOGFILE
+	grep -ve "^#" $TAGLOGFILE > $TAGLOGFILE.final
 	# create tag
 	echo "$(ansi bold)Creating local tag '${DPK_OPT["tag"]}'...$(ansi reset)"
-	git tag -a "${DPK_OPT["tag"]}"
+	git tag -a "${DPK_OPT["tag"]}" --file=$TAGLOGFILE.final
+	# delete log file
+	rm -f $TAGLOGFILE $TAGLOGFILE.final
+	# push tag to server
 	echo "$(ansi bold)Pushing tag to server...$(ansi reset)"
 	git push origin "${DPK_OPT["tag"]}"
 	# send static files to Amazon S3
