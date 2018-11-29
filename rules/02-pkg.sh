@@ -61,7 +61,7 @@ rule_exec_pkg() {
 	# create log file
 	echo "$(ansi bold)Creating default log message...$(ansi reset)"
 	TAGLOGFILE="$(mktemp --tmpdir=/tmp dispak-log.XXXXXXXXXX)"
-	git log "$(git tag | sort -V | tail -1)"..HEAD --pretty=format:%s | tac > $TAGLOGFILE
+	git log "$(git tag | sort -V | tail -1)"..HEAD --pretty=format:%s > $TAGLOGFILE
 	echo >> $TAGLOGFILE
 	echo "#" >> $TAGLOGFILE
 	echo "# Write log message for tag: ${DPK_OPT["tag"]}" >> $TAGLOGFILE
