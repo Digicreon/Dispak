@@ -97,25 +97,30 @@ check_git_pushed() {
 # check_platform()
 # Check the platform given as a parameter, or detect the platform.
 check_platform() {
-	if [ "${DPK_OPT["platform"]}" != "dev" ] && [ "${DPK_OPT["platform"]}" != "test" ] && [ "${DPK_OPT["platform"]}" != "prod" ]; then
-		if [ "$CONF_PLATFORM" = "dev" ] || [ "$CONF_PLATFORM" = "test" ] || [ "$CONF_PLATFORM" = "prod" ]; then
-			DPK_OPT["platform"]="$CONF_PLATFORM"
+	if [ "${DPK_OPT["platform"]}" = "dev" ] || [ "${DPK_OPT["platform"]}" = "test" ] || [ "${DPK_OPT["platform"]}" = "prod" ]; then
+		return
+	fi
+	if [ "$CONF_PLATFORM" = "dev" ] || [ "$CONF_PLATFORM" = "test" ] || [ "$CONF_PLATFORM" = "prod" ]; then
+		DPK_OPT["platform"]="$CONF_PLATFORM"
+		return
+	fi
+	HOSTNAME=$(hostname)
+	if [ "${CONF_PLATFORMS[$HOSTNAME]}" = "dev" ] || [ "${CONF_PLATFORMS[$HOSTNAME]}" = "test" ] || [ "${CONF_PLATFORMS[$HOSTNAME]}" = "prod" ]; then
+		DPK_OPT["platform"]="${CONF_PLATFORMS[$HOSTNAME]}"
+		return
+	fi
+	echo "$HOSTNAME" | grep -Eq "^test[0-9]+$|^preprod[0-9]+$|^pprod[0-9]+$"
+	if [ $? -eq 0 ]; then
+		DPK_OPT["platform"]="test"
+	else
+		echo "$HOSTNAME" | grep -Eq "^server[0-9]+$|^serv[0-9]+$|^prod[0-9]+$|^web[0-9]+$|^db[0-9]+$|^cron[0-9]+$|^worker[0-9]+$|^front[0-9]+$|^back[0-9]+$"
+		if [ $? -eq 0 ]; then
+			DPK_OPT["platform"]="prod"
 		else
-			HOSTNAME=$(hostname)
-			echo "$HOSTNAME" | grep -Eq "^test[0-9]+$"
-			if [ $? -eq 0 ]; then
-				DPK_OPT["platform"]="test"
-			else
-				echo "$HOSTNAME" | grep -Eq "^prod[0-9]+$|^web[0-9]+$|^db[0-9]+$|^cron[0-9]+$|^worker[0-9]+$|^front[0-9]+$|^back[0-9]+$"
-				if [ $? -eq 0 ]; then
-					DPK_OPT["platform"]="prod"
-				else
-					DPK_OPT["platform"]="dev"
-				fi
-			fi
-			warn "$(ansi yellow)No platform given, $(ansi reset)${DPK_OPT["platform"]}$(ansi yellow) detected.$(ansi reset)"
+			DPK_OPT["platform"]="dev"
 		fi
 	fi
+	warn "$(ansi yellow)No platform given, $(ansi reset)${DPK_OPT["platform"]}$(ansi yellow) detected.$(ansi reset)"
 }
 
 # check_tag()

@@ -61,9 +61,9 @@ Dispak manage three kinds of [deployment environments](https://en.wikipedia.org/
 - `test`: Testing/staging environment, used to validate a version.
 - `prod`: Production environment, where the live service is accessed by users.
 
-Sometimes, Dispak can guess the platform on which it is executed (see [Install tag](#15-install-tag)), using the local machine's name.
-- If the hostname starts with `test` followed by numbers, it assumes to be on a `test` platform.
-- If the hostname starts with `prod`, `web`, `db`, `cron`, `worker`, `front` or `back`, followed by numbers, it assumes to be on a `prod` platform.
+Unless specified otherwise in the configuration file, Dispak can guess the platform on which it is executed (see [Install tag](#15-install-tag)), using the local machine's name.
+- If the hostname starts with `test`, `preprod` or `pprod`, followed by numbers, it assumes to be on a `test` platform.
+- If the hostname starts with `server`, `serv`, `prod`, `web`, `db`, `cron`, `worker`, `front` or `back`, followed by numbers, it assumes to be on a `prod` platform.
 - Otherwise it assumes to be on a `dev` platform.
 
 #### 1.1.2 Version numbering
@@ -277,13 +277,13 @@ You can install Dispak anywhere on your disk drive. The preferred path (if you h
 
 Get the last version:
 ```shell
-$ wget https://github.com/Amaury/Dispak/archive/0.6.6.zip
-$ unzip Dispak-0.6.6.zip
+$ wget https://github.com/Amaury/Dispak/archive/0.8.0.zip
+$ unzip Dispak-0.8.0.zip
 
 or
 
-$ wget https://github.com/Amaury/Dispak/archive/0.6.6.tar.gz
-$ tar xzf Dispak-0.6.6.tar.gz
+$ wget https://github.com/Amaury/Dispak/archive/0.8.0.tar.gz
+$ tar xzf Dispak-0.8.0.tar.gz
 ```
 
 You can also clone the git source code repository:
@@ -467,6 +467,7 @@ There is three kind of configuration variables:
 Here are the definable variables:
 - **Main configuration**
   - `CONF_PLATFORM`: IF you don't want Dispak to detect the platform, you can set what is the current environment (`dev`, `test` or `prod`).
+  - `CONF_PLATFORMS`: This variable is also used to override the automatic detection of the platform. But here is an associative array that allows you to specify the platform type associated with each server (from the server names).
 - **pkg rule**
   - `CONF_PKG_CHECK_URL`: You can ask Dispak to check the return status of the given URL before creating a new tag. This is convenient if you have a local page that show the result of your unit tests; if the HTTP status of this page is an error (not equal to 200), the tag is not created.
   - `CONF_PKG_SCRIPTS_PRE`: You can ask Dispak to execute a list of scripts before creating a new tag.

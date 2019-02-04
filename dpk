@@ -30,6 +30,10 @@ fi
 
 # ########## INTERNAL VARIABLES ##########
 
+# List of servers' platform types. Declared here to be fillable in the configuration file. Used by the check_platform() function.
+# @type associative array
+declare -A CONF_PLATFORMS
+
 # List of rules, indexed by section.
 # @type	associative array
 declare -A _DPK_RULES
