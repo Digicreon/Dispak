@@ -160,7 +160,7 @@ _pkg_minify() {
 	# checks modified files
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
-			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but is is locally modified.
+			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but it is locally modified.
   $(ansi yellow)Please, commit/stash/rollback the file.$(ansi reset)
 "
 		fi
