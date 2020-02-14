@@ -27,7 +27,7 @@ git_get_current_branch() {
 # git_get_branches()
 # Return the list of existing branches.
 git_get_branches() {
-	git ls-remote --heads 2> /dev/null | sed 's/.*\///'
+	git ls-remote --heads 2> /dev/null | cut -d$'\t' -f2 | sed 's/^refs\/heads\///'
 }
 
 # git_get_current_tag()
