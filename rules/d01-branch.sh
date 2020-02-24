@@ -13,13 +13,14 @@ RULE_SECTION="Development"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="list create remove merge backport"
+RULE_OPTIONAL_PARAMS="list graph create remove merge backport"
 
 # Show help for this rule.
 rule_help_branch() {
-	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)] [$(ansi reset)--backport$(ansi dim)] [--tag=X.Y.Z]$(ansi reset)"
-	echo "       $(ansi dim)Manage branches. At least one of these parameters must be given:$(ansi reset)"
+	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)] [$(ansi reset)--backport$(ansi dim)] [--tag=X.Y.Z]$(ansi reset)"
+	echo "       $(ansi dim)Manage branches. One of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
+	echo "       --graph    $(ansi dim)Show a graph of the existing branches.$(ansi reset)"
 	echo "       --create   $(ansi dim)Name of the branch to create (locally and remotely). Move to the branch after its creation.$(ansi reset)"
 	echo "                  $(ansi dim)Branches are always created from the $(ansi reset)master$(ansi dim) branch.$(ansi reset)"
 	echo "                  $(ansi dim)The new branch could be created from a given tag, using the $(ansi reset)--tag$(ansi dim) parameter.$(ansi reset)"
@@ -35,6 +36,9 @@ rule_exec_branch() {
 	if [ "${DPK_OPT["list"]}" != "" ]; then
 		# list branches
 		_branch_list
+	elif [ "${DPK_OPT["graph"]}" != "" ]; then
+		# show branches graph
+		_branch_graph
 	elif [ "${DPK_OPT["create"]}" != "" ]; then
 		# create new branch
 		_branch_create
@@ -65,6 +69,12 @@ _branch_list() {
 			echo "  $BRANCH"
 		fi
 	done
+}
+
+# _branch_graph()
+# Show a graph of the existing branches.
+_branch_graph() {
+	git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
 }
 
 # _branch_create()
