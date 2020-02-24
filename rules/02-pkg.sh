@@ -67,10 +67,10 @@ rule_exec_pkg() {
 	echo "# Write log message for tag: ${DPK_OPT["tag"]}" >> $TAGLOGFILE
 	echo "#     Lines starting with '#' will be ignored." >> $TAGLOGFILE
 	EDITOR_PROGRAM="vim"
-	if [ "${!EDITOR}" != "" ]; then
-		EDITOR_PROGRAM="${!EDITOR}"
-	elif [ "${!VISUAL}" != "" ]; then
-		EDITOR_PROGRAM="${!VISUAL}"
+	if [ "${EDITOR}" != "" ]; then
+		EDITOR_PROGRAM="${EDITOR}"
+	elif [ "${VISUAL}" != "" ]; then
+		EDITOR_PROGRAM="${VISUAL}"
 	fi
 	$EDITOR_PROGRAM $TAGLOGFILE
 	grep -ve "^#" $TAGLOGFILE > $TAGLOGFILE.final
@@ -169,7 +169,8 @@ _pkg_minify() {
 	echo "$(ansi bold)Files minification$(ansi reset)"
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		echo "$(ansi dim)> $_FILE$(ansi reset)"
-		minify --output "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
+		#minify --output "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
+		minify -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		if [ $? -ne 0 ]; then
 			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'."
 		fi
