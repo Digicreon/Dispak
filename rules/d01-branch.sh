@@ -62,13 +62,34 @@ rule_exec_branch() {
 # List all existing branches, with the tag from wich they were created.
 _branch_list() {
 	CURRENT_BRANCH="$(git_get_current_branch)"
-	for BRANCH in $(git_get_branches); do
-		if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
-			echo "* $(ansi red)$BRANCH$(ansi reset)"
-		else
-			echo "  $BRANCH"
-		fi
-	done
+	# show local branches that doesn't exist remotely
+	LOCAL_BRANCHES="$(git_get_branches_local_only)"
+	if [ "$LOCAL_BRANCHES" != "" ]; then
+		echo "$(ansi bold)$(ansi under)Local branches$(ansi reset)"
+		for BRANCH in $LOCAL_BRANCHES; do
+			if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
+				echo "* $(ansi red)$BRANCH$(ansi reset)"
+			else
+				echo "  $BRANCH"
+			fi
+		done
+	fi
+	# show remote branches
+	REMOTE_BRANCHES="$(git_get_branches)"
+	if [ "$LOCAL_BRANCHES" != "" ] && [ "$REMOTE_BRANCHES" != "" ]; then
+		echo
+		echo "$(ansi bold)$(ansi under)Remote branches$(ansi reset)"
+	fi
+	if [ "$REMOTE_BRANCHES" != "" ]; then
+		for BRANCH in $REMOTE_BRANCHES; do
+			if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
+				echo "* $(ansi red)$BRANCH$(ansi reset)"
+			else
+				echo "  $BRANCH"
+			fi
+		done
+	fi
+	return
 }
 
 # _branch_graph()
@@ -81,6 +102,9 @@ _branch_graph() {
 # Create a new branch.
 _branch_create() {
 	# check if a branch already exists with this name
+	if [ "$(git_get_branches_local_only | grep "${DPK_OPT["create"]}" | wc -l)" -ne 0 ]; then
+		abort "$(ansi red)A local branch already exists with this name.$(ansi reset)"
+	fi
 	if [ "$(git_get_branches | grep "${DPK_OPT["create"]}" | wc -l)" -ne 0 ]; then
 		abort "$(ansi red)A branch already exists with this name.$(ansi reset)"
 	fi
@@ -109,8 +133,13 @@ _branch_create() {
 # Delete a branch.
 _branch_remove() {
 	# check if a branch exists with this name
-	if [ "$(git_get_branches | grep "${DPK_OPT["remove"]}" | wc -l)" -eq 0 ]; then
+	if [ "$(git_get_branches_local_and_remote | grep "${DPK_OPT["remove"]}" | wc -l)" -eq 0 ]; then
 		abort "$(ansi red) No branch exists with this name.$(ansi reset)"
+	fi
+	# check if the branch exists remotely
+	IS_REMOTE_BRANCH="no"
+	if [ "$(git_get_branches | grep "${DPK_OPT["remove"]}" | wc -l)" -ne 0 ]; then
+		IS_REMOTE_BRANCH="yes"
 	fi
 	# move to master branch if needed
 	if [ "$(git_get_current_branch)" != "master" ]; then
@@ -122,9 +151,11 @@ _branch_remove() {
 		echo "$(ansi bold)Delete the branch locally$(ansi reset)"
 		git branch -d "${DPK_OPT["remove"]}"
 	fi
-	# delete the remote branch
-	echo "$(ansi bold)Delete the branch on the remote git repository$(ansi reset)"
-	git push origin ":${DPK_OPT["remove"]}"
+	# delete the remote branch if it exists
+	if [ "$IS_REMOTE_BRANCH" = "yes" ]; then
+		echo "$(ansi bold)Delete the branch on the remote git repository$(ansi reset)"
+		git push origin ":${DPK_OPT["remove"]}"
+	fi
 }
 
 # _branch_merge()

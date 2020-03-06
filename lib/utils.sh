@@ -25,9 +25,21 @@ git_get_current_branch() {
 }
 
 # git_get_branches()
-# Return the list of existing branches.
+# Return the list of existing remote branches.
 git_get_branches() {
 	git ls-remote --heads 2> /dev/null | cut -d$'\t' -f2 | sed 's/^refs\/heads\///'
+}
+
+# git_get_branches_local_and_remote()
+# Return the list of all branches (local and remote).
+git_get_branches_local_and_remote() {
+	git branch -a | cut -c 3-
+}
+
+# git_get_branches_local_only()
+# Return the list of branches that exists locally only.
+git_get_branches_local_only() {
+	comm -23 <(git branch | sed 's|* | |' | sed 's/^\s*//' | sort) <(git branch -r | sed 's|origin/||' | sed 's/^\s*//' | sort )
 }
 
 # git_get_current_tag()
