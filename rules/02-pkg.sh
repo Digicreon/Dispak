@@ -98,9 +98,11 @@ _pkg_pre_scripts() {
 	fi
 	echo "$(ansi bold)Execute pre-packaging scripts$(ansi reset)"
 	for _SCRIPT in $CONF_PKG_SCRIPTS_PRE; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
 		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
-		if [ ! -x "$_SCRIPT" ]; then
-			chmod +x "$_SCRIPT"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
@@ -118,9 +120,11 @@ _pkg_post_scripts() {
 	fi
 	echo "$(ansi bold)Execute post-packaging scripts$(ansi reset)"
 	for _SCRIPT in $CONF_PKG_SCRIPTS_POST; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
 		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
-		if [ ! -x "$_SCRIPT" ]; then
-			chmod +x "$_SCRIPT"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
