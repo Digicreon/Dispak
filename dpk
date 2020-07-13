@@ -25,7 +25,7 @@ COMMAND=$1
 # Path to the root of the current git repository.
 GIT_REPO_PATH="$(git rev-parse --git-dir 2>/dev/null)"
 if [ "$GIT_REPO_PATH" != "" ]; then
-	GIT_REPO_PATH="$(dirname "$GIT_REPO_PATH")"
+	GIT_REPO_PATH="$(readlink -f "$(dirname "$GIT_REPO_PATH")")"
 fi
 
 # ########## INTERNAL VARIABLES ##########

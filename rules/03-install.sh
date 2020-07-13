@@ -155,12 +155,14 @@ _install_crontab() {
 		return
 	fi
 	echo "$(ansi bold)Installing crontab$(ansi reset)"
-	echo "$(crontab -l 2>/dev/null)" | grep "^### DISPAK CRONTAB START ###$" > /dev/null
+	START_MARK="### DISPAK CRONTAB START +++ $GIT_REPO_PATH/etc/crontab"
+	END_MARK="### DISPAK CRONTAB END --- $GIT_REPO_PATH/etc/crontab"
+	echo "$(crontab -l 2>/dev/null)" | grep "^$START_MARK$" > /dev/null
 	if [ $? -ne 0 ]; then
-		(crontab -l 2>/dev/null; echo; echo "### DISPAK CRONTAB START ###"; echo; cat "$GIT_REPO_PATH/etc/crontab"; echo "### DISPAK CRONTAB END ###") | crontab -
+		(crontab -l 2>/dev/null; echo; echo $START_MARK; echo; cat "$GIT_REPO_PATH/etc/crontab"; echo $END_MARK) | crontab -
 	else
-		BEGIN_GEN=$(crontab -l 2>/dev/null | grep -n '### DISPAK CRONTAB START ###' | sed 's/\(.*\):.*/\1/g')
-		END_GEN=$(crontab -l 2>/dev/null | grep -n '### DISPAK CRONTAB END ###' | sed 's/\(.*\):.*/\1/g')
+		BEGIN_GEN=$(crontab -l 2>/dev/null | grep -n "$START_MARK" | sed 's/\(.*\):.*/\1/g')
+		END_GEN=$(crontab -l 2>/dev/null | grep -n "$END_MARK" | sed 's/\(.*\):.*/\1/g')
 		(crontab -l 2>/dev/null | head -n $BEGIN_GEN; echo; cat "$GIT_REPO_PATH/etc/crontab"; crontab -l 2>/dev/null | tail -n +$END_GEN) | crontab -
 	fi
 	echo "$(ansi green)Done$(ansi reset)"
