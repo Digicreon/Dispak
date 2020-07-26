@@ -141,8 +141,13 @@ _pkg_unminify() {
 		# no file to unminify
 		return
 	fi
-	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
-		if ! git ls-files --error-unmatch "$_FILE" 2> /dev/null ; then
+	# loop on minified files
+	for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
+		# if source and minified files are the same, and the file is under Git, revert the changes
+		if [ "$_FILE" == "${CONF_PKG_MINIFY["$_FILE"]}" ] && git ls-files --error-unmatch "$_FILE" 2> /dev/null; then
+			git checkout -- "$_FILE"
+		elif ! git ls-files --error-unmatch "$_FILE" 2> /dev/null ; then
+			# delete the minified file if it wasn't under Git
 			rm -f "$_FILE"
 		fi
 	done
@@ -179,17 +184,19 @@ _pkg_minify() {
 			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'."
 		fi
 	done
-	# commit minified files that were alreay version controlled
-	NEED_COMMIT=0
-	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
-		if git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
-			git add "$_FILE"
-			NEED_COMMIT=1
+	# commit minified files that were alreay version controlled (only if the source and minified files are not the same)
+	if [ "$_FILE" != "${CONF_PKG_MINIFY["$_FILE"]}" ]; then
+		NEED_COMMIT=0
+		for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
+			if git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
+				git add "$_FILE"
+				NEED_COMMIT=1
+			fi
+		done
+		if [ $NEED_COMMIT -ne 0 ]; then
+			git commit -m "Added minified files for version ${DPK_OPT["tag"]}."
+			git push origin master
 		fi
-	done
-	if [ $NEED_COMMIT -ne 0 ]; then
-		git commit -m "Added minified files for version ${DPK_OPT["tag"]}."
-		git push origin master
 	fi
 }
 
@@ -210,16 +217,50 @@ _pkg_s3() {
 	fi
 	# check aws program
 	check_aws
-	# copy to S3
+	# loop on paths that must be copied to S3
 	echo "$(ansi bold)Copy files to Amazon S3$(ansi reset)"
 	for _S3 in ${!CONF_PKG_S3[@]}; do
+		# check if the source path exists
+		if [ ! -d "${CONF_PKG_S3["$_S3"]}" ]; then
+			abort "The path '${CONF_PKG_S3["$_S3"]}' doesn't exist."
+		fi
+		# search for a "master" symlink (and remove it)
 		FOUND_MASTER_LINK=0
 		if [ -L "${CONF_PKG_S3["$_S3"]}/master" ] && [ "$(readlink -f "${CONF_PKG_S3["$_S3"]}/master")" = "${CONF_PKG_S3["$_S3"]}" ]; then
 			rm -f "${CONF_PKG_S3["$_S3"]}/master"
 			FOUND_MASTER_LINK=1
 		fi
+		# copy files to Amazon S3
 		echo "$(ansi dim)> $_S3$(ansi reset)"
-		aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read
+		aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000"
+		# check if the static files (in this path) must be compressed
+		if [ "$CONF_PKG_S3_COMPRESS" = "1" ]; then
+			# move to the source path
+			pushd "${CONF_PKG_S3["$_S3"]}" > /dev/null
+			# loop on the files to compress them (only text files) and send them to Amazon S3
+			while read -r _FILE; do
+				_FILE="${_FILE#./}"
+				# skip this file if it's not a text file or if another file exist with the same name + ".gz" suffix
+				_MIME="$(file --mime-type -b "$_FILE")"
+				_MIME="${_MIME:0:4}"
+				if [ "$_MIME" != "text" ] || [ -e "$_FILE.gz" ]; then
+					continue
+				fi
+				# skip this file if it's under Git and has been modified (and is not a minified file)
+				if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [ -v CONF_PKG_MINIFY["$_FILE"] ]; then
+					continue
+				fi
+				# compress the file, send it to Amazon S3 and delete the compressed file
+				gzip -c -f -9 "$_FILE" > "${_FILE}.gz"
+				if [ -f "${_FILE}.gz" ]; then
+					aws s3 cp "${_FILE}.gz" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --content-encoding gzip  --cache-control "max-age=31536000"
+					rm -f "${_FILE}.gz"
+				fi
+			done <<< $(find . -type f)
+			# get back to the previous directory
+			popd > /dev/null
+		fi
+		# re-create the "master" symlink if it was found before
 		if [ $FOUND_MASTER_LINK -eq 1 ]; then
 			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/master"
 		fi
