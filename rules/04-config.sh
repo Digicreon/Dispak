@@ -17,7 +17,7 @@ RULE_OPTIONAL_PARAMS="platform tag"
 
 # Show help for this rule.
 rule_help_config() {
-	echo "   dpk $(ansi bold)config$(ansi reset) $(ansi dim)[--platform=dev|test|prod]$(ansi reset) $(ansi dim)[--tag=master|X.Y.Z]$(ansi reset)"
+	echo "   dpk $(ansi bold)config$(ansi reset) $(ansi dim)[$(ansi reset)--platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=master|X.Y.Z]$(ansi reset)"
 	echo "       $(ansi dim)Set files and directories access rights. Generate configuration files.$(ansi reset)"
 	echo "       $(ansi dim)Subset of the $(ansi reset)install$(ansi dim) rule.$(ansi reset)"
 	echo "       $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"

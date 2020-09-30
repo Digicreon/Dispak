@@ -17,9 +17,9 @@ RULE_OPTIONAL_PARAMS="all"
 
 # Show help for this rule.
 rule_help_tags() {
-	echo "   dpk $(ansi bold)tags$(ansi reset) $(ansi dim)[--all]$(ansi reset)"
+	echo "   dpk $(ansi bold)tags$(ansi reset) $(ansi dim)[$(ansi reset)--all$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)List all existing tags.$(ansi reset)"
-	echo "       $(ansi dim)Use the $(ansi reset)--all$(ansi dim) option to show in-between revisions and tag annotation.$(ansi reset)"
+	echo "       --all $(ansi dim) Display in-between revisions and tag annotations.$(ansi reset)"
 }
 
 # Execution of the rule

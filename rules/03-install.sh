@@ -22,10 +22,10 @@ declare -A CONF_INSTALL_CHMOD
 
 # Show help for this rule.
 rule_help_install() {
-	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--platform=dev|test|prod] [--tag=master|X.Y.Z] [--no-apache] [--no-crontab] [--no-db-migration]$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=master|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)Deploy source code (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
 	echo "       --platform        $(ansi dim)Definition of the current platform. Otherwise, Dispak will try to detect it.$(ansi reset)"
-	echo "       --tag             $(ansi dim)Tag to install (or 'master'). Otherwise, the last tagged version will be installed.$(ansi reset)"
+	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)master$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
 	echo "       --no-apache       $(ansi dim)Don't install Apache configuration files, even if Apache is installed on the current machine.$(ansi reset)"
 	echo "       --no-crontab      $(ansi dim)Don't install crontab configuration.$(ansi reset)"
 	echo "       --no-db-migration $(ansi dim)Don't perform database migration.$(ansi reset)"

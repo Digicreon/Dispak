@@ -21,8 +21,9 @@ declare -A CONF_PKG_S3
 
 # Show help for this rule.
 rule_help_pkg() {
-	echo "   dpk $(ansi bold)pkg$(ansi reset) $(ansi dim)[--tag=X.Y.Z]$(ansi reset)"
+	echo "   dpk $(ansi bold)pkg$(ansi reset) $(ansi dim)[$(ansi reset)--tag$(ansi dim)=X.Y.Z]$(ansi reset)"
 	echo "       $(ansi dim)Create a new tag. Upload files to AWS S3 (see configuration file) only if the tag is a stable version.$(ansi reset)"
+	echo "       --tag $(ansi dim)Use the given tag, don't ask it interactively.$(ansi reset)"
 }
 
 # Execution of the rule

@@ -17,16 +17,17 @@ RULE_OPTIONAL_PARAMS="list graph create remove merge backport"
 
 # Show help for this rule.
 rule_help_branch() {
-	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)] [$(ansi reset)--backport$(ansi dim)] [--tag=X.Y.Z]$(ansi reset)"
+	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name [--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)Manage branches. One of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
 	echo "       --graph    $(ansi dim)Show a graph of the existing branches.$(ansi reset)"
 	echo "       --create   $(ansi dim)Name of the branch to create (locally and remotely). Move to the branch after its creation.$(ansi reset)"
 	echo "                  $(ansi dim)Branches are always created from the $(ansi reset)master$(ansi dim) branch.$(ansi reset)"
-	echo "                  $(ansi dim)The new branch could be created from a given tag, using the $(ansi reset)--tag$(ansi dim) parameter.$(ansi reset)"
+	echo "                  $(ansi dim)Use the $(ansi reset)--tag$(ansi dim) to tell the tag from which the new branch will be created (optional; use the last $(ansi reset)master$(ansi dim) revision if not given).$(ansi reset)"
 	echo "       --remove   $(ansi dim)Name of the branch to delete.$(ansi reset)"
-	echo "       --merge    $(ansi dim)Merge the current branch on the $(ansi reset)master$(ansi dim) branch.$(ansi reset)"
-	echo "       --backport $(ansi dim)Merge the $(ansi reset)master$(ansi dim) branch on the current branch.$(ansi reset)"
+	echo "       --merge    $(ansi dim)Merge the current branch on the given branch (or $(ansi reset)master$(ansi dim) if no branch was given).$(ansi reset)"
+	echo "       --backport $(ansi dim)Merge the given branch (or $(ansi reset)master$(ansi dim) if no branch was given) on the current branch.$(ansi reset)"
+	echo "       --rebase   $(ansi dim)Rebase the current branch from its parent branch.$(ansi reset)"
 }
 
 # Execution of the rule
@@ -101,12 +102,20 @@ _branch_graph() {
 # _branch_create()
 # Create a new branch.
 _branch_create() {
-	# check if a branch already exists with this name
-	if [ "$(git_get_branches_local_only | grep "${DPK_OPT["create"]}" | wc -l)" -ne 0 ]; then
-		abort "$(ansi red)A local branch already exists with this name.$(ansi reset)"
+	# get the branch to create and check its name
+	CREATE_BRANCH="${DPK_OPT["create"]}"
+	if [ ! "$CREATE_BRANCH" ]; then
+		abort "$(ansi red)Empty branch name.$(ansi reset)"
 	fi
-	if [ "$(git_get_branches | grep "${DPK_OPT["create"]}" | wc -l)" -ne 0 ]; then
-		abort "$(ansi red)A branch already exists with this name.$(ansi reset)"
+	if [ "$CREATE_BRANCH" = "master" ]; then
+		abort "$(ansi red)Unable to create a 'master' branch.$(ansi reset)"
+	fi
+	# check if a branch already exists with this name
+	if [ "$(git_get_branches_local_only | grep "$CREATE_BRANCH" | wc -l)" -ne 0 ]; then
+		abort "$(ansi red)A '${DPK_OPT["create"]}' local branch already exists.$(ansi reset)"
+	fi
+	if [ "$(git_get_branches | grep "$CREATE_BRANCH" | wc -l)" -ne 0 ]; then
+		abort "$(ansi red)A '${DPK_OPT["create"]}' branch already exists.$(ansi reset)"
 	fi
 	# move to master branch if needed
 	if [ "$(git_get_current_branch)" != "master" ]; then
@@ -114,81 +123,150 @@ _branch_create() {
 		git checkout master
 	fi
 	# was a tag given?
-	if [ "${DPK_OPT["tag"]}" != "" ]; then
+	TAG_SRC="${DPK_OPT["tag"]}"
+	if [ "$TAG_SRC" != "" ]; then
 		# to create branch from a given tag, check if the given tag exists
 		check_tag
 	fi
 	# create the new branch
-	echo "$(ansi bold)Create the new branch$(ansi reset)"
-	if [ "${DPK_OPT["tag"]}" = "" ]; then
-		git checkout -b "${DPK_OPT["create"]}"
+	if [ "$TAG_SRC" = "" ]; then
+		echo "$(ansi bold)Create the new branch (from 'master' branch)$(ansi reset)"
+		git checkout -b "$CREATE_BRANCH"
 	else
-		git checkout -b "${DPK_OPT["create"]}" "${DPK_OPT["tag"]}"
+		echo "$(ansi bold)Create the new branch (from tag '$TAG_SRC' on 'master' branch)$(ansi reset)"
+		git checkout -b "$CREATE_BRANCH" "$TAG_SRC"
 	fi
 	echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
-	git push --set-upstream origin "${DPK_OPT["create"]}"
+	git push --set-upstream origin "$CREATE_BRANCH"
 }
 
 # _branch_remove()
 # Delete a branch.
 _branch_remove() {
+	# get the branch to remove and check its name
+	RM_BRANCH="${DPK_OPT["remove"]}"
+	if [ ! "$RM_BRANCH" ]; then
+		abort "$(ansi red)Empty branch name.$(ansi reset)"
+	fi
+	if [ "$(git_get_current_branch)" = "master" ]; then
+		abort "$(ansi red)Unable to remove the 'master' branch.$(ansi reset)"
+	fi
 	# check if a branch exists with this name
-	if [ "$(git_get_branches_local_and_remote | grep "${DPK_OPT["remove"]}" | wc -l)" -eq 0 ]; then
-		abort "$(ansi red) No branch exists with this name.$(ansi reset)"
+	if [ "$(git_get_branches_local_and_remote | grep "$RM_BRANCH" | wc -l)" -eq 0 ]; then
+		abort "$(ansi red) No '$RM_BRANCH' branch exists.$(ansi reset)"
 	fi
 	# check if the branch exists remotely
 	IS_REMOTE_BRANCH="no"
-	if [ "$(git_get_branches | grep "${DPK_OPT["remove"]}" | wc -l)" -ne 0 ]; then
+	if [ "$(git_get_branches | grep "$RM_BRANCH" | wc -l)" -ne 0 ]; then
 		IS_REMOTE_BRANCH="yes"
 	fi
-	# move to master branch if needed
-	if [ "$(git_get_current_branch)" != "master" ]; then
-		echo "$(ansi bold)Move to master branch$(ansi reset)"
-		git checkout master
-	fi
+	# move to master branch
+	echo "$(ansi bold)Move to master branch$(ansi reset)"
+	git checkout master
 	# delete the local branch
-	if [ "$(git branch | grep "${DPK_OPT["remove"]}" | wc -l)" -ne 0 ]; then
-		echo "$(ansi bold)Delete the branch locally$(ansi reset)"
+	if [ "$(git branch | grep "$RM_BRANCH" | wc -l)" -ne 0 ]; then
+		echo "$(ansi bold)Delete the '$RM_BRANCH' branch locally$(ansi reset)"
 		git branch -d "${DPK_OPT["remove"]}"
 	fi
 	# delete the remote branch if it exists
 	if [ "$IS_REMOTE_BRANCH" = "yes" ]; then
-		echo "$(ansi bold)Delete the branch on the remote git repository$(ansi reset)"
-		git push origin ":${DPK_OPT["remove"]}"
+		echo "$(ansi bold)Delete the '$RM_BRANCH' branch on the remote git repository$(ansi reset)"
+		git push origin ":$RM_BRANCH"
 	fi
 }
 
 # _branch_merge()
-# Merge the current branch on the master branch.
+# Merge the current branch on the given branch (defaults to 'master').
 _branch_merge() {
 	check_git_branch
 	check_git_clean
 	check_git_pushed
+	# get the current branch
 	BRANCH="$(git_get_current_branch)"
-	echo "$(ansi bold)Checking out to master branch$(ansi reset)"
-	git checkout master
+	# get the branch to merge onto
+	BRANCH_DEST="master"
+	if [ "${DPK_OPT["merge"]}" != "" ]; then
+		# a branch was given
+		BRANCH_DEST="${DPK_OPT["merge"]}"
+		# check if this branch exists
+		if [ "$(git_get_branches | grep "$BRANCH_DEST" | wc -l)" -eq 0 ]; then
+			abort "$(ansi red)The branch '$BRANCH_DEST' doesn't exist.$(ansi reset)"
+		fi
+	fi
+	# check the source and destination are different
+	if [ "$BRANCH" = "$BRANCH_DEST" ]; then
+		abort "$(ansi red)Unable to merge the '$BRANCH' branch on itself.$(ansi reset)"
+	fi
+	# merge operations
+	echo "$(ansi bold)Checking out to '$BRANCH_DEST' branch$(ansi reset)"
+	git checkout "$BRANCH_DEST"
 	git pull
 	echo "$(ansi bold)Merging '$BRANCH'$(ansi reset)"
 	git merge "$BRANCH"
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
-	git push origin master
+	git push origin "$BRANCH_DEST"
 	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
 	git checkout "$BRANCH"
 }
 
 # _branch_backport()
-# Merge the master branch on the current branch.
+# Merge the given branch (defaults to 'master') on the current branch.
 _branch_backport() {
 	check_git_branch
 	check_git_clean
 	check_git_pushed
+	# get the current branch
 	BRANCH="$(git_get_current_branch)"
-	echo "$(ansi bold)Updating master branch$(ansi reset)"
-	git checkout master
+	# get the branch to merge on the current branch
+	BRANCH_SRC="master"
+	if [ "${DPK_OPT["merge"]}" != "" ]; then
+		# a branch was given
+		BRANCH_SRC="${DPK_OPT["merge"]}"
+		# check if this branch exists
+		if [ "$(git_get_branches | grep "$BRANCH_SRC" | wc -l)" -eq 0 ]; then
+			abort "$(ansi red)The branch '$BRANCH_SRC' doesn't exist.$(ansi reset)"
+		fi
+	fi
+	# check the source and destination are different
+	if [ "$BRANCH" = "$BRANCH_SRC" ]; then
+		abort "$(ansi red)Unable to backport the '$BRANCH' branch on itself.$(ansi reset)"
+	fi
+	# backport operations
+	echo "$(ansi bold)Updating '$BRANCH_SRC' branch$(ansi reset)"
+	git checkout "$BRANCH_SRC"
 	git pull
+	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
 	git checkout "$BRANCH"
-	echo "$(ansi bold)Merging master branch$(ansi reset)"
-	git merge master
+	echo "$(ansi bold)Merging '$BRANCH_SRC' branch$(ansi reset)"
+	git merge "$BRANCH_SRC"
+	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
+	git push origin "$BRANCH"
+}
+
+# _branch_rebase()
+# Rebase the current branch from its parent branch.
+_branch_rebase() {
+	check_git_branch
+	check_git_clean
+	check_git_pushed
+	# get the current branch
+	BRANCH="$(git_get_current_branch)"
+	if [ "$BRANCH" = "master" ]; then
+		abort "$(ansi red)Unable to rebase 'master' branch.$(ansi reset)"
+	fi
+	# get the parent branch
+	PARENT_BRANCH="$(git_get_parent_branch)"
+	if [ ! "$PARENT_BRANCH" ]; then
+		abort "$(ansi red)Unable to find the parent branch of the current branch.$(ansi reset)"
+	fi
+	# rebase operations
+	echo "$(ansi bold)Updating $PARENT_BRANCH branch$(ansi reset)"
+	git checkout "$PARENT_BRANCH"
+	git pull
+	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
+	git checkout "$BRANCH"
+	echo "$(ansi bold)Rebasing '$BRANCH' branch on '$PARENT_BRANCH'$(ansi reset)"
+	git rebase "$PARENT_BRANCH"
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
 	git push origin "$BRANCH"
 }
