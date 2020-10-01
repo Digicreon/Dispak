@@ -27,7 +27,7 @@ git_get_current_branch() {
 # git_get_parent_branch()
 # Return the name of the current branch's parent branch.
 git_get_parent_branch() {
-	git show-branch | sed "s/].*//" | grep "\*" | grep -v "$(git rev-parse --abbrev-ref HEAD)" | head -n1 | sed "s/^.*\[//"
+	git show-branch | sed "s/].*//" | grep "\*" | grep -v "$(git rev-parse --abbrev-ref HEAD)" | head -n1 | sed "s/^.*\[//" | sed "s/\^$//"
 }
 
 # git_get_branches()

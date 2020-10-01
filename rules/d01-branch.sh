@@ -13,7 +13,7 @@ RULE_SECTION="Development"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="list graph create remove merge backport"
+RULE_OPTIONAL_PARAMS="list graph create remove merge backport rebase"
 
 # Show help for this rule.
 rule_help_branch() {
@@ -27,7 +27,7 @@ rule_help_branch() {
 	echo "       --remove   $(ansi dim)Name of the branch to delete.$(ansi reset)"
 	echo "       --merge    $(ansi dim)Merge the current branch on the given branch (or $(ansi reset)master$(ansi dim) if no branch was given).$(ansi reset)"
 	echo "       --backport $(ansi dim)Merge the given branch (or $(ansi reset)master$(ansi dim) if no branch was given) on the current branch.$(ansi reset)"
-	echo "       --rebase   $(ansi dim)Rebase the current branch from its parent branch.$(ansi reset)"
+	echo "       --rebase   $(ansi dim)Rebase the current branch from $(ansi reset)master$(ansi dim).$(ansi reset)"
 }
 
 # Execution of the rule
@@ -52,6 +52,9 @@ rule_exec_branch() {
 	elif [ "${DPK_OPT["backport"]}" != "" ]; then
 		# backport
 		_branch_backport
+	elif [ "${DPK_OPT["rebase"]}" != "" ]; then
+		# rebase
+		_branch_rebase
 	else
 		echo "$(ansi red)No option given.$(ansi reset)"
 		rule_help_branch
@@ -244,7 +247,7 @@ _branch_backport() {
 }
 
 # _branch_rebase()
-# Rebase the current branch from its parent branch.
+# Rebase the current branch from master.
 _branch_rebase() {
 	check_git_branch
 	check_git_clean
@@ -254,19 +257,14 @@ _branch_rebase() {
 	if [ "$BRANCH" = "master" ]; then
 		abort "$(ansi red)Unable to rebase 'master' branch.$(ansi reset)"
 	fi
-	# get the parent branch
-	PARENT_BRANCH="$(git_get_parent_branch)"
-	if [ ! "$PARENT_BRANCH" ]; then
-		abort "$(ansi red)Unable to find the parent branch of the current branch.$(ansi reset)"
-	fi
 	# rebase operations
-	echo "$(ansi bold)Updating $PARENT_BRANCH branch$(ansi reset)"
-	git checkout "$PARENT_BRANCH"
+	echo "$(ansi bold)Updating 'master' branch$(ansi reset)"
+	git checkout master
 	git pull
 	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
 	git checkout "$BRANCH"
-	echo "$(ansi bold)Rebasing '$BRANCH' branch on '$PARENT_BRANCH'$(ansi reset)"
-	git rebase "$PARENT_BRANCH"
+	echo "$(ansi bold)Rebasing '$BRANCH' branch on 'master'$(ansi reset)"
+	git rebase master
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
 	git push origin "$BRANCH"
 }
