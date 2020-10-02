@@ -22,10 +22,10 @@ declare -A CONF_INSTALL_CHMOD
 
 # Show help for this rule.
 rule_help_install() {
-	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=master|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)Deploy source code (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
 	echo "       --platform        $(ansi dim)Definition of the current platform. Otherwise, Dispak will try to detect it.$(ansi reset)"
-	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)master$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
+	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
 	echo "       --no-apache       $(ansi dim)Don't install Apache configuration files, even if Apache is installed on the current machine.$(ansi reset)"
 	echo "       --no-crontab      $(ansi dim)Don't install crontab configuration.$(ansi reset)"
 	echo "       --no-db-migration $(ansi dim)Don't perform database migration.$(ansi reset)"
@@ -65,7 +65,7 @@ rule_exec_install() {
 	fi
 	# remove symlinks from the currently installed tag
 	CURRENT_TAG="$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
-	if [ "$CURRENT_TAG" != "master" ] && [ ${#CONF_INSTALL_SYMLINK[@]} -ne 0 ]; then
+	if [ "$CURRENT_TAG" != "$CONF_GIT_MAIN" ] && [ ${#CONF_INSTALL_SYMLINK[@]} -ne 0 ]; then
 		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
 			if [ -L "$_SYMLINK/$CURRENT_TAG" ]; then
 				echo "$(ansi bold)Removing symlink $(ansi reset)$(ansi dim)$_SYMLINK/$CURRENT_TAG$(ansi reset)"
@@ -78,9 +78,9 @@ rule_exec_install() {
 	# deploy source code
 	git_fetch
 	echo "$(ansi bold)Updating source code repository$(ansi reset)"
-	if [ "${DPK_OPT["tag"]}" = "master" ]; then
-		if ! git checkout master --quiet ; then
-			abort "$(ansi red)Failed to move back to master branch.$(ansi reset)"
+	if [ "${DPK_OPT["tag"]}" = "$CONF_GIT_MAIN" ]; then
+		if ! git checkout "$CONF_GIT_MAIN" --quiet ; then
+			abort "$(ansi red)Failed to move back to '$CONF_GIT_MAIN' branch.$(ansi reset)"
 		fi
 	else
 		if ! git checkout "tags/${DPK_OPT["tag"]}" --quiet ; then

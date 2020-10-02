@@ -38,7 +38,7 @@ rule_exec_pkg() {
 	check_next_tag
 	# check URL
 	_pkg_check_url
-	# check master branch
+	# check 'master' branch
 	check_git_master
 	# check the repo is clean
 	check_git_clean
@@ -55,7 +55,7 @@ rule_exec_pkg() {
 		touch "$GIT_REPO_PATH/etc/database/migrations/current"
 		git add "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPT["tag"]}" "$GIT_REPO_PATH/etc/database/migrations/current"
 		git commit -m "Added database migration file for version ${DPK_OPT["tag"]}"
-		git push origin master
+		git push origin "$CONF_GIT_MAIN"
 	fi
 	# minify files
 	_pkg_minify
@@ -196,7 +196,7 @@ _pkg_minify() {
 		done
 		if [ $NEED_COMMIT -ne 0 ]; then
 			git commit -m "Added minified files for version ${DPK_OPT["tag"]}."
-			git push origin master
+			git push origin "$CONF_GIT_MAIN"
 		fi
 	fi
 }
@@ -204,7 +204,7 @@ _pkg_minify() {
 # _pkg_s3()
 # Send static files to Amazon S3
 _pkg_s3() {
-	if [ "${DPK_OPT["tag"]}" = "" ] || [ "${DPK_OPT["tag"]}" = "master" ]; then
+	if [ "${DPK_OPT["tag"]}" = "" ] || [ "${DPK_OPT["tag"]}" = "$CONF_GIT_MAIN" ]; then
 		return
 	fi
 	TAG_MINOR=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f2)
@@ -227,8 +227,8 @@ _pkg_s3() {
 		fi
 		# search for a "master" symlink (and remove it)
 		FOUND_MASTER_LINK=0
-		if [ -L "${CONF_PKG_S3["$_S3"]}/master" ] && [ "$(readlink -f "${CONF_PKG_S3["$_S3"]}/master")" = "${CONF_PKG_S3["$_S3"]}" ]; then
-			rm -f "${CONF_PKG_S3["$_S3"]}/master"
+		if [ -L "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN" ] && [ "$(readlink -f "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN")" = "${CONF_PKG_S3["$_S3"]}" ]; then
+			rm -f "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
 			FOUND_MASTER_LINK=1
 		fi
 		# copy files to Amazon S3
@@ -263,7 +263,7 @@ _pkg_s3() {
 		fi
 		# re-create the "master" symlink if it was found before
 		if [ $FOUND_MASTER_LINK -eq 1 ]; then
-			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/master"
+			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
 		fi
 	done
 }

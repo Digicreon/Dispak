@@ -30,6 +30,9 @@ fi
 
 # ########## INTERNAL VARIABLES ##########
 
+# Name of the Git's main branch. Defaults to 'master', but more and more repositories are switching to 'main'.
+CONF_GIT_MAIN="master"
+
 # List of servers' platform types. Declared here to be fillable in the configuration file. Used by the check_platform() function.
 # @type associative array
 declare -A CONF_PLATFORMS

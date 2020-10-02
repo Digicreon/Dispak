@@ -191,7 +191,7 @@ $ dpk branch --list
 #### Create branches
 You can create a new branch. Branches are created from the last commit of the `master` branch, or from a given tag if the option `--tag` is used.
 ```shell
-# create a branch from the last commit of the master branch
+# create a branch from the last commit of the 'master' branch
 $ dpk branch --create=name_of_the_branch
 
 # create a branch from a tag
@@ -466,6 +466,7 @@ There is three kind of configuration variables:
 
 Here are the definable variables:
 - **Main configuration**
+  - `CONF_GIT_MAIN`: If the main branch or your repository is not 'master' (more and more repositories are switching to 'main'), you must define it here.
   - `CONF_PLATFORM`: IF you don't want Dispak to detect the platform, you can set what is the current environment (`dev`, `test` or `prod`).
   - `CONF_PLATFORMS`: This variable is also used to override the automatic detection of the platform. But here is an associative array that allows you to specify the platform type associated with each server (from the server names).
 - **pkg rule**

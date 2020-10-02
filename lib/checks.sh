@@ -44,18 +44,18 @@ check_git() {
 }
 
 # check_git_master()
-# Check if we are on the master branch. Abort if not.
+# Check if we are on the 'master' branch. Abort if not.
 check_git_master() {
-	if [ "$(git_get_current_branch)" != "master" ]; then
-		abort "$(ansi red)You have to be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
+	if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
+		abort "$(ansi red)You have to be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)"
 	fi
 }
 
 # check_git_branch()
-# Check if we are on a branch (not the master branch). Abort if not.
+# Check if we are on a branch (not the 'master' branch). Abort if not.
 check_git_branch() {
-	if [ "$(git_get_current_branch)" = "master" ]; then
-		abort "$(ansi red)You must not be on the $(ansi reset)master$(ansi red) branch.$(ansi reset)"
+	if [ "$(git_get_current_branch)" = "$CONF_GIT_MAIN" ]; then
+		abort "$(ansi red)You must not be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)"
 	fi
 }
 
@@ -135,7 +135,7 @@ check_tag() {
 		fi
 		DPK_OPT["tag"]=$_TAG
 		echo "Using tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)'."
-	elif [ "${DPK_OPT["tag"]}" != "master" ]; then
+	elif [ "${DPK_OPT["tag"]}" != "$CONF_GIT_MAIN" ]; then
 		FOUND=$(git tag | grep "^${DPK_OPT["tag"]}$" | wc -l)
 		if [ $FOUND -eq 0 ]; then
 			abort "$(ansi red)Bad value for 'tag' parameter (not an existing tag).$(ansi reset)"
