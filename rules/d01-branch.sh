@@ -34,25 +34,25 @@ rule_help_branch() {
 rule_exec_branch() {
 	check_git
 	git_fetch
-	if [ "${DPK_OPT["list"]}" != "" ]; then
+	if [ -v DPK_OPT["list"] ]; then
 		# list branches
 		_branch_list
-	elif [ "${DPK_OPT["graph"]}" != "" ]; then
+	elif [ -v DPK_OPT["graph"] ]; then
 		# show branches graph
 		_branch_graph
-	elif [ "${DPK_OPT["create"]}" != "" ]; then
+	elif [ -v DPK_OPT["create"] ]; then
 		# create new branch
 		_branch_create
-	elif [ "${DPK_OPT["remove"]}" != "" ]; then
+	elif [ -v DPK_OPT["remove"] ]; then
 		# delete branch
 		_branch_remove
-	elif [ "${DPK_OPT["merge"]}" != "" ]; then
+	elif [ -v DPK_OPT["merge"] ]; then
 		# merge
 		_branch_merge
-	elif [ "${DPK_OPT["backport"]}" != "" ]; then
+	elif [ -v DPK_OPT["backport"] ]; then
 		# backport
 		_branch_backport
-	elif [ "${DPK_OPT["rebase"]}" != "" ]; then
+	elif [ -v DPK_OPT["rebase"] ]; then
 		# rebase
 		_branch_rebase
 	else
@@ -116,10 +116,10 @@ _branch_create() {
 	fi
 	# check if a branch already exists with this name
 	if [ "$(git_get_branches_local_only | grep "$CREATE_BRANCH" | wc -l)" -ne 0 ]; then
-		abort "$(ansi red)A '${DPK_OPT["create"]}' local branch already exists.$(ansi reset)"
+		abort "$(ansi red)A '$CREATE_BRANCH' local branch already exists.$(ansi reset)"
 	fi
 	if [ "$(git_get_branches | grep "$CREATE_BRANCH" | wc -l)" -ne 0 ]; then
-		abort "$(ansi red)A '${DPK_OPT["create"]}' branch already exists.$(ansi reset)"
+		abort "$(ansi red)A '$CREATE_BRANCH' branch already exists.$(ansi reset)"
 	fi
 	# move to 'master' branch if needed
 	if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
@@ -171,7 +171,7 @@ _branch_remove() {
 	# delete the local branch
 	if [ "$(git branch | grep "$RM_BRANCH" | wc -l)" -ne 0 ]; then
 		echo "$(ansi bold)Delete the '$RM_BRANCH' branch locally$(ansi reset)"
-		git branch -d "${DPK_OPT["remove"]}"
+		git branch -d "$RM_BRANCH"
 	fi
 	# delete the remote branch if it exists
 	if [ "$IS_REMOTE_BRANCH" = "yes" ]; then
@@ -224,9 +224,9 @@ _branch_backport() {
 	BRANCH="$(git_get_current_branch)"
 	# get the branch to merge on the current branch
 	BRANCH_SRC="$CONF_GIT_MAIN"
-	if [ "${DPK_OPT["merge"]}" != "" ]; then
+	if [ "${DPK_OPT["backport"]}" != "" ]; then
 		# a branch was given
-		BRANCH_SRC="${DPK_OPT["merge"]}"
+		BRANCH_SRC="${DPK_OPT["backport"]}"
 		# check if this branch exists
 		if [ "$(git_get_branches | grep "$BRANCH_SRC" | wc -l)" -eq 0 ]; then
 			abort "$(ansi red)The branch '$BRANCH_SRC' doesn't exist.$(ansi reset)"

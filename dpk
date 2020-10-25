@@ -110,7 +110,11 @@ while getopts "h-:" OPTCHAR; do
 	case "$OPTCHAR" in
 		"-")
 			KEY=$(echo $OPTARG | cut -d"=" -f 1)
-			VALUE=${OPTARG#*=}
+			if [[ "${OPTARG}" == *"="* ]]; then
+				VALUE="${OPTARG#*=}"
+			else
+				VALUE=""
+			fi
 			DPK_OPT[$KEY]="$VALUE"
 			;;
 		"h")
