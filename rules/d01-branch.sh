@@ -153,7 +153,7 @@ _branch_remove() {
 		abort "$(ansi red)Empty branch name.$(ansi reset)"
 	fi
 	# check the branch name (can't be 'master')
-	if [ "$(git_get_current_branch)" = "$CONF_GIT_MAIN" ]; then
+	if [ "$RM_BRANCH" = "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)Unable to remove the '$CONF_GIT_MAIN' branch.$(ansi reset)"
 	fi
 	# check if a branch exists with this name
