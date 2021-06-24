@@ -144,11 +144,12 @@ _pkg_unminify() {
 	fi
 	# loop on minified files
 	for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
-		# if source and minified files are the same, and the file is under Git, revert the changes
-		if [ "$_FILE" == "${CONF_PKG_MINIFY["$_FILE"]}" ] && git ls-files --error-unmatch "$_FILE" 2> /dev/null; then
-			git checkout -- "$_FILE"
-		elif ! git ls-files --error-unmatch "$_FILE" 2> /dev/null ; then
-			# delete the minified file if it wasn't under Git
+		# check if the minified file was already committed
+		if git ls-files --error-unmatch "$_FILE" 2> /dev/null; then
+			# the file is under Git, revert the changes
+			git restore "$_FILE"
+		else
+			# the file is not managed with Git, delete it
 			rm -f "$_FILE"
 		fi
 	done
@@ -186,19 +187,19 @@ _pkg_minify() {
 		fi
 	done
 	# commit minified files that were alreay version controlled (only if the source and minified files are not the same)
-	if [ "$_FILE" != "${CONF_PKG_MINIFY["$_FILE"]}" ]; then
-		NEED_COMMIT=0
-		for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
-			if git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
-				git add "$_FILE"
-				NEED_COMMIT=1
-			fi
-		done
-		if [ $NEED_COMMIT -ne 0 ]; then
-			git commit -m "Added minified files for version ${DPK_OPT["tag"]}."
-			git push origin "$CONF_GIT_MAIN"
-		fi
-	fi
+	#if [ "$_FILE" != "${CONF_PKG_MINIFY["$_FILE"]}" ]; then
+	#	NEED_COMMIT=0
+	#	for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
+	#		if git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
+	#			git add "$_FILE"
+	#			NEED_COMMIT=1
+	#		fi
+	#	done
+	#	if [ $NEED_COMMIT -ne 0 ]; then
+	#		git commit -m "Added minified files for version ${DPK_OPT["tag"]}."
+	#		git push origin "$CONF_GIT_MAIN"
+	#	fi
+	#fi
 }
 
 # _pkg_s3()
@@ -240,6 +241,7 @@ _pkg_s3() {
 			pushd "${CONF_PKG_S3["$_S3"]}" > /dev/null
 			# loop on the files to compress them (only text files) and send them to Amazon S3
 			while read -r _FILE; do
+				# remove "./" at the beginning of the file name
 				_FILE="${_FILE#./}"
 				# skip this file if it's not a text file or if another file exist with the same name + ".gz" suffix
 				_MIME="$(file --mime-type -b "$_FILE")"
