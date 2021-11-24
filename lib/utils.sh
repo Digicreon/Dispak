@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Initialization of the variable that tells if the program has changed its current working directory.
+# @type bool
+_NEED_POPD=0
+
 # git_fetch
 # Fetch new tags and branches.
 git_fetch() {
