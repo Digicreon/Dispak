@@ -152,7 +152,7 @@ _branch_remove() {
 	if [ ! "$RM_BRANCH" ]; then
 		abort "$(ansi red)Empty branch name.$(ansi reset)"
 	fi
-	# check the branch name (can't be 'master')
+	# check the branch name (can't be 'main')
 	if [ "$RM_BRANCH" = "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)Unable to remove the '$CONF_GIT_MAIN' branch.$(ansi reset)"
 	fi
@@ -171,7 +171,7 @@ _branch_remove() {
 	# delete the local branch
 	if [ "$(git branch | grep "$RM_BRANCH" | wc -l)" -ne 0 ]; then
 		echo "$(ansi bold)Delete the '$RM_BRANCH' branch locally$(ansi reset)"
-		git branch -d "$RM_BRANCH"
+		git branch -D "$RM_BRANCH"
 	fi
 	# delete the remote branch if it exists
 	if [ "$IS_REMOTE_BRANCH" = "yes" ]; then
