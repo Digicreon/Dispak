@@ -256,6 +256,20 @@ _branch_rebase() {
 	check_git_pushed
 	# get the current branch
 	BRANCH="$(git_get_current_branch)"
+	# get the branch to rebase onto
+	BRANCH_SRC="$CONF_GIT_MAIN"
+	if [ "${DPK_OPT["rebase"]}" != "" ]; then
+		# a branch was given
+		BRANCH_SRC="${DPK_OPT["rebase"]}"
+		# check if this branch exists
+		if [ "$(git_get_branches | grep "$BRANCH_SRC" | wc -l)" -eq 0 ]; then
+			abort "$(ansi red)The branch '$BRANCH_SRC' doesn't exist.$(ansi reset)"
+		fi
+	fi
+	# check the source and destination are different
+	if [ "$BRANCH" = "$BRANCH_SRC" ]; then
+		abort "$(ansi red)Unable to rebase the '$BRANCH' branch on itself.$(ansi reset)"
+	fi
 	if [ "$BRANCH" = "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)Unable to rebase '$CONF_GIT_MAIN' branch.$(ansi reset)"
 	fi
@@ -265,8 +279,9 @@ _branch_rebase() {
 	git pull
 	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
 	git checkout "$BRANCH"
-	echo "$(ansi bold)Rebasing '$BRANCH' branch on '$CONF_GIT_MAIN'$(ansi reset)"
-	git rebase "$CONF_GIT_MAIN"
+	echo "$(ansi bold)Rebasing '$BRANCH' branch on '$BRANCH_SRC'$(ansi reset)"
+	git rebase "$BRANCH_SRC"
+	git pull
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
 	git push origin "$BRANCH"
 }
