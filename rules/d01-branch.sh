@@ -17,7 +17,7 @@ RULE_OPTIONAL_PARAMS="list graph create remove merge backport rebase"
 
 # Show help for this rule.
 rule_help_branch() {
-	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name [--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)]$(ansi reset)"
+	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name [--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)] [$(ansi reset)--rename$(ansi dim)=new_name]$(ansi reset)"
 	echo "       $(ansi dim)Manage branches. One of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
 	echo "       --graph    $(ansi dim)Show a graph of the existing branches.$(ansi reset)"
@@ -28,6 +28,7 @@ rule_help_branch() {
 	echo "       --merge    $(ansi dim)Merge the current branch on the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given).$(ansi reset)"
 	echo "       --backport $(ansi dim)Merge the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given) on the current branch.$(ansi reset)"
 	echo "       --rebase   $(ansi dim)Rebase the current branch from $(ansi reset)$CONF_GIT_MAIN$(ansi dim).$(ansi reset)"
+	echo "       --rename   $(ansi dim)Rename the current branch (not the $(ansi reset)$CONF_GIT_MAIN$(ansi dim) branch) with the given name.$(ansi reset)"
 }
 
 # Execution of the rule
@@ -55,6 +56,9 @@ rule_exec_branch() {
 	elif [ -v DPK_OPT["rebase"] ]; then
 		# rebase
 		_branch_rebase
+	elif [ -v DPK_OPT["rename"] ]; then
+		# rename
+		_branch_rename
 	else
 		echo "$(ansi red)No option given.$(ansi reset)"
 		rule_help_branch
@@ -284,5 +288,37 @@ _branch_rebase() {
 	git pull
 	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
 	git push origin "$BRANCH"
+}
+
+# _branch_rename()
+# Rename the current branch to the given name.
+_branch_rename() {
+	check_git_branch
+	check_git_clean
+	check_git_pushed
+	# get the current branch name
+	OLD_NAME="$(git_get_current_branch)"
+	# get the new branch name
+	NEW_NAME="${DPK_OPT["backport"]}"
+	if [ "$NEW_NAME" = "" ]; then
+		abort "$(ansi red)No branch name given.$(ansi reset)"
+	fi
+	# check if the branch exists
+	if [ "$(git_get_branches | grep "$NEW_NAME" | wc -l)" -ne 0 ]; then
+		abort "$(ansi red)The branch '$NEW_NAME' already exists.$(ansi reset)"
+	fi
+	# check the new name is not "main"
+	if [ "$NEW_NAME" = "$CONF_GIT_MAIN" ]; then
+		abort "$(ansi red)Unable to rename the '$OLD_NAME' branch to '$CONF_GIT_MAIN'.$(ansi reset)"
+	fi
+	# check the old and new names are different
+	if [ "$OLD_NAME" = "$NEW_NAME" ]; then
+		abort "$(ansi red)Unable to rename the '$OLD_NAME' branch to itself.$(ansi reset)"
+	fi
+	# rename operation
+	echo "$(ansi bold)Renaming '$OLD_NAME' branch to '$NEW_NAME'$(ansi reset)"
+	git branch -m "$NEW_NAME"
+	git push origin -u "$NEW_NAME"
+	git push origin --delete "$OLD_NAME"
 }
 
