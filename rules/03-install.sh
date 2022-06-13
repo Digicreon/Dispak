@@ -151,10 +151,23 @@ _install_post_scripts() {
 # _install_crontab()
 # Install new crontab file.
 _install_crontab() {
-	if [ "${DPK_OPT["no-crontab"]}" != "" ] || [ ! -f "$GIT_REPO_PATH/etc/crontab" ]; then
+	if [ "${DPK_OPT["no-crontab"]}" != "" ]; then
+		return
+	fi
+	if [ ! -f "$GIT_REPO_PATH/etc/crontab" ] && [ ! -f "$GIT_REPO_PATH/etc/crontab.gen" ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing crontab$(ansi reset)"
+	if [ -e "$GIT_REPO_PATH/etc/crontab.gen" ]; then
+		echo -n "$(ansi dim)+ Generating... $(ansi reset)"
+		chmod +x "$GIT_REPO_PATH/etc/crontab.gen"
+		"$GIT_REPO_PATH/etc/crontab.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$GIT_REPO_PATH/etc/crontab"
+		if [ $? -ne 0 ]; then
+			echo
+			abort "$(ansi red)Crontab configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/crontab.gen$(ansi red) execution failed.$(ansi reset)"
+		fi
+		echo "$(ansi green)done$(ansi reset)"
+	fi
 	START_MARK="### DISPAK CRONTAB START +++ $GIT_REPO_PATH/etc/crontab"
 	END_MARK="### DISPAK CRONTAB END --- $GIT_REPO_PATH/etc/crontab"
 	echo "$(crontab -l 2>/dev/null)" | grep "^$START_MARK$" > /dev/null
