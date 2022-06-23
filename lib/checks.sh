@@ -109,11 +109,11 @@ check_platform() {
 		DPK_OPT["platform"]="${CONF_PLATFORMS[$HOSTNAME]}"
 		return
 	fi
-	echo "$HOSTNAME" | grep -Eq "^test[0-9]+$|^preprod[0-9]+$|^pprod[0-9]+$"
+	echo "$HOSTNAME" | grep -Eq "^test[0-9]*$|^preprod[0-9]*$|^pprod[0-9]*$"
 	if [ $? -eq 0 ]; then
 		DPK_OPT["platform"]="test"
 	else
-		echo "$HOSTNAME" | grep -Eq "^server[0-9]+$|^serv[0-9]+$|^prod[0-9]+$|^web[0-9]+$|^db[0-9]+$|^cron[0-9]+$|^worker[0-9]+$|^front[0-9]+$|^back[0-9]+$"
+		echo "$HOSTNAME" | grep -Eq "^server[0-9]*$|^serv[0-9]*$|^prod[0-9]*$|^web[0-9]*$|^db[0-9]*$|^cron[0-9]*$|^worker[0-9]*$|^front[0-9]*$|^back[0-9]*$"
 		if [ $? -eq 0 ]; then
 			DPK_OPT["platform"]="prod"
 		else
