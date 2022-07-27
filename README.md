@@ -509,8 +509,8 @@ Here are the definable variables:
   - `CONF_INSTALL_SYMLINK`: Use this variable if you need to create symlinks when you install a new version. It is an associative array; the key is the path to the link's directory; the value is the path pointed by the link. The link will be created in its destination directory, and its name is the installed tag's version number.
   - `CONF_INSTALL_SCRIPTS_PRE`: Here is a list of scripts to execute before install.
   - `CONF_INSTALL_SCRIPTS_POST`: Here is a list of scripts to execute after install. The scripts are not executed if an error has occured during the install process.
-  - `CONF_CONFIG_SCRIPTS_PRE`: Here is a list of scripts to execute before install (after `CONF_INSTALL_SCRIPTS_PRE` scripts) or before configuration (`dpk config` command).
-  - `CONF_CONFIG_SCRIPTS_POST`: Here is a list of scripts to execute after install (before `CONF_INSTALL_SCRIPTS_POST` scripts) or after configuration (`dpk config` command). The scripts are not executed if an error has occured during the install process.
+  - `CONF_CONFIG_SCRIPTS_PRE`: Here is a list of scripts to execute before install (after pre-install scripts) or at the beginning of configuration (`dpk config` command).
+  - `CONF_CONFIG_SCRIPTS_POST`: Here is a list of scripts to execute after install (before post-install scripts) or at the end of configuration (`dpk config` command). The scripts are not executed if an error has occured during the install process.
   - `CONF_INSTALL_APACHE_FILES`: This variable must contain a list of Apache configuration files. These files are listed in the system configuration (in `/etc/apache2/sites-available` and linked in `/etc/apache2/sites-enabled`) if they are not already.
   - `CONF_INSTALL_CHOWN`: Associative array. The keys are user logins, and the values are path to files and/or directories that must be changed of owner.
   - `CONF_INSTALL_CHMOD`: Associative array. The keys are a `chmod` file right (like `+x` or `644`), and the values are lists of files and/or directories that must be `chmod`'ed.
