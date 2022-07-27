@@ -23,7 +23,8 @@ Table of contents
    3. [List tags](#13-list-tags)
    4. [Create tag](#14-create-tag)
    5. [Install tag](#15-install-tag)
-   6. [Branch management](#16-branch-management)
+   6. [Configure](#16-configure)
+   7. [Branch management](#17-branch-management)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
@@ -163,6 +164,7 @@ Dispak will perform these operations:
 - Ensure that no unstable tag is installed on a production server.
 - Remove previously created symlink (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Execute pre-install scripts (see [below](#33-pre-post-scripts-execution)).
+- Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
 - **Deploy new version's source code.**
 - Install crontab file (see [below](#32-crontab-installation)).
 - Perform database migration (see [below](#31-database-migrations)).
@@ -170,12 +172,39 @@ Dispak will perform these operations:
 - Set files ownership (see [configuration](#38-configuration-file)).
 - Set files access rights (see [configuration](#38-configuration-file)).
 - Generate files (see [below](#34-files-generation)).
+- Execute post-configuration scripts (see [below](#33-pre-post-scripts-execution)).
 - Execute post-install scripts (see [below](#33-pre-post-scripts-execution)).
 
 Options are available to disable some operations:
 - `--no-apache`: Apache configuration files are *not* installed, even if Apache is installed on the current machine.
 - `--no-crontab`: Crontab file is not installed.
 - `--no-db-migration`: Database migration is not performed.
+
+
+### 1.7 Configure
+
+It is possible to re-configure an already deployed tag or branch, by using this command:
+```shell
+$ dpk config
+```
+
+Dispak will detect which tag to use, and what kind of platform (`dev`, `test` or `prod`) is corresponding to the local machine.
+
+Alternatively, you can specify the tag and/or the local platform:
+```shell
+$ dpk config --platform=test --tag=main
+```
+
+Dispak will perform these operations:
+- Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
+- Install crontab file (see [below](#32-crontab-installation)).
+- Install Apache configuration files (see [below](#37-apache-configuration)).
+- Set files ownership (see [configuration](#38-configuration-file)).
+- Set files access rights (see [configuration](#38-configuration-file)).
+- Generate files (see [below](#34-files-generation)).
+- Execute post-configuration scripts (see [below](#33-pre-post-scripts-execution)).
+
+It is a subset of the `dpk install` command, useful to refresh the local configuration of a project after updating its files manually.
 
 
 ### 1.6 Branches management
@@ -376,15 +405,15 @@ So your crontab will end looking like that:
 
 ### 3.3 Pre/post scripts execution
 
-Dispak can execute scripts before and after packaging (the action of creating a new tag) and install.
+Dispak can execute scripts before and after packaging (the action of creating a new tag), configuration and installation.
 
 These scripts could be written in any language. Their return status must be equal to 0 (zero); any other value will make Dispak to abort its processing.
 
 Dispak gives two parameters to these scripts:
 1. The platform environment (`dev`, `test` or `prod`).
-2. The tag version number. For pre/post-packing scripts it is the number of the created tag; for pre/post-install scripts it is the number of the installed tag.
+2. The tag version number. For pre/post-packaging scripts it is the number of the created tag; for pre/post-config and pre/post-install scripts it is the number of the installed tag.
 
-Pre/post installation scripts get two additional parameters:
+Pre/post configuration and installation scripts get two additional parameters:
 1. The old tag version number.
 2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
 These two extra parameters are empty if the installation is done over a `master` branch install.
@@ -480,6 +509,8 @@ Here are the definable variables:
   - `CONF_INSTALL_SYMLINK`: Use this variable if you need to create symlinks when you install a new version. It is an associative array; the key is the path to the link's directory; the value is the path pointed by the link. The link will be created in its destination directory, and its name is the installed tag's version number.
   - `CONF_INSTALL_SCRIPTS_PRE`: Here is a list of scripts to execute before install.
   - `CONF_INSTALL_SCRIPTS_POST`: Here is a list of scripts to execute after install. The scripts are not executed if an error has occured during the install process.
+  - `CONF_CONFIG_SCRIPTS_PRE`: Here is a list of scripts to execute before install (after `CONF_INSTALL_SCRIPTS_PRE` scripts) or before configuration (`dpk config` command).
+  - `CONF_CONFIG_SCRIPTS_POST`: Here is a list of scripts to execute after install (before `CONF_INSTALL_SCRIPTS_POST` scripts) or after configuration (`dpk config` command). The scripts are not executed if an error has occured during the install process.
   - `CONF_INSTALL_APACHE_FILES`: This variable must contain a list of Apache configuration files. These files are listed in the system configuration (in `/etc/apache2/sites-available` and linked in `/etc/apache2/sites-enabled`) if they are not already.
   - `CONF_INSTALL_CHOWN`: Associative array. The keys are user logins, and the values are path to files and/or directories that must be changed of owner.
   - `CONF_INSTALL_CHMOD`: Associative array. The keys are a `chmod` file right (like `+x` or `644`), and the values are lists of files and/or directories that must be `chmod`'ed.

@@ -28,10 +28,59 @@ rule_exec_config() {
 	check_sudo
 	check_tag
 	check_platform
+	# execute pre-config scripts
+	_config_pre_scripts
 	# install crontab
 	_install_crontab
 	# Apache configuration
 	_install_config_apache
 	# files configuration
 	_install_config_files
+	# execute post-config scripts
+	_config_post_scripts
 }
+
+# _config_pre_scripts()
+# Execute pre-config scripts.
+_config_pre_scripts() {
+	if [ "$CONF_CONFIG_SCRIPTS_PRE" = "" ]; then
+		return
+	fi
+	echo "$(ansi bold)Execute pre-config scripts$(ansi reset)"
+	for _SCRIPT in $CONF_CONFIG_SCRIPTS_PRE; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
+		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
+		fi
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
+		if [ $? -ne 0 ]; then
+			abort "$(ansi red)Execution failed.$(ansi reset)"
+		fi
+	done
+	echo "$(ansi gree)Done$(ansi reset)"
+}
+
+# _config_post_scripts()
+# Execute post-config scripts.
+_config_post_scripts() {
+	if [ "$CONF_CONFIG_SCRIPTS_POST" = "" ]; then
+		return
+	fi
+	echo "$(ansi bold)Execute post-config scripts$(ansi reset)"
+	for _SCRIPT in $CONF_CONFIG_SCRIPTS_POST; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
+		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
+		fi
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
+		if [ $? -ne 0 ]; then
+			abort "$(ansi red)Execution failed.$(ansi reset)"
+		fi
+	done
+	echo "$(ansi gree)Done$(ansi reset)"
+}
+

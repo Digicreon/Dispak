@@ -75,6 +75,8 @@ rule_exec_install() {
 	fi
 	# execute pre-install scripts
 	_install_pre_scripts
+	# execute pre-config scripts
+	_config_pre_scripts
 	# deploy source code
 	git_fetch
 	echo "$(ansi bold)Updating source code repository$(ansi reset)"
@@ -100,6 +102,8 @@ rule_exec_install() {
 	_install_config_apache
 	# files configuration
 	_install_config_files
+	# execute post-config scripts
+	_config_post_scripts
 	# execute post-install scripts
 	_install_post_scripts
 }
