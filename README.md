@@ -23,7 +23,7 @@ Table of contents
    3. [List tags](#13-list-tags)
    4. [Create tag](#14-create-tag)
    5. [Install tag](#15-install-tag)
-   6. [Configure](#16-configure)
+   6. [Refresh configuration](#16-configure)
    7. [Branch management](#17-branch-management)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
@@ -181,7 +181,7 @@ Options are available to disable some operations:
 - `--no-db-migration`: Database migration is not performed.
 
 
-### 1.7 Configure
+### 1.6 Refresh configuration
 
 It is possible to re-configure an already deployed tag or branch, by using this command:
 ```shell
@@ -207,7 +207,7 @@ Dispak will perform these operations:
 It is a subset of the `dpk install` command, useful to refresh the local configuration of a project after updating its files manually.
 
 
-### 1.6 Branches management
+### 1.7 Branches management
 
 Dispak helps you to do basic branches management.
 
