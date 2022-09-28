@@ -44,7 +44,7 @@ rule_exec_install() {
 	TAG_REVISION=$(echo "${DPK_OPT["tag"]}" | cut -d"." -f 3)
 	# get currently installed version number
 	CURRENT_TAG="$(git_get_current_tag)"
-	if [ "$CURRENT_TAG" != "" ]; then
+	if [ "$CURRENT_TAG" != "" ] && [[ "$CURRENT_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
 		CURRENT_TAG_MAJOR=$(echo "$CURRENT_TAG" | cut -d"." -f 1)
 		CURRENT_TAG_MINOR=$(echo "$CURRENT_TAG" | cut -d"." -f 2)
 		CURRENT_TAG_REVISION=$(echo "$CURRENT_TAG" | cut -d"." -f 3)
