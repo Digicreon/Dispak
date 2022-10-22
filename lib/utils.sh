@@ -81,11 +81,20 @@ align_spaces() {
 	printf "%0.s " $(seq 1 $LEN)
 }
 
+# html_escape()
+# Escape the  HTML special characters of the given text.
+# @param	string	The text that must be escaped.
+# @return	string	The escaped text.
+html_escape() {
+	RESULT="$(echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&apos;/g')"
+	echo $RESULT
+}
+
 # trim()
 # Remove spaces at the beginning and at the end of a character string.
 # @param	string	The string to trim.
 trim() {
-	RESULT=$(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	RESULT="$(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 	echo $RESULT
 }
 
@@ -94,7 +103,7 @@ trim() {
 # Replace slashes and spaces by dashes.
 # @param	string	The string to modify.
 filenamize() {
-	RESULT=$(echo "$1" | sed 's/[[:space:]]\+/-/g' | sed 's/\//-/g' | sed -e 's/^-*//' -e 's/-*$//' | sed 's/-\+/-/g')
+	RESULT="$(echo "$1" | sed 's/[[:space:]]\+/-/g' | sed 's/\//-/g' | sed -e 's/^-*//' -e 's/-*$//' | sed 's/-\+/-/g')"
 	echo $RESULT
 }
 
