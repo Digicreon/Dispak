@@ -180,7 +180,6 @@ _pkg_minify() {
 	echo "$(ansi bold)Files minification$(ansi reset)"
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		echo "$(ansi dim)> $_FILE$(ansi reset)"
-		#minify --output "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		minify -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		if [ $? -ne 0 ]; then
 			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'."
