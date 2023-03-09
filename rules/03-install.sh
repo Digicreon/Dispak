@@ -172,8 +172,8 @@ _install_crontab() {
 		fi
 		echo "$(ansi green)done$(ansi reset)"
 	fi
-	START_MARK="# ┏━━━━━(DISPAK CRONTAB START)━━━[$GIT_REPO_PATH/etc/crontab]━━━━━┓"
-	END_MARK="# ┗━━━━━(DISPAK CRONTAB END)━━━━━[$GIT_REPO_PATH/etc/crontab]━━━━━┛"
+	START_MARK="# ┏━━━━━┥DISPAK CRONTAB START┝━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┓"
+	END_MARK="# ┗━━━━━┥DISPAK CRONTAB END┝━━━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┛"
 	echo "$(crontab -l 2>/dev/null)" | grep "^$START_MARK$" > /dev/null
 	if [ $? -ne 0 ]; then
 		(crontab -l 2>/dev/null; echo; echo $START_MARK; echo; cat "$GIT_REPO_PATH/etc/crontab"; echo $END_MARK) | crontab -
