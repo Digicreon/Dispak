@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Initialization of the variable that tells if the program has changed its current working directory.
 # @type bool

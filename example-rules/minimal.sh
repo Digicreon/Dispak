@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # "minimal" example rule for Dispak
 # © 2017, Amaury Bouchard <amaury@amaury.net>

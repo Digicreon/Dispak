@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # "branch" rule for Dispak
 # © 2017, Amaury Bouchard <amaury@amaury.net>

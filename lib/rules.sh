@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _dpk_rule_add()
 # Add a rule, indexed by its section.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # "pkg" rule for Dispak
 # © 2017, Amaury Bouchard <amaury@amaury.net>

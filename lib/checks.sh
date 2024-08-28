@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # check_aws()
 # Check if the aws-cli program is installed.

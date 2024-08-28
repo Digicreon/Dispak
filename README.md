@@ -271,7 +271,7 @@ On Mac OS X, the installed version of `bash` is obsolete. You need to install a 
 
 To install `git` on Ubuntu:
 ```shell
-# apt-get install git
+# apt install git
 ```
 
 #### 2.1.2 Minifier
@@ -279,7 +279,7 @@ If you want to use Dispak for Javascript and/or CSS files minification, you need
 
 To install these tools on Ubuntu:
 ```shell
-# apt-get install nodejs
+# apt install nodejs
 # npm install -g minifier
 ```
 
@@ -291,7 +291,7 @@ If you want to upload static files on [Amazon S3](https://aws.amazon.com/s3/), y
 
 Install AWS-CLI on Ubuntu:
 ```shell
-# apt-get install awscli
+# apt install awscli
 ```
 
 Configure the program (you will be asked for the AWS user's access key and secret key, and the used datacenter):
@@ -323,7 +323,7 @@ $ git clone https://github.com/Amaury/Dispak
 
 ### 2.3 Post-install
 
-Once Dispak is installer, you can add an alias in your `~/.bashrc` or `~/.bash_aliases` file:
+Once Dispak is installed, you can add an alias in your `~/.bashrc` or `~/.bash_aliases` file:
 ```shell
 alias dpk='/path/to/Dispak/dpk'
 ```
@@ -334,12 +334,12 @@ More, if you are using Bash as your command-line shell, you can take advantage o
 
 First, ensure to have the package `bash-completion` installed on your computer:
 ```shell
-# apt-get install bash-completion
+# apt install bash-completion
 ```
 
-After that, you have to add this line to the file `~/.bash_completion` (adapt the path to your installation):
+After that, add this line to the file `~/.bash_completion`:
 ```shell
-. /opt/Dispak/dispak_completion.bash
+. /path/to/Dispak/dispak_completion.bash
 ```
 
 
@@ -553,7 +553,7 @@ You can put your rules files in two different places:
 
 You can take a look to the [`example-rules/minimal.sh`](https://github.com/Amaury/Dispak/blob/master/example-rules/minimal.sh) file:
 ```shell
-#!/bin/bash
+#!/usr/bin/env bash
 
 # "minimal" example rule for Dispak
 # © 2017, Amaury Bouchard <amaury@amaury.net>

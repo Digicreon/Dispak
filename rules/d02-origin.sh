@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # "origin" rule for Dispak
 # © 2023, Amaury Bouchard <amaury@amaury.net>
