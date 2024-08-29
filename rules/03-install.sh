@@ -188,20 +188,20 @@ _install_crontab() {
 # _install_db_migration()
 # Do the migration of a new version of the database.
 _install_db_migration() {
-	if [ "${DPK_OPT["no-db-migration"]}" != "" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
+	if [ "${DPK_OPT["no-db-migration"]}" != "" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
 	# loop on migration files
 	for MIGRATION in $(ls "$GIT_REPO_PATH/etc/database/migrations" | grep -v current | sort -V); do
-		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" | tail -1)
+		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" | tail -1)
 		if [ "$NBR" != "0" ]; then
 			continue
 		fi
 		echo "$(ansi dim)Executing database migration file $(ansi blue)$GIT_REPO_PATH/etc/database/migrations/$MIGRATION$(ansi reset)"
-		MIGRATION_ID=$(echo "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" | tail -1)
-		MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" < "$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
-		echo "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST"
+		MIGRATION_ID=$(echo "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" | tail -1)
+		MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" < "$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
+		echo "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT"
 	done
 	echo "$(ansi green)Done$(ansi reset)"
 }

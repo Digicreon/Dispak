@@ -370,7 +370,7 @@ CREATE TABLE DatabaseMigration (
 ```
 
 The rest of the process is fairly simple:
-1. In your Dispak configuration file (see [below](#35-configuration-file)), fill the database related variables (`CONF_DB_HOST`, `CONF_DB_USER`, `CONF_DB_PWD`, `CONF_DB_MIGRATION_BASE`, `CONF_DB_MIGRATION_TABLE`).
+1. In your Dispak configuration file (see [below](#35-configuration-file)), fill the database related variables (`CONF_DB_HOST`, `CONF_DB_PORT`, `CONF_DB_USER`, `CONF_DB_PWD`, `CONF_DB_MIGRATION_BASE`, `CONF_DB_MIGRATION_TABLE`).
 2. In your project's repository, create a `etc/database/migrations` directory.
 3. In this directory, you must create a file named `current` which will contain all your `ALTER` commands. You must commit this file.
 4. When you create a new tag with `dpk pkg`, the `current` file will be renamed with the tag version number(`X.Y.Z`), and a new empty `current` file is created.
@@ -392,10 +392,10 @@ So your crontab will end looking like that:
 * * * * * local_command1
 * * * * * local_command2
 
-### DISPAK CRONTAB START ###
+# ┏━━━━━┥DISPAK CRONTAB START┝━━━┥/path/to/project/etc/crontab┝━━━━━┓
 * * * * * dispak_command1
 * * * * * dispak_command2
-### DISPAK CRONTAB END ###
+# ┗━━━━━┥DISPAK CRONTAB END┝━━━━━┥/path/to/project/etc/crontab┝━━━━━┛
 
 # other commands
 * * * * * local_command3
@@ -517,6 +517,7 @@ Here are the definable variables:
   - `CONF_INSTALL_GENERATE`: The variable must contain a list of files that must be *generated* after install. Each entry of the list must be the path to the *generated* file. For each one of them, a *generator* script must exist with the same name and a `.gen` extension. When a generator script is executed, everything coming out from its STDOUT will be written in the generated file.
 - **Database management**
   - `CONF_DB_HOST`: Database host name.
+  - `CONF_DB_PORT`: Database port number.
   - `CONF_DB_USER`: Database connection user name.
   - `CONF_DB_PWD`: Database connection password.
   - `CONF_DB_MIGRATION_BASE`: Name of the base which contains the migration table.

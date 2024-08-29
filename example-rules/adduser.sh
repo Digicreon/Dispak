@@ -26,7 +26,7 @@ rule_help_adduser() {
 	echo "       --email:    $(ansi dim)User's email address.$(ansi reset)"
 	echo "       --name:     $(ansi dim)User's full name.$(ansi reset)"
 	echo "       --admin:    $(ansi dim)(Optional) Give administrator rights.$(ansi reset)"
-	echo "       $(ansi yellow)⚠ Needs to find the parameters $(ansi reset)CONF_DB_HOST$(ansi yellow), $(ansi reset)CONF_DB_USER$(ansi yellow) and $(ansi reset)CONF_DB_PWD$(ansi yellow) in the configuration file.$(ansi reset)"
+	echo "       $(ansi yellow)⚠ Needs to find the parameters $(ansi reset)CONF_DB_HOST$(ansi yellow), $(ansi reset)CONF_DB_PORT$(ansi yellow), $(ansi reset)CONF_DB_USER$(ansi yellow) and $(ansi reset)CONF_DB_PWD$(ansi yellow) in the configuration file.$(ansi reset)"
 }
 
 # Execution of the rule.
@@ -54,6 +54,6 @@ rule_exec_adduser() {
 
 # Private function.
 _adduser_sql() {
-	echo "$1" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST
+	echo "$1" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST -P $CONF_DB_PORT
 }
 

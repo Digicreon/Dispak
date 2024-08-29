@@ -19,12 +19,12 @@ check_aws() {
 # check_dbhost()
 # Check if the database host is defined and reachable.
 check_dbhost() {
-	if [ "$CONF_DB_HOST" = "" ]; then
-		abort "Empty configuration for database host name."
+	if [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ]; then
+		abort "Empty database configuration."
 	fi
-	ping -c 1 "$CONF_DB_HOST" > /dev/null
+	echo "SELECT 1;" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST -P $CONF_DB_PORT > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		abort "$(ansi red)Unable to ping database hostname$(ansi reset) $DATABASE_HOSTNAME $(ansi red).$(ansi reset)"
+		abort "$(ansi red)Database connection error on$(ansi reset) $DATABASE_HOSTNAME $(ansi red).$(ansi reset)"
 	fi
 }
 
