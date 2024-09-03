@@ -18,8 +18,8 @@ _dpk() {
 	_ACTIONS_OPT["branch"]="--list --create --remove --merge --backport --tag="
 	_ACTIONS_OPT["tags"]="--all"
 	_ACTIONS_OPT["pkg"]="--tag="
-	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=master --tag= --no-apache --no-crontab --no-db-migration"
-	_ACTIONS_OPT["config"]="--platform=dev --platform=test --platform=prod --tag=master --tag="
+	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-db-migration"
+	_ACTIONS_OPT["config"]="--platform=dev --platform=test --platform=prod --tag=main --tag="
 	COMPREPLY=()
 	if [ "$COMP_CWORD" = "1" ]; then
 		OPTS="$_ACTIONS"
@@ -32,13 +32,13 @@ _dpk() {
 		if [ "$PREV" = "--platform" ]; then
 			OPTS="dev test prod"
 		elif [ "$PREV" = "--tag" ]; then
-			OPTS="master"
+			OPTS="main"
 		fi
 	elif [ "$PREV" = "=" ]; then
 		if [ "$PREV2" = "--platform" ]; then
 			OPTS="dev test prod"
 		elif [ "$PREV2" = "--tag" ]; then
-			OPTS="master"
+			OPTS="main"
 		fi
 	else
 		ACTION="${COMP_WORDS[1]}"

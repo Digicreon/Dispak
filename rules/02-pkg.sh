@@ -38,8 +38,8 @@ rule_exec_pkg() {
 	check_next_tag
 	# check URL
 	_pkg_check_url
-	# check 'master' branch
-	check_git_master
+	# check 'main' branch
+	check_git_main
 	# check the repo is clean
 	check_git_clean
 	# check unpushed files
@@ -225,7 +225,7 @@ _pkg_s3() {
 		if [ ! -d "${CONF_PKG_S3["$_S3"]}" ]; then
 			abort "The path '${CONF_PKG_S3["$_S3"]}' doesn't exist."
 		fi
-		# search for a "master" symlink (and remove it)
+		# search for a "main" symlink (and remove it)
 		FOUND_MASTER_LINK=0
 		if [ -L "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN" ] && [ "$(readlink -f "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN")" = "${CONF_PKG_S3["$_S3"]}" ]; then
 			rm -f "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
@@ -262,7 +262,7 @@ _pkg_s3() {
 			# get back to the previous directory
 			popd > /dev/null
 		fi
-		# re-create the "master" symlink if it was found before
+		# re-create the "main" symlink if it was found before
 		if [ $FOUND_MASTER_LINK -eq 1 ]; then
 			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
 		fi

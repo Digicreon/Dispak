@@ -118,7 +118,7 @@ _branch_create() {
 	if [ ! "$CREATE_BRANCH" ]; then
 		abort "$(ansi red)Empty branch name.$(ansi reset)"
 	fi
-	# check the branch name (can't be 'master')
+	# check the branch name (can't be 'main')
 	if [ "$CREATE_BRANCH" = "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)Unable to create a '$CONF_GIT_MAIN' branch.$(ansi reset)"
 	fi
@@ -129,7 +129,7 @@ _branch_create() {
 	if [ "$(git_get_branches | grep "$CREATE_BRANCH" | wc -l)" -ne 0 ]; then
 		abort "$(ansi red)A '$CREATE_BRANCH' branch already exists.$(ansi reset)"
 	fi
-	# move to 'master' branch if needed
+	# move to 'main' branch if needed
 	if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
 		echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
 		git checkout "$CONF_GIT_MAIN"
@@ -173,7 +173,7 @@ _branch_remove() {
 	if [ "$(git_get_branches | grep "$RM_BRANCH" | wc -l)" -ne 0 ]; then
 		IS_REMOTE_BRANCH="yes"
 	fi
-	# move to 'master' branch
+	# move to 'main' branch
 	echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
 	git checkout "$CONF_GIT_MAIN"
 	# delete the local branch
@@ -189,7 +189,7 @@ _branch_remove() {
 }
 
 # _branch_merge()
-# Merge the current branch on the given branch (defaults to 'master').
+# Merge the current branch on the given branch (defaults to 'main').
 _branch_merge() {
 	check_git_branch
 	check_git_clean
@@ -223,7 +223,7 @@ _branch_merge() {
 }
 
 # _branch_backport()
-# Merge the given branch (defaults to 'master') on the current branch.
+# Merge the given branch (defaults to 'main') on the current branch.
 _branch_backport() {
 	check_git_branch
 	check_git_clean
@@ -257,7 +257,7 @@ _branch_backport() {
 }
 
 # _branch_rebase()
-# Rebase the current branch from 'master'.
+# Rebase the current branch from 'main'.
 _branch_rebase() {
 	check_git_branch
 	check_git_clean

@@ -135,7 +135,7 @@ $ dpk pkg --tag=3.2.0
 In any case, it is *not possible* to "jump" version numbers (for example, going from 1.2.0 to 1.2.5, or from 2.0.0 to 2.3.0).
 
 Dispak will check several things and perform some operations, depending of the configuration (see below):
-- Check if you are on the `master` branch.
+- Check if you are on the `main` branch.
 - Check for uncommitted and unpushed files.
 - Execute pre-packaging scripts (see [below](#33-pre-post-scripts-execution)).
 - Commit the database migration file (see [below](#31-database-migrations)).
@@ -218,9 +218,9 @@ $ dpk branch --list
 ```
 
 #### Create branches
-You can create a new branch. Branches are created from the last commit of the `master` branch, or from a given tag if the option `--tag` is used.
+You can create a new branch. Branches are created from the last commit of the `main` branch, or from a given tag if the option `--tag` is used.
 ```shell
-# create a branch from the last commit of the 'master' branch
+# create a branch from the last commit of the 'main' branch
 $ dpk branch --create=name_of_the_branch
 
 # create a branch from a tag
@@ -236,14 +236,14 @@ $ dpk branch --remove=name_of_the_branch
 Branches are deleted locally and from the remote git repository.
 
 #### Merge
-You can merge the current branch on the `master` branch:
+You can merge the current branch on the `main` branch:
 ```shell
 $ dpk branch --merge
 ```
 The merged result is pushed to the remote git repository.
 
 #### Backport
-You can merge the `master` branch on the current branch:
+You can merge the `main` branch on the current branch:
 ```shell
 $ dpk branch --backport
 ```
@@ -416,7 +416,7 @@ Dispak gives two parameters to these scripts:
 Pre/post configuration and installation scripts get two additional parameters:
 1. The old tag version number.
 2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
-These two extra parameters are empty if the installation is done over a `master` branch install.
+These two extra parameters are empty if the installation is done over a `main` branch install.
 
 See all these variables in the [configuration file](#38-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
 
@@ -486,7 +486,7 @@ See the `CONF_INSTALL_APACHE_FILES` variable in the [configuration file](#38-con
 
 ### 3.8 Configuration file
 
-In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/master/dispak-example.conf) example file in the Dispak source repository.
+In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
 
 There is three kind of configuration variables:
 - Single values. The variable is waiting for a single value or file path.
@@ -495,7 +495,7 @@ There is three kind of configuration variables:
 
 Here are the definable variables:
 - **Main configuration**
-  - `CONF_GIT_MAIN`: If the main branch or your repository is not 'master' (more and more repositories are switching to 'main'), you must define it here.
+  - `CONF_GIT_MAIN`: If the main branch or your repository is not 'main', you must define it here.
   - `CONF_PLATFORM`: IF you don't want Dispak to detect the platform, you can set what is the current environment (`dev`, `test` or `prod`).
   - `CONF_PLATFORMS`: This variable is also used to override the automatic detection of the platform. But here is an associative array that allows you to specify the platform type associated with each server (from the server names).
 - **pkg rule**
@@ -538,7 +538,7 @@ But Dispak can be used as a central entry point for managing all your command-li
 - Generate configuration files or documentation.
 - ...
 
-Some examples are given in the [`example-rules/`](https://github.com/Amaury/Dispak/tree/master/example-rules) directory.
+Some examples are given in the [`example-rules/`](https://github.com/Amaury/Dispak/tree/main/example-rules) directory.
 
 
 ### 4.2 Where to put the rule?
@@ -552,7 +552,7 @@ You can put your rules files in two different places:
 
 ### 4.3 Simple example
 
-You can take a look to the [`example-rules/minimal.sh`](https://github.com/Amaury/Dispak/blob/master/example-rules/minimal.sh) file:
+You can take a look to the [`example-rules/minimal.sh`](https://github.com/Amaury/Dispak/blob/main/example-rules/minimal.sh) file:
 ```shell
 #!/usr/bin/env bash
 
@@ -617,7 +617,7 @@ There is three different kind of configuration variables:
 
 ### 4.7 Advanced example
 
-You can take a look to the [`example-rules/adduser.sh`](https://github.com/Amaury/Dispak/blob/master/example-rules/adduser.sh) file.
+You can take a look to the [`example-rules/adduser.sh`](https://github.com/Amaury/Dispak/blob/main/example-rules/adduser.sh) file.
 
 It's a rule that can be used to create a new user in database. It has two mandatory parameters (`app` and `name`) and one optional parameter (`admin`).
 
@@ -752,13 +752,13 @@ Check if the user has sudo rights. Abort if not.
 
 Check if we are in a git repository. Abort if not.
 
-**`check_git_master`**
+**`check_git_main`**
 
-Check if we are on the master branch. Abort if not.
+Check if we are on the main branch. Abort if not.
 
 **`check_git_branch`**
 
-Check if we are on a branch (not the master branch). Abort if not.
+Check if we are on a branch (not the main branch). Abort if not.
 
 **`check_git_clean`**
 

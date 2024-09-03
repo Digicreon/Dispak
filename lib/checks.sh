@@ -43,16 +43,16 @@ check_git() {
 	fi
 }
 
-# check_git_master()
-# Check if we are on the 'master' branch. Abort if not.
-check_git_master() {
+# check_git_main()
+# Check if we are on the 'main' branch. Abort if not.
+check_git_main() {
 	if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)You have to be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)"
 	fi
 }
 
 # check_git_branch()
-# Check if we are on a branch (not the 'master' branch). Abort if not.
+# Check if we are on a branch (not the 'main' branch). Abort if not.
 check_git_branch() {
 	if [ "$(git_get_current_branch)" = "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)You must not be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)"
