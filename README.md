@@ -357,8 +357,8 @@ Definition of the table:
 ```sql
 CREATE TABLE DatabaseMigration (
 	dbm_i_id	INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	dbm_d_creation	DATETIME NOT NULL,
-	dbm_t_update	TIMESTAMP NOT NULL,
+	dbm_d_creation	DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	dbm_t_update	TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	dbm_d_done	DATETIME DEFAULT NULL,
 	dbm_s_version	TINYTEXT NOT NULL,
 	PRIMARY KEY (dbm_i_id),
