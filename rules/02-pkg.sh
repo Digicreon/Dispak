@@ -226,10 +226,10 @@ _pkg_s3() {
 			abort "The path '${CONF_PKG_S3["$_S3"]}' doesn't exist."
 		fi
 		# search for a "main" symlink (and remove it)
-		FOUND_MASTER_LINK=0
+		FOUND_MAIN_LINK=0
 		if [ -L "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN" ] && [ "$(readlink -f "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN")" = "${CONF_PKG_S3["$_S3"]}" ]; then
 			rm -f "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
-			FOUND_MASTER_LINK=1
+			FOUND_MAIN_LINK=1
 		fi
 		# copy files to Amazon S3
 		echo "$(ansi dim)> $_S3$(ansi reset)"
@@ -263,7 +263,7 @@ _pkg_s3() {
 			popd > /dev/null
 		fi
 		# re-create the "main" symlink if it was found before
-		if [ $FOUND_MASTER_LINK -eq 1 ]; then
+		if [ $FOUND_MAIN_LINK -eq 1 ]; then
 			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
 		fi
 	done
