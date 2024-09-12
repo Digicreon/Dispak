@@ -37,7 +37,8 @@ Table of contents
    5. [Static files, symlinks and Amazon S3](#35-static-files-symlinks-and-amazon-s3)
    6. [Javascript and CSS files concatenation and minification](#36-javascript-and-css-files-concatenation-and-minification)
    7. [Apache configuration](#37-apache-configuration)
-   8. [Configuration file](#38-configuration-file)
+   8. [Xinetd configuration](#38-xinetd-configuration)
+   9. [Configuration file](#39-configuration-file)
 4. [Create your own rules](#4-create-your-own-rules)
    1. [Why should you create your own rules?](#41-why-should-you-create-your-own-rules)
    2. [Where to put the rule?](#42-where-to-put-the-rule)
@@ -63,8 +64,8 @@ Dispak manage three kinds of [deployment environments](https://en.wikipedia.org/
 - `prod`: Production environment, where the live service is accessed by users.
 
 Unless specified otherwise in the configuration file, Dispak can guess the platform on which it is executed (see [Install tag](#15-install-tag)), using the local machine's name.
-- If the hostname starts with `test`, `preprod` or `pprod`, followed by numbers, it assumes to be on a `test` platform.
-- If the hostname starts with `server`, `serv`, `prod`, `web`, `db`, `cron`, `worker`, `front` or `back`, followed by numbers, it assumes to be on a `prod` platform.
+- If the hostname starts with `test`, `staging`, `stage`, `qualification`, `qualif`, `quality`, `qa`, `preprod` or `pprod`, followed or not by numbers, it assumes to be on a `test` platform.
+- If the hostname starts with `server`, `serv`, `production`, `prod`, `administration`, `admin`, `web`, `www`, `database`, `data`, `db`, `cron`, `worker`, `jobs`, `frontend`, `front`, `backend` or `back`, followed or not by numbers, it assumes to be on a `prod` platform.
 - Otherwise it assumes to be on a `dev` platform.
 
 #### 1.1.2 Version numbering
@@ -161,7 +162,7 @@ $ dpk install --platform=test --tag=3.2.1
 ```
 
 Dispak will perform these operations:
-- Ensure that no unstable tag is installed on a production server.
+- On production server, check if the requested tag is not an unstable version (see [above](#112-version-numbering)).
 - Remove previously created symlink (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Execute pre-install scripts (see [below](#33-pre-post-scripts-execution)).
 - Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
@@ -169,8 +170,9 @@ Dispak will perform these operations:
 - Install crontab file (see [below](#32-crontab-installation)).
 - Perform database migration (see [below](#31-database-migrations)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
-- Set files ownership (see [configuration](#38-configuration-file)).
-- Set files access rights (see [configuration](#38-configuration-file)).
+- Install xinetd file (see [below](#38-xinetd-configuration)).
+- Set files ownership (see [configuration](#39-configuration-file)).
+- Set files access rights (see [configuration](#39-configuration-file)).
 - Generate files (see [below](#34-files-generation)).
 - Execute post-configuration scripts (see [below](#33-pre-post-scripts-execution)).
 - Execute post-install scripts (see [below](#33-pre-post-scripts-execution)).
@@ -178,6 +180,7 @@ Dispak will perform these operations:
 Options are available to disable some operations:
 - `--no-apache`: Apache configuration files are *not* installed, even if Apache is installed on the current machine.
 - `--no-crontab`: Crontab file is not installed.
+- `--no-xinetd`: Xinetd file is not installed.
 - `--no-db-migration`: Database migration is not performed.
 
 
@@ -199,8 +202,9 @@ Dispak will perform these operations:
 - Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
 - Install crontab file (see [below](#32-crontab-installation)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
-- Set files ownership (see [configuration](#38-configuration-file)).
-- Set files access rights (see [configuration](#38-configuration-file)).
+- Install xinetd file (see [below](#38-xinetd-configuration)).
+- Set files ownership (see [configuration](#39-configuration-file)).
+- Set files access rights (see [configuration](#39-configuration-file)).
 - Generate files (see [below](#34-files-generation)).
 - Execute post-configuration scripts (see [below](#33-pre-post-scripts-execution)).
 
@@ -402,6 +406,10 @@ So your crontab will end looking like that:
 * * * * * local_command4
 ```
 
+If you manage multiple projects with Dispak, the contents of all their `etc/crontab` files will be copied in the user's crontab, hence the markers.
+
+If you need to generate the crontab file dynamically, you can create an `etc/crontab.gen` file. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the crontab content.
+
 
 ### 3.3 Pre/post scripts execution
 
@@ -418,7 +426,7 @@ Pre/post configuration and installation scripts get two additional parameters:
 2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
 These two extra parameters are empty if the installation is done over a `main` branch install.
 
-See all these variables in the [configuration file](#38-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
+See all these variables in the [configuration file](#39-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
 
 
 ### 3.4 Files generation
@@ -433,7 +441,7 @@ Again like the pre/post scripts (see the previous section), the generator script
 1. The platform environment (`dev`, `test` or `prod`).
 2. The tag version number. For pre/post-packing scripts it is the number of the created tag; for pre/post-install scripts it is the number of the installed tag.
 
-Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [configuration file](#38-cconfiguration-file).
+Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [configuration file](#39-cconfiguration-file).
 
 
 ### 3.5 Static files, symlinks and Amazon S3
@@ -443,7 +451,7 @@ Dispak helps you to manage the static files of your web projects.
 There is two (non-mutually exclusive) ways to manage these files: Using symlink, and copying files to Amazon S3.
 
 #### Symbolink links
-You can define a list of symbolic links in the [configuration file](#38-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are giong to be created. The created links are named with the installed version's number.
+You can define a list of symbolic links in the [configuration file](#39-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are giong to be created. The created links are named with the installed version's number.
 
 Example: Let's say your configuration file contains this line:
 ```shell
@@ -472,19 +480,60 @@ Then, you can adapt your templates (see previous section) to use the copied asse
 
 Dispak can concatenate and minify Javascript and CSS files, using the [`minifier` program](https://www.npmjs.com/package/minifier) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
 
-In the [Dispak configuration file](#38-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
+In the [Dispak configuration file](#39-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
 
 If a generated (concatenated and minified) file is version controlled, it is automatically committed after generation. Otherwise it is deleted after the packaging process.
 
 
 ### 3.7 Apache configuration
 
-If you list your Apache configuration files in the [Dispak configuration file](#38-configuration-file), Dispak will check if they are already added in the system configuration. If not, Dispak will add the needed files in the Apache configuration tree (`/etc/apache2/sites-available` and `/etc/apache2/sites-enabled`).
+If you list your Apache configuration files in the [Dispak configuration file](#39-configuration-file), Dispak will check if they are already added in the system configuration. If not, Dispak will add the needed files in the Apache configuration tree (`/etc/apache2/sites-available` and `/etc/apache2/sites-enabled`).
 
-See the `CONF_INSTALL_APACHE_FILES` variable in the [configuration file](#38-configuration-file).
+See the `CONF_INSTALL_APACHE_FILES` variable in the [configuration file](#39-configuration-file).
+
+If you need to generate the Apache configuration files dynamically, you can use [generator scripts](##34-files-generation). For example, if you listed the file named `apache.conf` in the `CONF_INSTALL_APACHE_FILES` variable, this file doesn't have to exist if there is a generator named `apache.conf.gen`; this generator will be used to generate the `apache.conf` file.
 
 
-### 3.8 Configuration file
+### 3.8 Xinetd configuration
+
+In your project's git repository, you can create an `etc/xinetd` file. During install, Dispak will add the content of this file to the `/etc/xinetd.d/dispak` file. This operation is done every time you install a new tagged version, so you just have to keep your `etc/xinetd` file up-to-date. The previous content is replaced by the new file's content.
+Your `etc/xinetd` file must contain one or many [xinetd](https://en.wikipedia.org/wiki/Xinetd)-compatible configurations.
+
+Dispak add the content of the `etc/xinetd` file between markers.
+As a result, the `/etc/xinetd.d/dispak` file will end looking like that:
+```shell
+# ┏━━━━━┥DISPAK XINETD START┝━━━┥/path/to/project/etc/xinetd┝━━━━━┓
+# My first service
+service myservice1
+{
+    type        = UNLISTED
+    user        = sysop
+    wait        = no
+    port        = 32332
+    server      = /path/to/project/bin/service1
+    protocol    = tcp
+    socket_type = stream
+}
+# My second service
+service myservice2
+{
+    type        = UNLISTED
+    user        = sysop
+    wait        = no
+    port        = 32333
+    server      = /path/to/project/bin/service2
+    protocol    = tcp
+    socket_type = stream
+}
+# ┗━━━━━┥DISPAK XINETD END┝━━━━━┥/path/to/project/etc/xinetd┝━━━━━┛
+```
+
+If you manage multiple projects with Dispak, the contents of all their `etc/xinetd` files will be copied in the `/etc/xinetd.d/dispak` file, hence the markers.
+
+If you need to generate the crontab file dynamically, you can create an `etc/xinetd.gen` file. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the xinetd configuration content.
+
+
+### 3.9 Configuration file
 
 In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
 

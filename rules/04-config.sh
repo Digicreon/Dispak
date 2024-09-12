@@ -34,6 +34,8 @@ rule_exec_config() {
 	_install_crontab
 	# Apache configuration
 	_install_config_apache
+	# install xinetd
+	_install_xinetd
 	# files configuration
 	_install_config_files
 	# execute post-config scripts

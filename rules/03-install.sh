@@ -13,7 +13,7 @@ RULE_SECTION="Tag management"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-db-migration"
+RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-xinetd no-db-migration"
 
 # Definition of configuration associative arrays.
 declare -A CONF_INSTALL_SYMLINK
@@ -22,12 +22,13 @@ declare -A CONF_INSTALL_CHMOD
 
 # Show help for this rule.
 rule_help_install() {
-	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)Deploy source code (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
 	echo "       --platform        $(ansi dim)Definition of the current platform. Otherwise, Dispak will try to detect it.$(ansi reset)"
 	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
 	echo "       --no-apache       $(ansi dim)Don't install Apache configuration files, even if Apache is installed on the current machine.$(ansi reset)"
 	echo "       --no-crontab      $(ansi dim)Don't install crontab configuration.$(ansi reset)"
+	echo "       --no-xinetd       $(ansi dim)Don't install xinetd configuration.$(ansi reset)"
 	echo "       --no-db-migration $(ansi dim)Don't perform database migration.$(ansi reset)"
 	echo "       $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"
 }
@@ -100,6 +101,8 @@ rule_exec_install() {
 	_install_db_migration
 	# Apache configuration
 	_install_config_apache
+	# xinetd configuration
+	_install_xinetd
 	# files configuration
 	_install_config_files
 	# execute post-config scripts
@@ -181,6 +184,46 @@ _install_crontab() {
 		BEGIN_GEN=$(crontab -l 2>/dev/null | grep -n "$START_MARK" | sed 's/\(.*\):.*/\1/g')
 		END_GEN=$(crontab -l 2>/dev/null | grep -n "$END_MARK" | sed 's/\(.*\):.*/\1/g')
 		(crontab -l 2>/dev/null | head -n $BEGIN_GEN; echo; cat "$GIT_REPO_PATH/etc/crontab"; crontab -l 2>/dev/null | tail -n +$END_GEN) | crontab -
+	fi
+	echo "$(ansi green)Done$(ansi reset)"
+}
+
+# _install_xinetd()
+# Install new xinetd file.
+_install_xinetd() {
+	if [ "${DPK_OPT["no-xinetd"]}" != "" ]; then
+		return
+	fi
+	if [ ! -f "$GIT_REPO_PATH/etc/xinetd" ] && [ ! -f "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
+		return
+	fi
+	echo "$(ansi bold)Installing xinetd configuration$(ansi reset)"
+	if [ ! -e /etc/xinetd.d/dispak ]; then
+		sudo touch /etc/xinetd.d/dispak
+		sudo chmod 644 /etc/xinetd.d/dispak
+	fi
+	if [ -e "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
+		echo -n "$(ansi dim)+ Generating... $(ansi reset)"
+		chmod +x "$GIT_REPO_PATH/etc/xinetd.gen"
+		"$GIT_REPO_PATH/etc/xinetd.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$GIT_REPO_PATH/etc/xinetd"
+		if [ $? -ne 0 ]; then
+			echo
+			abort "$(ansi red)Xinetd configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/xinetd.gen$(ansi red) execution failed.$(ansi reset)"
+		fi
+		echo "$(ansi green)done$(ansi reset)"
+	fi
+	START_MARK="# ┏━━━━━┥DISPAK XINETD START┝━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┓"
+	END_MARK="# ┗━━━━━┥DISPAK XINETD END┝━━━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┛"
+	sudo cat /etc/xinetd.d/dispak | grep "^$START_MARK$" > /dev/null
+	if [ $? -ne 0 ]; then
+		sudo bash -c "(echo; echo \"$START_MARK\"; cat \"$GIT_REPO_PATH/etc/xinetd\"; echo \"$END_MARK\") >> /etc/xinetd.d/dispak"
+	else
+		BEGIN_GEN=$(cat /etc/xinetd.d/dispak | grep -n "$START_MARK" | sed 's/\(.*\):.*/\1/g')
+		END_GEN=$(cat /etc/xinetd.d/dispak | grep -n "$END_MARK" | sed 's/\(.*\):.*/\1/g')
+		XINETD_TMP_FILE="$(sudo mktemp --tmpdir=/tmp dispak-xinetd.XXXXXXXXXX)"
+		sudo bash -c "(cat /etc/xinetd.d/dispak | head -n $BEGIN_GEN > $XINETD_TMP_FILE; cat \"$GIT_REPO_PATH/etc/xinetd\" >> $XINETD_TMP_FILE; cat /etc/xinetd.d/dispak | tail -n +$END_GEN >> $XINETD_TMP_FILE)"
+		sudo bash -c "cat $XINETD_TMP_FILE > /etc/xinetd.d/dispak"
+		sudo rm $XINETD_TMP_FILE
 	fi
 	echo "$(ansi green)Done$(ansi reset)"
 }

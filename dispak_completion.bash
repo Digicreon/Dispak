@@ -18,7 +18,7 @@ _dpk() {
 	_ACTIONS_OPT["branch"]="--list --create --remove --merge --backport --tag="
 	_ACTIONS_OPT["tags"]="--all"
 	_ACTIONS_OPT["pkg"]="--tag="
-	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-db-migration"
+	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-xinetd --no-db-migration"
 	_ACTIONS_OPT["config"]="--platform=dev --platform=test --platform=prod --tag=main --tag="
 	COMPREPLY=()
 	if [ "$COMP_CWORD" = "1" ]; then
