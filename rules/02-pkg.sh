@@ -233,33 +233,52 @@ _pkg_s3() {
 		fi
 		# copy files to Amazon S3
 		echo "$(ansi dim)> $_S3$(ansi reset)"
-		aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000"
 		# check if the static files (in this path) must be compressed
-		if [ "$CONF_PKG_S3_COMPRESS" = "1" ]; then
+		if [ "$CONF_PKG_S3_COMPRESS" != "1" ]; then
+			# no compression, copy files in bulk
+			aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000"
+		else
+			# process files one by one, to compress text files before sending to Amazon S3
 			# move to the source path
 			pushd "${CONF_PKG_S3["$_S3"]}" > /dev/null
 			# loop on the files to compress them (only text files) and send them to Amazon S3
 			while read -r _FILE; do
+				MUST_COMPRESS=1
 				# remove "./" at the beginning of the file name
 				_FILE="${_FILE#./}"
-				# skip this file if it's not a text file or if another file exist with the same name + ".gz" suffix
+				# don't compress this file if it's not a text file
 				_MIME="$(file --mime-type -b "$_FILE")"
 				_SHORTMIME="${_MIME:0:4}"
-				if [ "$_SHORTMIME" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml"]; then
-					continue;
+				if [ "$_SHORTMIME" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml" ]; then
+					MUST_COMPRESS=0
 				fi
+				# don't compress this file if another file exist with the same name + ".gz" suffix
 				if [ -e "$_FILE.gz" ]; then
-					continue
+					MUST_COMPRESS=0
 				fi
-				# skip this file if it's under Git and has been modified (and is not a minified file)
+				# don't compress this file if it's under Git and has been modified (and is not a minified file)
 				if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [ -v CONF_PKG_MINIFY["$_FILE"] ]; then
-					continue
+					MUST_COMPRESS=0
 				fi
-				# compress the file, send it to Amazon S3 and delete the compressed file
-				gzip -c -f -9 "$_FILE" > "${_FILE}.gz"
-				if [ -f "${_FILE}.gz" ]; then
-					aws s3 cp "${_FILE}.gz" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --content-encoding gzip  --cache-control "max-age=31536000"
+				# compress the file if needed
+				_SRC="$_FILE"
+				if [ $MUST_COMPRESS -eq 1 ]; then
+					gzip -c -f -9 "$_FILE" > "${_FILE}.gz"
+					if [ $? -eq 0 ]; then
+						_SRC="${_FILE}.gz"
+					else
+						MUST_COMPRESS=0
+					fi
+				fi
+				# send the file to Amazon S3
+				if [ $MUST_COMPRESS -eq 1 ]; then
+					# gzipped file
+					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --content-encoding gzip  --cache-control "max-age=31536000"
+					# delete the gzipped file
 					rm -f "${_FILE}.gz"
+				else
+					# raw file
+					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000"
 				fi
 			done <<< $(find . -type f)
 			# get back to the previous directory
