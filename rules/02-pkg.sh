@@ -244,8 +244,11 @@ _pkg_s3() {
 				_FILE="${_FILE#./}"
 				# skip this file if it's not a text file or if another file exist with the same name + ".gz" suffix
 				_MIME="$(file --mime-type -b "$_FILE")"
-				_MIME="${_MIME:0:4}"
-				if [ "$_MIME" != "text" ] || [ -e "$_FILE.gz" ]; then
+				_SHORTMIME="${_MIME:0:4}"
+				if [ "$_SHORTMIME" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml"]; then
+					continue;
+				fi
+				if [ -e "$_FILE.gz" ]; then
 					continue
 				fi
 				# skip this file if it's under Git and has been modified (and is not a minified file)
