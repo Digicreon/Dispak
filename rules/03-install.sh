@@ -67,7 +67,7 @@ rule_exec_install() {
 	# get the tag's configuration file
 	if [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
 		git checkout "${DPK_OPT["tag"]}" -- "$GIT_REPO_PATH/etc/dispak.conf"
-		if [ $? -eq 0 ]; then
+		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Unable to checkout file $(ansi reset)etc/dispak.conf$(ansi red) from tag $(ansi reset)${DPK_OPT["tag"]}"
 		fi
 		# read the tag's configuration file
