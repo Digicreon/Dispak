@@ -163,6 +163,7 @@ $ dpk install --platform=test --tag=3.2.1
 
 Dispak will perform these operations:
 - On production server, check if the requested tag is not an unstable version (see [above](#112-version-numbering)).
+- Fetch and read the configuration file from the tag.
 - Remove previously created symlink (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Execute pre-install scripts (see [below](#33-pre-post-scripts-execution)).
 - Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
@@ -535,7 +536,7 @@ If you need to generate the crontab file dynamically, you can create an `etc/xin
 
 ### 3.9 Configuration file
 
-In a git repository, you can create a `dispak.conf` or `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
+In a git repository, you can create an `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
 
 There is three kind of configuration variables:
 - Single values. The variable is waiting for a single value or file path.

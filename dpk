@@ -91,9 +91,7 @@ fi
 
 # ########## READ CONFIGURATIONI FILE ##########
 if [ "$GIT_REPO_PATH" != "" ]; then
-	if [ -f "$GIT_REPO_PATH/dispak.conf" ]; then
-		. "$(eval realpath "$GIT_REPO_PATH/dispak.conf")"
-	elif [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
+	if [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
 		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
 	fi
 fi

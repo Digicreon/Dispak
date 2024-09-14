@@ -64,6 +64,17 @@ rule_exec_install() {
 			abort "$(ansi red)It's forbidden to install $(ansi reset)unstable$(ansi red) tags on production server.$(ansi reset)"
 		fi
 	fi
+	# get the tag's configuration file
+	if [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
+		git checkout "${DPK_OPT["tag"]}" -- "$GIT_REPO_PATH/etc/dispak.conf"
+		if [ $? -eq 0 ]; then
+			abort "$(ansi red)Unable to checkout file $(ansi reset)etc/dispak.conf$(ansi red) from tag $(ansi reset)${DPK_OPT["tag"]}"
+		fi
+		# read the tag's configuration file
+		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
+		# reset the configuration file
+		git restore --staged --worktree "$GIT_REPO_PATH/etc/dispak.conf"
+	fi
 	# remove symlinks from the currently installed tag
 	CURRENT_TAG="$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
 	if [ "$CURRENT_TAG" != "$CONF_GIT_MAIN" ] && [ ${#CONF_INSTALL_SYMLINK[@]} -ne 0 ]; then
