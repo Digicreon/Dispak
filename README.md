@@ -322,7 +322,7 @@ $ tar xzf Dispak-1.0.0.tar.gz
 
 You can also clone the git source code repository:
 ```shell
-$ git clone https://github.com/Amaury/Dispak
+$ git clone https://github.com/Digicreon/Dispak
 ```
 
 
@@ -382,7 +382,7 @@ The rest of the process is fairly simple:
 5. When you deploy a tag on a server (`dpk install` command), Dispak will check in the migration table which was the last migration executed; then it will process every migration files that are not already processed, in their creation order.
 
 As you can see, there is no process for migration roll-back. The main reason is to keep the system simple, by only writing  `ALTER` commands in plain SQL (whereas other database migration tools are usually using code written in a more complex programming language).
-If you need to roll-back easily, maybe you should spend more time on your testing/staging platform. Anyway, you can do database backups before migrations. The recommended way to do that is to add the execution of [Arkiv](https://github.com/Amaury/Arkiv) in a pre-install script.
+If you need to roll-back easily, maybe you should spend more time on your testing/staging platform. Anyway, you can do database backups before migrations. The recommended way to do that is to add the execution of [Arkiv](https://github.com/Digicreon/Arkiv) in a pre-install script.
 
 
 ### 3.2 Crontab installation
@@ -536,7 +536,7 @@ If you need to generate the crontab file dynamically, you can create an `etc/xin
 
 ### 3.9 Configuration file
 
-In a git repository, you can create an `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Amaury/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
+In a git repository, you can create an `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Digicreon/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
 
 There is three kind of configuration variables:
 - Single values. The variable is waiting for a single value or file path.
@@ -589,7 +589,7 @@ But Dispak can be used as a central entry point for managing all your command-li
 - Generate configuration files or documentation.
 - ...
 
-Some examples are given in the [`example-rules/`](https://github.com/Amaury/Dispak/tree/main/example-rules) directory.
+Some examples are given in the [`example-rules/`](https://github.com/Digicreon/Dispak/tree/main/example-rules) directory.
 
 
 ### 4.2 Where to put the rule?
@@ -603,7 +603,7 @@ You can put your rules files in two different places:
 
 ### 4.3 Simple example
 
-You can take a look to the [`example-rules/minimal.sh`](https://github.com/Amaury/Dispak/blob/main/example-rules/minimal.sh) file:
+You can take a look to the [`example-rules/minimal.sh`](https://github.com/Digicreon/Dispak/blob/main/example-rules/minimal.sh) file:
 ```shell
 #!/usr/bin/env bash
 
@@ -668,7 +668,7 @@ There is three different kind of configuration variables:
 
 ### 4.7 Advanced example
 
-You can take a look to the [`example-rules/adduser.sh`](https://github.com/Amaury/Dispak/blob/main/example-rules/adduser.sh) file.
+You can take a look to the [`example-rules/adduser.sh`](https://github.com/Digicreon/Dispak/blob/main/example-rules/adduser.sh) file.
 
 It's a rule that can be used to create a new user in database. It has two mandatory parameters (`app` and `name`) and one optional parameter (`admin`).
 
