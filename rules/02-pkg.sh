@@ -48,7 +48,7 @@ rule_exec_pkg() {
 	_pkg_pre_scripts
 	# commit database migration file
 	if [ -f "$GIT_REPO_PATH/etc/database/migrations/current" ] && [ "$(du "$GIT_REPO_PATH/etc/database/migrations/current" | cut -f1)" != "0" ]; then
-		if [ "$(git status -s | grep "^A" | wc -l)" != "0" ]; then
+		if [ "$(git status --short | grep --count "^A")" != "0" ]; then
 			abort "$(ansi red)Need to commit database migration files, but you have files waiting to be committed.$(ansi reset)"
 		fi
 		git mv "$GIT_REPO_PATH/etc/database/migrations/current" "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPT["tag"]}"

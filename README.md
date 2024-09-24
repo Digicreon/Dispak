@@ -311,13 +311,13 @@ You can install Dispak anywhere on your disk drive. The preferred path (if you h
 
 Get the last version:
 ```shell
-$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.0.0.zip -O Dispak-1.0.0.zip
-$ unzip Dispak-1.0.0.zip
+$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.0.1.zip -O Dispak-1.0.1.zip
+$ unzip Dispak-1.0.1.zip
 
 or
 
-$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.0.0.tar.gz -O Dispak-1.0.0.tar.gz
-$ tar xzf Dispak-1.0.0.tar.gz
+$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.0.1.tar.gz -O Dispak-1.0.1.tar.gz
+$ tar xzf Dispak-1.0.1.tar.gz
 ```
 
 You can also clone the git source code repository:
