@@ -246,19 +246,26 @@ _pkg_s3() {
 				MUST_COMPRESS=1
 				# remove "./" at the beginning of the file name
 				_FILE="${_FILE#./}"
-				# don't compress this file if it's not a text file
-				_MIME="$(file --mime-type -b "$_FILE")"
-				_SHORTMIME="${_MIME:0:4}"
-				if [ "$_SHORTMIME" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml" ]; then
+				# don't compress small files and gzip files
+				if [ "$(wc -c < "$_FILE")" -lt 4096 ] || [ "${_FILE: -3}" = ".gz" ]; then
 					MUST_COMPRESS=0
-				fi
-				# don't compress this file if another file exist with the same name + ".gz" suffix
-				if [ -e "$_FILE.gz" ]; then
-					MUST_COMPRESS=0
-				fi
-				# don't compress this file if it's under Git and has been modified (and is not a minified file)
-				if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [ -v CONF_PKG_MINIFY["$_FILE"] ]; then
-					MUST_COMPRESS=0
+				else
+					# check if it's a text file
+					_MIME="$(file --mime-type -b "$_FILE")"
+					if [ "${_MIME:0:4}" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml" ]; then
+						# it's not a text file => don't compress it
+						MUST_COMPRESS=0
+					else
+						# it's a text file
+						# don't send the file if another file exists with the same name + ".gz" suffix
+						if [ -e "$_FILE.gz" ]; then
+							continue
+						fi
+						# don't compress this file if it's under Git and has been modified (and is not a minified file)
+						if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [ -v CONF_PKG_MINIFY["$_FILE"] ]; then
+							MUST_COMPRESS=0
+						fi
+					fi
 				fi
 				# compress the file if needed
 				_SRC="$_FILE"
@@ -272,12 +279,24 @@ _pkg_s3() {
 				fi
 				# send the file to Amazon S3
 				if [ $MUST_COMPRESS -eq 1 ]; then
-					# gzipped file
+					# the gzip'ed version of the file has just been created
+					# => sen the gzip'ed version without the ".gz" name suffix, but with a "gzip" content encoding
 					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --content-encoding gzip  --cache-control "max-age=31536000"
-					# delete the gzipped file
+					# delete the gzip'ed file
 					rm -f "${_FILE}.gz"
+				elif [ "${_FILE: -3}" = ".gz" ] && [ -e "${_FILE:0:-3}" ]; then
+					# it's a gzip file, and the not-gzip'ed version exists
+					_UNZIP_MIME="$(file --mime-type -b "${_FILE:0:-3}")"
+					if [ "${_UNZIP_MIME:0:4}" = "text" ] || [ "$_UNZIP_MIME" = "application/json" ] || [ "$_UNZIP_MIME" = "image/svg+xml" ]; then
+						# the not-gzip'ed version is a text file
+						# => send the gzip file without the ".gz" name suffix, but with a "gzip" content-encoding
+						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE:0:-3}" --acl public-read --content-encoding gzip --cache-control "max-age=31536000"
+					else
+						# raw file => send as is
+						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000"
+					fi
 				else
-					# raw file
+					# raw file => send as is
 					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000"
 				fi
 			done <<< $(find . -type f)
