@@ -246,21 +246,21 @@ _pkg_s3() {
 				MUST_COMPRESS=1
 				# remove "./" at the beginning of the file name
 				_FILE="${_FILE#./}"
-				# don't compress small files and gzip files
-				if [ "$(wc -c < "$_FILE")" -lt 4096 ] || [ "${_FILE: -3}" = ".gz" ]; then
+				# check if it's a text file
+				_MIME="$(file --mime-type -b "$_FILE")"
+				if [ "${_MIME:0:4}" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml" ]; then
+					# it's not a text file => don't compress it
 					MUST_COMPRESS=0
 				else
-					# check if it's a text file
-					_MIME="$(file --mime-type -b "$_FILE")"
-					if [ "${_MIME:0:4}" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml" ]; then
-						# it's not a text file => don't compress it
+					# it's a text file
+					# don't send the file if another file exists with the same name + ".gz" suffix
+					if [ -e "$_FILE.gz" ]; then
+						continue
+					fi
+					# don't compress small files and gzip files
+					if [ "$(wc -c < "$_FILE")" -lt 4096 ] || [ "${_FILE: -3}" = ".gz" ]; then
 						MUST_COMPRESS=0
 					else
-						# it's a text file
-						# don't send the file if another file exists with the same name + ".gz" suffix
-						if [ -e "$_FILE.gz" ]; then
-							continue
-						fi
 						# don't compress this file if it's under Git and has been modified (and is not a minified file)
 						if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [ -v CONF_PKG_MINIFY["$_FILE"] ]; then
 							MUST_COMPRESS=0
