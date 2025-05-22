@@ -18,6 +18,7 @@ RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-xinetd no-db-migratio
 # Definition of configuration associative arrays.
 declare -A CONF_INSTALL_SYMLINK
 declare -A CONF_INSTALL_CHOWN
+declare -A CONF_INSTALL_CHGRP
 declare -A CONF_INSTALL_CHMOD
 
 # Show help for this rule.
