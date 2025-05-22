@@ -307,6 +307,14 @@ _install_config_files() {
 			sudo chown "$LOGIN" ${CONF_INSTALL_CHOWN["$LOGIN"]}
 		done
 	fi
+	# chgrp
+	if [ ${#CONF_INSTALL_CHGRP[@]} -ne 0 ]; then
+		echo "$(ansi bold)Setting files group$(ansi reset)"
+		for LOGIN in "${!CONF_INSTALL_CHGRP[@]}"; do
+			echo "$(ansi dim)> $LOGIN$(ansi reset)"
+			sudo chgrp "$LOGIN" ${CONF_INSTALL_CHGRP["$LOGIN"]}
+		done
+	fi
 	# chmod
 	if [ ${#CONF_INSTALL_CHMOD[@]} -ne 0 ]; then
 		echo "$(ansi bold)Setting files access rights$(ansi reset)"
