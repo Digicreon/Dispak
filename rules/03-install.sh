@@ -313,7 +313,7 @@ _install_config_files() {
 		echo "$(ansi bold)Setting files group$(ansi reset)"
 		for LOGIN in "${!CONF_INSTALL_CHGRP[@]}"; do
 			echo "$(ansi dim)> $LOGIN$(ansi reset)"
-			sudo chgrp "$LOGIN" ${CONF_INSTALL_CHGRP["$LOGIN"]}
+			sudo chgrp -R "$LOGIN" ${CONF_INSTALL_CHGRP["$LOGIN"]}
 		done
 	fi
 	# chmod
