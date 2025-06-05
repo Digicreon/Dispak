@@ -243,7 +243,7 @@ _install_xinetd() {
 # _install_db_migration()
 # Do the migration of a new version of the database.
 _install_db_migration() {
-	if [ "${DPK_OPT["no-db-migration"]}" != "" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
+	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ "${DPK_OPT["no-db-migration"]}" != "" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
