@@ -94,10 +94,11 @@ _branch_list() {
 	fi
 	if [ "$REMOTE_BRANCHES" != "" ]; then
 		for BRANCH in $REMOTE_BRANCHES; do
+			LAST_COMMIT_DATE="$(git_get_branch_last_commit_date "origin/$BRANCH")"
 			if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
-				echo "* $(ansi red)$BRANCH$(ansi reset)"
+				printf "$(ansi red)*$(ansi reset) $(ansi dim)%-25s$(ansi reset)\t$(ansi red)%s$(ansi reset)\n" "$LAST_COMMIT_DATE" "$BRANCH"
 			else
-				echo "  $BRANCH"
+				printf "  $(ansi dim)%-25s$(ansi reset)\t%s\n" "$LAST_COMMIT_DATE" "$BRANCH"
 			fi
 		done
 	fi

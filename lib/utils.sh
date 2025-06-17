@@ -52,6 +52,12 @@ git_get_branches_local_only() {
 	comm -23 <(git branch | sed 's|* | |' | sed 's/^\s*//' | sort) <(git branch -r | sed 's|origin/||' | sed 's/^\s*//' | sort )
 }
 
+# git_get_branch_last_commit_date()
+# Returns the date a a branch's last commit.
+git_get_branch_last_commit_date() {
+	git log -1 --format='%ci' "$1"
+}
+
 # git_get_current_tag()
 # Return the name of the currently installed tag.
 git_get_current_tag() {
