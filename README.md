@@ -38,7 +38,9 @@ Table of contents
    6. [Javascript and CSS files concatenation and minification](#36-javascript-and-css-files-concatenation-and-minification)
    7. [Apache configuration](#37-apache-configuration)
    8. [Xinetd configuration](#38-xinetd-configuration)
-   9. [Configuration file](#39-configuration-file)
+   9. [Supervisor configuration](#39-supervisor-configuration)
+   10. [Systemd configuration](#310-systemd-configuration)
+   11. [Configuration file](#311-configuration-file)
 4. [Create your own rules](#4-create-your-own-rules)
    1. [Why should you create your own rules?](#41-why-should-you-create-your-own-rules)
    2. [Where to put the rule?](#42-where-to-put-the-rule)
@@ -451,7 +453,7 @@ Dispak helps you to manage the static files of your web projects.
 
 There is two (non-mutually exclusive) ways to manage these files: Using symlink, and copying files to Amazon S3.
 
-#### Symbolink links
+#### Symbolic links
 You can define a list of symbolic links in the [configuration file](#39-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are giong to be created. The created links are named with the installed version's number.
 
 Example: Let's say your configuration file contains this line:
@@ -479,11 +481,15 @@ Then, you can adapt your templates (see previous section) to use the copied asse
 
 ### 3.6 Javascript and CSS files concatenation and minification
 
-Dispak can concatenate and minify Javascript and CSS files, using the [`minifier` program](https://www.npmjs.com/package/minifier) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
+Dispak can concatenate files. The files are generated during the packaging process.
+
+In the [Dispak configuration file](#39-configuration-file), the `CONF_PKG_CONCAT` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate.
+
+Dispak can also concatenate and minify Javascript and CSS files, using the [`minifier` program](https://www.npmjs.com/package/minifier) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
 
 In the [Dispak configuration file](#39-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
 
-If a generated (concatenated and minified) file is version controlled, it is automatically committed after generation. Otherwise it is deleted after the packaging process.
+If a generated (concatenated, or concatenated and minified) file is version controlled, it is automatically committed after generation. Otherwise it is deleted after the packaging process.
 
 
 ### 3.7 Apache configuration
@@ -534,7 +540,23 @@ If you manage multiple projects with Dispak, the contents of all their `etc/xine
 If you need to generate the crontab file dynamically, you can create an `etc/xinetd.gen` file. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the xinetd configuration content.
 
 
-### 3.9 Configuration file
+### 3.9 Supervisor configuration
+
+You can add Supervisor configuration files in the `etc/supervisor/` directory. These files must have the extension `.conf`. Dispak will copy them to the `/etc/supervisor/conf.d` directory. This operation is done every time you install a new tagger version, so you just have to keep you configuration files up-to-date. The previous content is replaced by the new files' content.
+
+If a configuration file has the `.conf.gen` extension, it is considered as a file generator. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the content of the destination file (which name will have the `.conf` extension).
+
+
+### 3.10 Systemd configuration
+
+You can add file in the `etc/systemd` directory, to add new services that will be managed by systemd.
+
+For a simple service, the configuration file must have the `.service` extension. It will be copied to the `/etc/systemd/system` directory, the service will be enabled and started.
+
+For a target, you must have two files, one with the `.target` extension, the other with the `@.service` extension. They will also be copied to the `/etc/systemd/system` directory. Then the target will be enabled and started.
+
+
+### 3.11 Configuration file
 
 In a git repository, you can create an `etc/dispak.conf` file. Look at the [`dispak-example.conf`](https://github.com/Digicreon/Dispak/blob/main/dispak-example.conf) example file in the Dispak source repository.
 

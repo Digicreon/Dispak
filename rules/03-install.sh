@@ -115,6 +115,10 @@ rule_exec_install() {
 	_install_config_apache
 	# xinetd configuration
 	_install_xinetd
+	# supervisor configuration
+	_install_supervisor
+	# systemd configuration
+	_install_systemd
 	# files configuration
 	_install_config_files
 	# execute post-config scripts
@@ -238,6 +242,103 @@ _install_xinetd() {
 		sudo rm $XINETD_TMP_FILE
 	fi
 	echo "$(ansi green)Done$(ansi reset)"
+}
+
+# _install_supervisor()
+# Install new Supervisor files.
+_install_supervisor() {
+	if [ "${DPK_OPT["no-supervisor"]}" != "" ]; then
+		return
+	fi
+	if [ ! -d "$GIT_REPO_PATH/etc/supervisor" ]; then
+		return
+	fi
+	echo "$(ansi bold)Installing Supervisor configuration$(ansi reset)"
+	if [ ! -d /etc/supervisor/conf.d ]; then
+		echo
+		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/supervisor/conf.d"
+	fi
+	CONFIG_FOUND=0
+	for FILENAME in $GIT_REPO_PATH/etc/supervisor/*; do
+		if [[ "$FILENAME" == *.conf.gen ]]; then
+			DEST="/etc/supervisor/conf.d/$(basename "${FILENAME::-4}")"
+			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
+			chmod +x "$FILENAME"
+			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
+			if [ $? -ne 0 ]; then
+				echo
+				abort "$(ansi red)Supervisor configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
+			fi
+			echo "$(ansi green)done$(ansi reset)"
+			CONFIG_FOUND=1
+		elif [[ "$FILENAME" == *.conf ]]; then
+			DEST="/etc/supervisor/conf.d/$(basename "$FILENAME")"
+			echo -n "$(ansi dim)+ Copying $(ansi reset) $DEST "
+			if ! sudo cp "$FILENAME" "$DEST"; then
+				echo
+				abort "$(ansi red)Unable to copy file $(ansi reset)$FILENAME$(ansi red) to $(ansi reset)$DEST$(ansi red).$(ansi reset)"
+			fi
+			echo "$(ansi green)done$(ansi reset)"
+			CONFIG_FOUND=1
+		fi
+	done
+	if [ $CONFIG_FOUND -eq 1 ]; then
+		echo "$(ansi dim)+ Restarting Supervisor$(ansi reset)"
+		if ! sudo supervisorctl reread || ! sudo supervisorctl update; then
+			abort "$(ansi red)Unable to restart Supervisor.$(ansi reset)"
+		fi
+		echo "$(ansi green)Done$(ansi reset)"
+	fi
+}
+
+# _install_systemd
+# Install new systemd files.
+_install_systemd() {
+	if [ "${DPK_OPT["no-systemd"]}" != "" ]; then
+		return
+	fi
+	if [ ! -d "$GIT_REPO_PATH/etc/systemd" ]; then
+		return
+	fi
+	echo "$(ansi bold)Installing systemd configuration$(ansi reset)"
+	if [ ! -d /etc/systemd/system ]; then
+		echo
+		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/systemd/system"
+	fi
+	for FILENAME in $GIT_REPO_PATH/etc/systemd/*; do
+		SERVICE_NAME=""
+		if [[ "$FILENAME" == "*.target" ]]; then
+			SERVICE_NAME="$(basename "${FILENAME::-7}")"
+			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
+			if [ ! -f "$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service" ]; then
+				echo
+				abort "$(ansi red)Unable to find file$(ansi reset) $GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
+			fi
+			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
+				echo
+				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.target"
+			fi
+			if ! sudo cp "$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service" /etc/systemd/system; then
+				echo
+				abort "$(ansi red)Unable to copy file$(ansi reset) $GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME@.service"
+			fi
+			SERVICE_NAME="$SERVICE_NAME.target"
+		elif [[ "$FILENAME" == *.service ]] && [[ "$FILENAME" != *@.service ]]; then
+			SERVICE_NAME="$(basename "${FILENAME::-8}")"
+			echo -n "$(ansi dim)+ Add service$(ansi reset) $SERVICE_NAME "
+			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
+				echo
+				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.service"
+			fi
+		fi
+		if [ "$SERVICE_NAME" != "" ]; then
+			if ! sudo systemctl daemon-reload || ! sudo systemctl enable $SERVICE_NAME || ! sudo systemctl start $SERVICE_NAME; then
+				echo
+				echo "$(ansi red)Unable to enable or start service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+			fi
+			echo "$(ansi green)done$(ansi reset)"
+		fi
+	done
 }
 
 # _install_db_migration()
