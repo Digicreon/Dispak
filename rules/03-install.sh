@@ -13,7 +13,7 @@ RULE_SECTION="Tag management"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-xinetd no-db-migration"
+RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-systemd no-supervisor no-xinetd no-db-migration"
 
 # Definition of configuration associative arrays.
 declare -A CONF_INSTALL_SYMLINK
@@ -29,6 +29,8 @@ rule_help_install() {
 	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
 	echo "       --no-apache       $(ansi dim)Don't install Apache configuration files, even if Apache is installed on the current machine.$(ansi reset)"
 	echo "       --no-crontab      $(ansi dim)Don't install crontab configuration.$(ansi reset)"
+	echo "       --no-systemd      $(ansi dim)Don't install systemd daemon configurations.$(ansi reset)"
+	echo "       --no-supervisor   $(ansi dim)Don't install supervisor daemon configurations.$(ansi reset)"
 	echo "       --no-xinetd       $(ansi dim)Don't install xinetd configuration.$(ansi reset)"
 	echo "       --no-db-migration $(ansi dim)Don't perform database migration.$(ansi reset)"
 	echo "       $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"
@@ -332,11 +334,21 @@ _install_systemd() {
 			fi
 		fi
 		if [ "$SERVICE_NAME" != "" ]; then
-			if ! sudo systemctl daemon-reload || ! sudo systemctl enable $SERVICE_NAME || ! sudo systemctl start $SERVICE_NAME; then
+			if ! sudo systemctl stop $SERVICE_NAME; then
 				echo
-				echo "$(ansi red)Unable to enable or start service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+				echo "$(ansi red)Unable to stop service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+			elif ! sudo systemctl daemon-reload; then
+				echo
+				echo "$(ansi red)Systemd is unable to reload the daemon configuration files.$(ansi reset)"
+			elif ! sudo systemctl enable $SERVICE_NAME; then
+				echo
+				echo "$(ansi red)Unable to enable server$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+			elif ! sudo systemctl start $SERVICE_NAME; then
+				echo
+				echo "$(ansi red)Unable to start service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+			else
+				echo "$(ansi green)done$(ansi reset)"
 			fi
-			echo "$(ansi green)done$(ansi reset)"
 		fi
 	done
 }
