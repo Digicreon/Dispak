@@ -309,23 +309,115 @@ _install_systemd() {
 	fi
 	for FILENAME in $GIT_REPO_PATH/etc/systemd/*; do
 		SERVICE_NAME=""
-		if [[ "$FILENAME" == "*.target" ]]; then
+		if [[ "$FILENAME" == "*.target.gen" ]]; then
+			# target - generate
+			SERVICE_NAME="$(basename "${FILENAME::-11}")"
+			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
+			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
+			# check associated "@.service" file
+			if [ ! -f "$SERVICE_FILE" ] || [ ! -f "$SERVICE_FILE.gen" ]; then
+				echo
+				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE"
+			fi
+			# generate target file
+			DEST="/etc/systemd/system/$(basename "${FILENAME::-4}")"
+			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
+			chmod +x "$FILENAME"
+			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
+			if [ $? -ne 0 ]; then
+				echo
+				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
+			fi
+			if [ ! -s "$DEST" ]; then
+				echo "$(ansi yellow)empty$(ansi reset)"
+				sudo rm -f "$DEST"
+				continue
+			fi
+			echo "$(ansi green)done$(ansi reset)"
+			# process associated "@.service" file
+			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
+			if [ -f "$SERVICE_FILE.gen" ]; then
+				# generate
+				echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
+				chmod +x "$SERVICE_FILE.gen"
+				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
+				if [ $? -ne 0 ]; then
+					echo
+					sudo rm -f "$DEST"
+					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)"
+				fi
+				if [ ! -s "$DEST_SERVICE" ]; then
+					echo "$(ansi yellow)empty$(ansi reset)"
+					sudo rm -f "$DEST" "$DEST_SERVICE"
+					continue
+				fi
+				echo "$(ansi green)done$(ansi reset)"
+			else
+				# copy
+				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
+					echo
+					rm -f "$DEST"
+					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE"
+				fi
+			fi
+			SERVICE_NAME="$SERVICE_NAME.target"
+		elif [[ "$FILENAME" == "*.target" ]]; then
+			# target - copy
 			SERVICE_NAME="$(basename "${FILENAME::-7}")"
 			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
-			if [ ! -f "$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service" ]; then
+			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
+			if [ ! -f "$SERVICE_FILE" ]; then
 				echo
-				abort "$(ansi red)Unable to find file$(ansi reset) $GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
+				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE"
 			fi
 			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
 				echo
 				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.target"
 			fi
-			if ! sudo cp "$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service" /etc/systemd/system; then
-				echo
-				abort "$(ansi red)Unable to copy file$(ansi reset) $GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME@.service"
+			# process associated "@.service" file
+			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
+			if [ -f "$SERVICE_FILE.gen" ]; then
+				# generate
+				echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
+				chmod +x "$SERVICE_FILE.gen"
+				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
+				if [ $? -ne 0 ]; then
+					echo
+					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)"
+				fi
+				if [ ! -s "$DEST_SERVICE" ]; then
+					echo "$(ansi yellow)empty$(ansi reset)"
+					sudo rm -f "$DEST" "$DEST_SERVICE"
+					continue
+				fi
+				echo "$(ansi green)done$(ansi reset)"
+			else
+				# copy
+				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
+					echo
+					rm -f "/etc/systemd/system/$SERVICE_NAME.target"
+					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE"
+				fi
 			fi
 			SERVICE_NAME="$SERVICE_NAME.target"
+		elif [[ "$FILENAME" == *.service.gen ]] && [[ "$FILENAME" != *@.service.gen ]]; then
+			# service - generate
+			SERVICE_NAME="$(basename "${FILENAME::-12}")"
+			DEST="/etc/systemd/system/$SERVICE_NAME.service"
+			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST"
+			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
+			if [ $? -ne 0 ]; then
+				echo
+				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
+			fi
+			if [ ! -s "$DEST" ]; then
+				echo "$(ansi yellow)empty$(ansi reset)"
+				sudo rm -f "$DEST"
+				continue
+			fi
+			echo "$(ansi green)done$(ansi reset)"
 		elif [[ "$FILENAME" == *.service ]] && [[ "$FILENAME" != *@.service ]]; then
+			# service - copy
 			SERVICE_NAME="$(basename "${FILENAME::-8}")"
 			echo -n "$(ansi dim)+ Add service$(ansi reset) $SERVICE_NAME "
 			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
