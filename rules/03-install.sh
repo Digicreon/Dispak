@@ -405,7 +405,7 @@ _install_systemd() {
 			SERVICE_NAME="$(basename "${FILENAME::-12}")"
 			DEST="/etc/systemd/system/$SERVICE_NAME.service"
 			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST"
-			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
+			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
 				echo
 				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
