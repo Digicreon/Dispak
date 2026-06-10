@@ -3,7 +3,7 @@ Dispak
 
 Simple code and server/services management tool.
 
-Dispak is a very easy-to-use command-line tool. Its primary goal is to manage versions of any software projet (which source code is managed using [git](https://en.wikipedia.org/wiki/Git)), by helping to list existing tags, create new tags and install tags on servers. It handles MySQL [database migrations](https://en.wikipedia.org/wiki/Schema_migration), JS/CSS files concatenation and minification, [crontab](https://en.wikipedia.org/wiki/Cron) installation, [Apache](https://en.wikipedia.org/wiki/Apache_HTTP_Server) configuration files installation, static files versioned access (locally or copied on [Amazon S3](https://aws.amazon.com/s3/)).
+Dispak is a very easy-to-use command-line tool. Its primary goal is to manage versions of any software projet (which source code is managed using [git](https://en.wikipedia.org/wiki/Git)), by helping to list existing tags, create new tags and install tags on servers. It handles MySQL [database migrations](https://en.wikipedia.org/wiki/Schema_migration), JS/CSS files concatenation and minification, [crontab](https://en.wikipedia.org/wiki/Cron) installation, [Apache](https://en.wikipedia.org/wiki/Apache_HTTP_Server) configuration files installation, [xinetd](https://en.wikipedia.org/wiki/Xinetd), [Supervisor](http://supervisord.org/) and [systemd](https://en.wikipedia.org/wiki/Systemd) services installation, static files versioned access (locally or copied on [Amazon S3](https://aws.amazon.com/s3/)).
 
 Furthermore, it is very easy to add custom rules; then Dispak becomes a central tool that brings together all the scripts needed by your projects.
 
@@ -23,16 +23,17 @@ Table of contents
    3. [List tags](#13-list-tags)
    4. [Create tag](#14-create-tag)
    5. [Install tag](#15-install-tag)
-   6. [Refresh configuration](#16-configure)
-   7. [Branch management](#17-branch-management)
+   6. [Refresh configuration](#16-refresh-configuration)
+   7. [Branches management](#17-branches-management)
+   8. [Show remote origin](#18-show-remote-origin)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
    3. [Post-install](#23-post-install)
-3. [How it works](#3how-it-works)
+3. [How it works](#3-how-it-works)
    1. [Database migrations](#31-database-migrations)
    2. [Crontab installation](#32-crontab-installation)
-   3. [Pre/post scripts execution](#33-pre-post-scripts-execution)
+   3. [Pre/post scripts execution](#33-prepost-scripts-execution)
    4. [Files generation](#34-files-generation)
    5. [Static files, symlinks and Amazon S3](#35-static-files-symlinks-and-amazon-s3)
    6. [Javascript and CSS files concatenation and minification](#36-javascript-and-css-files-concatenation-and-minification)
@@ -48,7 +49,7 @@ Table of contents
    4. [Parameters management](#44-parameters-management)
    5. [Documentation section](#45-documentation-section)
    6. [Configuration](#46-configuration)
-   7. [Advanced example](#46-advanced-example)
+   7. [Advanced example](#47-advanced-example)
    8. [Provided variables](#48-provided-variables)
    9. [Provided functions](#49-provided-functions)
 
@@ -140,13 +141,15 @@ In any case, it is *not possible* to "jump" version numbers (for example, going 
 Dispak will check several things and perform some operations, depending of the configuration (see below):
 - Check if you are on the `main` branch.
 - Check for uncommitted and unpushed files.
-- Execute pre-packaging scripts (see [below](#33-pre-post-scripts-execution)).
+- Execute pre-packaging scripts (see [below](#33-prepost-scripts-execution)).
 - Commit the database migration file (see [below](#31-database-migrations)).
+- Concatenate files (see [below](#36-javascript-and-css-files-concatenation-and-minification)).
 - Minify JS/CSS files (see [below](#36-javascript-and-css-files-concatenation-and-minification)).
 - **Create the tag.**
 - Send static files to Amazon S3 (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Unminify files (delete minified files if they are not version controlled).
-- Execute post-packaging files (see [below](#33-pre-post-scripts-execution)).
+- Remove concatenated files (if they are not version controlled).
+- Execute post-packaging files (see [below](#33-prepost-scripts-execution)).
 
 
 ### 1.5 Install tag
@@ -167,23 +170,27 @@ Dispak will perform these operations:
 - On production server, check if the requested tag is not an unstable version (see [above](#112-version-numbering)).
 - Fetch and read the configuration file from the tag.
 - Remove previously created symlink (see [below](#35-static-files-symlinks-and-amazon-s3)).
-- Execute pre-install scripts (see [below](#33-pre-post-scripts-execution)).
-- Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
+- Execute pre-install scripts (see [below](#33-prepost-scripts-execution)).
+- Execute pre-configuration scripts (see [below](#33-prepost-scripts-execution)).
 - **Deploy new version's source code.**
 - Install crontab file (see [below](#32-crontab-installation)).
 - Perform database migration (see [below](#31-database-migrations)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
 - Install xinetd file (see [below](#38-xinetd-configuration)).
-- Set files ownership (see [configuration](#39-configuration-file)).
-- Set files access rights (see [configuration](#39-configuration-file)).
+- Install Supervisor configuration files (see [below](#39-supervisor-configuration)).
+- Install systemd services (see [below](#310-systemd-configuration)).
+- Set files ownership (see [configuration](#311-configuration-file)).
+- Set files access rights (see [configuration](#311-configuration-file)).
 - Generate files (see [below](#34-files-generation)).
-- Execute post-configuration scripts (see [below](#33-pre-post-scripts-execution)).
-- Execute post-install scripts (see [below](#33-pre-post-scripts-execution)).
+- Execute post-configuration scripts (see [below](#33-prepost-scripts-execution)).
+- Execute post-install scripts (see [below](#33-prepost-scripts-execution)).
 
 Options are available to disable some operations:
 - `--no-apache`: Apache configuration files are *not* installed, even if Apache is installed on the current machine.
 - `--no-crontab`: Crontab file is not installed.
 - `--no-xinetd`: Xinetd file is not installed.
+- `--no-supervisor`: Supervisor configuration files are not installed.
+- `--no-systemd`: systemd services are not installed.
 - `--no-db-migration`: Database migration is not performed.
 
 
@@ -202,14 +209,14 @@ $ dpk config --platform=test --tag=main
 ```
 
 Dispak will perform these operations:
-- Execute pre-configuration scripts (see [below](#33-pre-post-scripts-execution)).
+- Execute pre-configuration scripts (see [below](#33-prepost-scripts-execution)).
 - Install crontab file (see [below](#32-crontab-installation)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
 - Install xinetd file (see [below](#38-xinetd-configuration)).
-- Set files ownership (see [configuration](#39-configuration-file)).
-- Set files access rights (see [configuration](#39-configuration-file)).
+- Set files ownership (see [configuration](#311-configuration-file)).
+- Set files access rights (see [configuration](#311-configuration-file)).
 - Generate files (see [below](#34-files-generation)).
-- Execute post-configuration scripts (see [below](#33-pre-post-scripts-execution)).
+- Execute post-configuration scripts (see [below](#33-prepost-scripts-execution)).
 
 It is a subset of the `dpk install` command, useful to refresh the local configuration of a project after updating its files manually.
 
@@ -219,9 +226,16 @@ It is a subset of the `dpk install` command, useful to refresh the local configu
 Dispak helps you to do basic branches management.
 
 #### List
-You can list all existing tags:
+You can list all existing branches:
 ```shell
 $ dpk branch --list
+```
+Local-only branches are listed first, then the remote branches with the date of their last commit (the current branch is highlighted).
+
+#### Graph
+You can display a condensed graph of all the existing branches:
+```shell
+$ dpk branch --graph
 ```
 
 #### Create branches
@@ -243,18 +257,62 @@ $ dpk branch --remove=name_of_the_branch
 Branches are deleted locally and from the remote git repository.
 
 #### Merge
-You can merge the current branch on the `main` branch:
+You can merge the current branch on the `main` branch (or on any given branch):
 ```shell
+# merge the current branch on the 'main' branch
 $ dpk branch --merge
+
+# merge the current branch on the given branch
+$ dpk branch --merge=name_of_the_branch
 ```
 The merged result is pushed to the remote git repository.
 
 #### Backport
-You can merge the `main` branch on the current branch:
+You can merge the `main` branch (or any given branch) on the current branch:
 ```shell
+# merge the 'main' branch on the current branch
 $ dpk branch --backport
+
+# merge the given branch on the current branch
+$ dpk branch --backport=name_of_the_branch
 ```
 The merged result is pushed to the remote git repository.
+
+#### Rebase
+You can rebase the current branch from the `main` branch (or from any given branch):
+```shell
+# rebase the current branch from the 'main' branch
+$ dpk branch --rebase
+
+# rebase the current branch from the given branch
+$ dpk branch --rebase=name_of_the_branch
+```
+The result is pushed to the remote git repository.
+
+#### Rename
+You can rename the current branch (locally and on the remote git repository):
+```shell
+$ dpk branch --rename=new_name_of_the_branch
+```
+The `main` branch can't be renamed.
+
+#### Prune
+You can delete local branches that don't exist on the remote git repository:
+```shell
+# delete all local-only branches
+$ dpk branch --prune
+
+# delete the given local-only branch
+$ dpk branch --prune=name_of_the_branch
+```
+
+
+### 1.8 Show remote origin
+
+To display the URL of the repository's remote origin:
+```shell
+$ dpk origin
+```
 
 
 ************************************************************************
@@ -313,13 +371,13 @@ You can install Dispak anywhere on your disk drive. The preferred path (if you h
 
 Get the last version:
 ```shell
-$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.0.1.zip -O Dispak-1.0.1.zip
-$ unzip Dispak-1.0.1.zip
+$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.4.0.zip -O Dispak-1.4.0.zip
+$ unzip Dispak-1.4.0.zip
 
 or
 
-$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.0.1.tar.gz -O Dispak-1.0.1.tar.gz
-$ tar xzf Dispak-1.0.1.tar.gz
+$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.4.0.tar.gz -O Dispak-1.4.0.tar.gz
+$ tar xzf Dispak-1.4.0.tar.gz
 ```
 
 You can also clone the git source code repository:
@@ -377,7 +435,7 @@ CREATE TABLE DatabaseMigration (
 ```
 
 The rest of the process is fairly simple:
-1. In your Dispak configuration file (see [below](#35-configuration-file)), fill the database related variables (`CONF_DB_HOST`, `CONF_DB_PORT`, `CONF_DB_USER`, `CONF_DB_PWD`, `CONF_DB_MIGRATION_BASE`, `CONF_DB_MIGRATION_TABLE`).
+1. In your Dispak configuration file (see [below](#311-configuration-file)), fill the database related variables (`CONF_DB_HOST`, `CONF_DB_PORT`, `CONF_DB_USER`, `CONF_DB_PWD`, `CONF_DB_MIGRATION_BASE`, `CONF_DB_MIGRATION_TABLE`).
 2. In your project's repository, create a `etc/database/migrations` directory.
 3. In this directory, you must create a file named `current` which will contain all your `ALTER` commands. You must commit this file.
 4. When you create a new tag with `dpk pkg`, the `current` file will be renamed with the tag version number(`X.Y.Z`), and a new empty `current` file is created.
@@ -411,7 +469,7 @@ So your crontab will end looking like that:
 
 If you manage multiple projects with Dispak, the contents of all their `etc/crontab` files will be copied in the user's crontab, hence the markers.
 
-If you need to generate the crontab file dynamically, you can create an `etc/crontab.gen` file. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the crontab content.
+If you need to generate the crontab file dynamically, you can create an `etc/crontab.gen` file. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the crontab content.
 
 
 ### 3.3 Pre/post scripts execution
@@ -429,7 +487,7 @@ Pre/post configuration and installation scripts get two additional parameters:
 2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
 These two extra parameters are empty if the installation is done over a `main` branch install.
 
-See all these variables in the [configuration file](#39-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`
+See all these variables in the [configuration file](#311-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`, `CONF_CONFIG_SCRIPTS_PRE`, `CONF_CONFIG_SCRIPTS_POST`
 
 
 ### 3.4 Files generation
@@ -444,7 +502,7 @@ Again like the pre/post scripts (see the previous section), the generator script
 1. The platform environment (`dev`, `test` or `prod`).
 2. The tag version number. For pre/post-packing scripts it is the number of the created tag; for pre/post-install scripts it is the number of the installed tag.
 
-Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [configuration file](#39-cconfiguration-file).
+Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [configuration file](#311-configuration-file).
 
 
 ### 3.5 Static files, symlinks and Amazon S3
@@ -454,7 +512,7 @@ Dispak helps you to manage the static files of your web projects.
 There is two (non-mutually exclusive) ways to manage these files: Using symlink, and copying files to Amazon S3.
 
 #### Symbolic links
-You can define a list of symbolic links in the [configuration file](#39-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are giong to be created. The created links are named with the installed version's number.
+You can define a list of symbolic links in the [configuration file](#311-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are going to be created. The created links are named with the installed version's number.
 
 Example: Let's say your configuration file contains this line:
 ```shell
@@ -483,22 +541,22 @@ Then, you can adapt your templates (see previous section) to use the copied asse
 
 Dispak can concatenate files. The files are generated during the packaging process.
 
-In the [Dispak configuration file](#39-configuration-file), the `CONF_PKG_CONCAT` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate.
+In the [Dispak configuration file](#311-configuration-file), the `CONF_PKG_CONCAT` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate.
 
 Dispak can also concatenate and minify Javascript and CSS files, using the [`minifier` program](https://www.npmjs.com/package/minifier) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
 
-In the [Dispak configuration file](#39-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
+In the [Dispak configuration file](#311-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
 
-If a generated (concatenated, or concatenated and minified) file is version controlled, it is automatically committed after generation. Otherwise it is deleted after the packaging process.
+If a generated (concatenated, or concatenated and minified) file is version controlled, Dispak aborts when the file has uncommitted local modifications (you must commit, stash or roll back the file first); after the packaging process, the generated content is reverted to its committed state. If the file is not version controlled, it is deleted after the packaging process. In both cases, the generated content is only used to feed the Amazon S3 upload (see [above](#35-static-files-symlinks-and-amazon-s3)).
 
 
 ### 3.7 Apache configuration
 
-If you list your Apache configuration files in the [Dispak configuration file](#39-configuration-file), Dispak will check if they are already added in the system configuration. If not, Dispak will add the needed files in the Apache configuration tree (`/etc/apache2/sites-available` and `/etc/apache2/sites-enabled`).
+If you list your Apache configuration files in the [Dispak configuration file](#311-configuration-file), Dispak will check if they are already added in the system configuration. If not, Dispak will add the needed files in the Apache configuration tree (`/etc/apache2/sites-available` and `/etc/apache2/sites-enabled`).
 
-See the `CONF_INSTALL_APACHE_FILES` variable in the [configuration file](#39-configuration-file).
+See the `CONF_INSTALL_APACHE_FILES` variable in the [configuration file](#311-configuration-file).
 
-If you need to generate the Apache configuration files dynamically, you can use [generator scripts](##34-files-generation). For example, if you listed the file named `apache.conf` in the `CONF_INSTALL_APACHE_FILES` variable, this file doesn't have to exist if there is a generator named `apache.conf.gen`; this generator will be used to generate the `apache.conf` file.
+If you need to generate the Apache configuration files dynamically, you can use [generator scripts](#34-files-generation). For example, if you listed the file named `apache.conf` in the `CONF_INSTALL_APACHE_FILES` variable, this file doesn't have to exist if there is a generator named `apache.conf.gen`; this generator will be used to generate the `apache.conf` file.
 
 
 ### 3.8 Xinetd configuration
@@ -537,23 +595,25 @@ service myservice2
 
 If you manage multiple projects with Dispak, the contents of all their `etc/xinetd` files will be copied in the `/etc/xinetd.d/dispak` file, hence the markers.
 
-If you need to generate the crontab file dynamically, you can create an `etc/xinetd.gen` file. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the xinetd configuration content.
+If you need to generate the xinetd file dynamically, you can create an `etc/xinetd.gen` file. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the xinetd configuration content.
 
 
 ### 3.9 Supervisor configuration
 
-You can add Supervisor configuration files in the `etc/supervisor/` directory. These files must have the extension `.conf`. Dispak will copy them to the `/etc/supervisor/conf.d` directory. This operation is done every time you install a new tagger version, so you just have to keep you configuration files up-to-date. The previous content is replaced by the new files' content.
+You can add Supervisor configuration files in the `etc/supervisor/` directory. These files must have the extension `.conf`. Dispak will copy them to the `/etc/supervisor/conf.d` directory. This operation is done every time you install a new tagged version, so you just have to keep your configuration files up-to-date. The previous content is replaced by the new files' content.
 
-If a configuration file has the `.conf.gen` extension, it is considered as a file generator. This script will be executed (like other [generator scripts](##34-files-generation)) and its output will be used as the content of the destination file (which name will have the `.conf` extension).
+If a configuration file has the `.conf.gen` extension, it is considered as a file generator. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the content of the destination file (which name will have the `.conf` extension).
 
 
 ### 3.10 Systemd configuration
 
-You can add file in the `etc/systemd` directory, to add new services that will be managed by systemd.
+You can add files in the `etc/systemd` directory, to add new services that will be managed by systemd.
 
 For a simple service, the configuration file must have the `.service` extension. It will be copied to the `/etc/systemd/system` directory, the service will be enabled and started.
 
 For a target, you must have two files, one with the `.target` extension, the other with the `@.service` extension. They will also be copied to the `/etc/systemd/system` directory. Then the target will be enabled and started.
+
+If a file has the `.gen` extension (e.g. `myservice.service.gen`), it is considered as a file generator. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the content of the unit file. If the generated output is empty, the service is not installed on the current machine.
 
 
 ### 3.11 Configuration file
@@ -567,14 +627,15 @@ There is three kind of configuration variables:
 
 Here are the definable variables:
 - **Main configuration**
-  - `CONF_GIT_MAIN`: If the main branch or your repository is not 'main', you must define it here.
+  - `CONF_GIT_MAIN`: If the main branch of your repository is not 'main', you must define it here.
   - `CONF_PLATFORM`: IF you don't want Dispak to detect the platform, you can set what is the current environment (`dev`, `test` or `prod`).
   - `CONF_PLATFORMS`: This variable is also used to override the automatic detection of the platform. But here is an associative array that allows you to specify the platform type associated with each server (from the server names).
 - **pkg rule**
   - `CONF_PKG_CHECK_URL`: You can ask Dispak to check the return status of the given URL before creating a new tag. This is convenient if you have a local page that show the result of your unit tests; if the HTTP status of this page is an error (not equal to 200), the tag is not created.
   - `CONF_PKG_SCRIPTS_PRE`: You can ask Dispak to execute a list of scripts before creating a new tag.
   - `CONF_PKG_SCRIPTS_POST`: You can ask Dispak to execute a list of scripts after creating a new tag. These scripts are not executed if there was an error during the process.
-  - `CONF_PKG_MINIFY`: It is possible to concatenate many files into one Javacript or CSS file, and then to minify this file. The `CONF_PKG_MINIFY` variable is an associative array. For each entry, the key is the path to the generated file, and the value is the list of source files.
+  - `CONF_PKG_CONCAT`: It is possible to concatenate many files into one file. The `CONF_PKG_CONCAT` variable is an associative array. For each entry, the key is the path to the generated file, and the value is the list of source files.
+  - `CONF_PKG_MINIFY`: It is possible to concatenate many files into one Javascript or CSS file, and then to minify this file. The `CONF_PKG_MINIFY` variable is an associative array. For each entry, the key is the path to the generated file, and the value is the list of source files.
   - `CONF_PKG_S3`: If you want to copy static files to Amazon S3, use this variable. It is an associative array; for each entry, the key is the S3 bucket where the files will be copied, and the value is the path to the file or the directory that will be recursively copied. The files are copied in a sub-directory of the bucket's root, which name is the tag's version number.
   - `CONF_PKG_S3_COMPRESS`: Set this variable to 1 if you want to compress text files (raw text, HTML, JSON, SVG…) sent to Amazon S3. Files are compressed with GZIP. Note that files are compressed and sent one by one, whereas folder synchronization is used when there is no compression. As a result, upload is quite slower with compression.
   - `CONF_PKG_S3_UNSTABLE`: Set this variable to 1 if you want to copy static files to Amazon S3 for stable *and* unstable versions (not only for stable versions).
@@ -586,7 +647,8 @@ Here are the definable variables:
   - `CONF_CONFIG_SCRIPTS_POST`: Here is a list of scripts to execute after install (before post-install scripts) or at the end of configuration (`dpk config` command). The scripts are not executed if an error has occured during the install process.
   - `CONF_INSTALL_APACHE_FILES`: This variable must contain a list of Apache configuration files. These files are listed in the system configuration (in `/etc/apache2/sites-available` and linked in `/etc/apache2/sites-enabled`) if they are not already.
   - `CONF_INSTALL_CHOWN`: Associative array. The keys are user logins, and the values are path to files and/or directories that must be changed of owner.
-  - `CONF_INSTALL_CHMOD`: Associative array. The keys are a `chmod` file right (like `+x` or `644`), and the values are lists of files and/or directories that must be `chmod`'ed.
+  - `CONF_INSTALL_CHGRP`: Associative array. The keys are group names, and the values are paths to files and/or directories that must be changed of group (recursively).
+  - `CONF_INSTALL_CHMOD`: Associative array. The keys are a `chmod` file right (like `+x` or `644`), and the values are lists of files and/or directories that must be `chmod`'ed (recursively).
   - `CONF_INSTALL_GENERATE`: The variable must contain a list of files that must be *generated* after install. Each entry of the list must be the path to the *generated* file. For each one of them, a *generator* script must exist with the same name and a `.gen` extension. When a generator script is executed, everything coming out from its STDOUT will be written in the generated file.
 - **Database management**
   - `CONF_DB_HOST`: Database host name.
@@ -651,7 +713,7 @@ rule_exec_minimal() {
 ```
 
 Here you can see the four minimal things in a Dispak rule:
-1. The Bash [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) on the first line (`#!/bin/sh`).
+1. The Bash [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) on the first line (`#!/usr/bin/env bash`).
 2. The `RULE_NAME` variable, which contains the name of the rule. This name must be unique.
 3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#49-provided-functions)) to change text color and decoration.
 4. The function called when the rule is executed. It must be called `rule_exec_` followed by the rule's name.
@@ -669,7 +731,7 @@ Dispak checks the options given on the command-line, to be sure that all mandato
 
 In your rule, declare the list of mandatory parameters (separated with space or carriage return characters) in the `RULE_MANDATORY_PARAMS` variable, and the list of optional parameters in the `RULE_OPTIONAL_PARAMS` variable.
 
-If an option can get a value, it will be available in `${DPK_OPT["option_name"]}`. If an option is used without a value on the command line, the value is then set to the option's name.
+If an option can get a value, it will be available in `${DPK_OPT["option_name"]}`. If an option is used without a value on the command line, it is defined with an empty value; you can check its presence with `[ -v DPK_OPT["option_name"] ]`.
 
 
 ### 4.5 Documentation section
@@ -699,7 +761,7 @@ The parameters are checked and then a request is sent to a MySQL server. You can
 
 ### 4.8 Provided variables
 
-Some variables are set by Dispak and avaiable to your rule:
+Some variables are set by Dispak and available to your rule:
 - `DPK_ROOT`: Path to the root of the used Dispak installation.
 - `GIT_REPO_PATH`: When Dispak is called from inside a Git repository, this variable contains the root path to this repository.
 - `DPK_OPT`: Contains the options given on the command-line (see [above](#44-parameters-management)).
@@ -797,9 +859,25 @@ Tell if the current Git repository is clean (all files are committed, no new fil
 
 Return the name of the current branch.
 
+**`git_get_parent_branch`**
+
+Return the name of the current branch's parent branch.
+
 **`git_get_branches`**
 
-Return the list of branches.
+Return the list of existing remote branches.
+
+**`git_get_branches_local_and_remote`**
+
+Return the list of all branches (local and remote).
+
+**`git_get_branches_local_only`**
+
+Return the list of branches that exist locally only.
+
+**`git_get_branch_last_commit_date`**
+
+Return the date of the last commit of the branch given as parameter.
 
 **`git_get_current_tag`**
 
@@ -813,9 +891,9 @@ Tell if an item exists in a list.
 
 Check if the `aws-cli` program is installed. Abort if not.
 
-**`check_dhbost`**
+**`check_dbhost`**
 
-Check if the database host is defined and reachable (using `ping`). Abort if not.
+Check if the database connection parameters (`CONF_DB_HOST`, `CONF_DB_PORT`, `CONF_DB_USER`, `CONF_DB_PWD`) are defined, and check the connection to the database server. Abort if not.
 
 **`check_sudo`**
 

@@ -309,7 +309,7 @@ _install_systemd() {
 	fi
 	for FILENAME in $GIT_REPO_PATH/etc/systemd/*; do
 		SERVICE_NAME=""
-		if [[ "$FILENAME" == "*.target.gen" ]]; then
+		if [[ "$FILENAME" == *.target.gen ]]; then
 			# target - generate
 			SERVICE_NAME="$(basename "${FILENAME::-11}")"
 			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
@@ -361,7 +361,7 @@ _install_systemd() {
 				fi
 			fi
 			SERVICE_NAME="$SERVICE_NAME.target"
-		elif [[ "$FILENAME" == "*.target" ]]; then
+		elif [[ "$FILENAME" == *.target ]]; then
 			# target - copy
 			SERVICE_NAME="$(basename "${FILENAME::-7}")"
 			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "

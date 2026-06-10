@@ -12,13 +12,13 @@ _dpk() {
 	PREV="${COMP_WORDS[COMP_CWORD-1]}"
 	PREV2="${COMP_WORDS[COMP_CWORD-2]}"
 	# config
-	_ACTIONS="help branch tags pkg install config"
+	_ACTIONS="help branch tags pkg install config origin"
 	declare -A _ACTIONS_OPT
-	_ACTIONS_OPT["help"]="branch tags pkg install config"
-	_ACTIONS_OPT["branch"]="--list --create --remove --merge --backport --tag="
+	_ACTIONS_OPT["help"]="branch tags pkg install config origin"
+	_ACTIONS_OPT["branch"]="--list --graph --create --remove --merge --backport --rebase --rename --prune --tag="
 	_ACTIONS_OPT["tags"]="--all"
 	_ACTIONS_OPT["pkg"]="--tag="
-	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-xinetd --no-db-migration"
+	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-xinetd --no-supervisor --no-systemd --no-db-migration"
 	_ACTIONS_OPT["config"]="--platform=dev --platform=test --platform=prod --tag=main --tag="
 	COMPREPLY=()
 	if [ "$COMP_CWORD" = "1" ]; then

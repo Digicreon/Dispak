@@ -13,7 +13,7 @@ RULE_SECTION="Development"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="list graph create remove merge backport rebase rename prune"
+RULE_OPTIONAL_PARAMS="list graph create tag remove merge backport rebase rename prune"
 
 # Show help for this rule.
 rule_help_branch() {
@@ -304,7 +304,7 @@ _branch_rename() {
 	# get the current branch name
 	OLD_NAME="$(git_get_current_branch)"
 	# get the new branch name
-	NEW_NAME="${DPK_OPT["backport"]}"
+	NEW_NAME="${DPK_OPT["rename"]}"
 	if [ "$NEW_NAME" = "" ]; then
 		abort "$(ansi red)No branch name given.$(ansi reset)"
 	fi

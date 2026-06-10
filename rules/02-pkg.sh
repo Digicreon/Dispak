@@ -16,6 +16,7 @@ RULE_MANDATORY_PARAMS=""
 RULE_OPTIONAL_PARAMS="tag"
 
 # Definition of configuration associative arrays.
+declare -A CONF_PKG_CONCAT
 declare -A CONF_PKG_MINIFY
 declare -A CONF_PKG_S3
 
@@ -57,6 +58,12 @@ rule_exec_pkg() {
 		git commit -m "Added database migration file for version ${DPK_OPT["tag"]}"
 		git push origin "$CONF_GIT_MAIN"
 	fi
+	# check the minification program availability (before any file generation)
+	_pkg_check_minify
+	# remove generated files if the packaging process is interrupted
+	trap 'cd "$GIT_REPO_PATH" 2> /dev/null; _pkg_unminify; _pkg_unconcat' EXIT
+	# concat files
+	_pkg_concat
 	# minify files
 	_pkg_minify
 	# create log file
@@ -87,6 +94,10 @@ rule_exec_pkg() {
 	_pkg_s3
 	# unminify (remove minified files that are not version controlled)
 	_pkg_unminify
+	# unconcat (remove concatenated files that are not version controlled)
+	_pkg_unconcat
+	# remove the cleanup handler
+	trap - EXIT
 	# execute post-packaging scripts
 	_pkg_post_scripts
 }
@@ -135,6 +146,57 @@ _pkg_post_scripts() {
 	echo "$(ansi gree)Done$(ansi reset)"
 }
 
+# _pkg_unconcat()
+# Delete concatenated files that are not version controlled.
+_pkg_unconcat() {
+	if [ ${#CONF_PKG_CONCAT[@]} -eq 0 ]; then
+		# no file to unconcat
+		return
+	fi
+	# loop on concatenated files
+	for _FILE in "${!CONF_PKG_CONCAT[@]}"; do
+		# check if the concatenated file was already committed
+		if git ls-files --error-unmatch "$_FILE" > /dev/null 2>&1; then
+			# the file is under Git, revert the changes
+			git restore "$_FILE"
+		else
+			# the file is not managed with Git, delete it
+			rm -f "$_FILE"
+		fi
+	done
+}
+
+# _pkg_concat()
+# Concatenate files.
+_pkg_concat() {
+	if [ ${#CONF_PKG_CONCAT[@]} -eq 0 ]; then
+		# no file to concatenate
+		return
+	fi
+	# checks modified files
+	for _FILE in ${!CONF_PKG_CONCAT[@]}; do
+		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" > /dev/null 2>&1 && [ "$(git diff --name-only "$_FILE")" != "" ]; then
+			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but it is locally modified.
+  $(ansi yellow)Please, commit/stash/rollback the file.$(ansi reset)
+"
+		fi
+	done
+	# concatenation
+	echo "$(ansi bold)Files concatenation$(ansi reset)"
+	for _FILE in ${!CONF_PKG_CONCAT[@]}; do
+		# don't process entries with an empty list of source files
+		if [ -z "${CONF_PKG_CONCAT["$_FILE"]//[[:space:]]/}" ]; then
+			warn "Empty list of files to concatenate for the file '$(ansi dim)$_FILE$(ansi reset)'."
+			continue
+		fi
+		echo "$(ansi dim)> $_FILE$(ansi reset)"
+		cat ${CONF_PKG_CONCAT["$_FILE"]} > "$_FILE"
+		if [ $? -ne 0 ]; then
+			abort "Unable to concatenate file '$(ansi dim)$_FILE$(ansi reset)'."
+		fi
+	done
+}
+
 # _pkg_unminify()
 # Delete minified files that are not version controlled.
 _pkg_unminify() {
@@ -145,7 +207,7 @@ _pkg_unminify() {
 	# loop on minified files
 	for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
 		# check if the minified file was already committed
-		if git ls-files --error-unmatch "$_FILE" 2> /dev/null; then
+		if git ls-files --error-unmatch "$_FILE" > /dev/null 2>&1; then
 			# the file is under Git, revert the changes
 			git restore "$_FILE"
 		else
@@ -155,9 +217,9 @@ _pkg_unminify() {
 	done
 }
 
-# _pkg_minify()
-# Minify files. If the generated files are already version controlled, they are committed.
-_pkg_minify() {
+# _pkg_check_minify()
+# Check that the minification program is installed.
+_pkg_check_minify() {
 	if [ ${#CONF_PKG_MINIFY[@]} -eq 0 ]; then
 		# no file to minify
 		return
@@ -168,9 +230,18 @@ _pkg_minify() {
   Please install NodeJS with NPM, and the 'minifier' package. See https://www.npmjs.com/package/minifier
   "
 	fi
+}
+
+# _pkg_minify()
+# Minify files. If the generated files are already version controlled, they are committed.
+_pkg_minify() {
+	if [ ${#CONF_PKG_MINIFY[@]} -eq 0 ]; then
+		# no file to minify
+		return
+	fi
 	# checks modified files
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
-		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" 2> /dev/null && [ "$(git diff --name-only "$_FILE")" != "" ]; then
+		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" > /dev/null 2>&1 && [ "$(git diff --name-only "$_FILE")" != "" ]; then
 			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but it is locally modified.
   $(ansi yellow)Please, commit/stash/rollback the file.$(ansi reset)
 "
@@ -262,7 +333,7 @@ _pkg_s3() {
 						MUST_COMPRESS=0
 					else
 						# don't compress this file if it's under Git and has been modified (and is not a minified file)
-						if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [ -v CONF_PKG_MINIFY["$_FILE"] ]; then
+						if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [[ -v CONF_PKG_MINIFY["$_FILE"] ]]; then
 							MUST_COMPRESS=0
 						fi
 					fi
