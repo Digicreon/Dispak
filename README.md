@@ -169,10 +169,11 @@ $ dpk install --platform=test --tag=3.2.1
 Dispak will perform these operations:
 - On production server, check if the requested tag is not an unstable version (see [above](#112-version-numbering)).
 - Fetch and read the configuration file from the tag.
-- Remove previously created symlink (see [below](#35-static-files-symlinks-and-amazon-s3)).
+- Remove version-named symlinks and version alias links created by previous deployments (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Execute pre-install scripts (see [below](#33-prepost-scripts-execution)).
 - Execute pre-configuration scripts (see [below](#33-prepost-scripts-execution)).
 - **Deploy new version's source code.**
+- Create version-named symlinks and version alias links (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Install crontab file (see [below](#32-crontab-installation)).
 - Perform database migration (see [below](#31-database-migrations)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
@@ -509,14 +510,14 @@ Generator scripts are listed in the `CONF_INSTALL_GENERATE` variable of the [con
 
 Dispak helps you to manage the static files of your web projects.
 
-There is two (non-mutually exclusive) ways to manage these files: Using symlink, and copying files to Amazon S3.
+There is three (non-mutually exclusive) ways to manage these files: Using symlinks, using version alias links, and copying files to Amazon S3.
 
 #### Symbolic links
-You can define a list of symbolic links in the [configuration file](#311-configuration-file). These links will be created during the tag installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are going to be created. The created links are named with the installed version's number.
+You can define a list of symbolic links in the [configuration file](#311-configuration-file). These links will be created during the installation process. In fact, you define the target of each link (usually a directory but it can be a file), and the directory where these links are going to be created. The created links are named with the installed version's number, or with the name of the main branch when the main branch is deployed. The target is interpreted relative to the link's directory.
 
 Example: Let's say your configuration file contains this line:
 ```shell
-CONF_INSTALL_SYMLINK["www/css"]="www/css"
+CONF_INSTALL_SYMLINK["www/css"]="."
 ```
 
 Now, when the version `1.2.0` is installed, the following link will be created:
@@ -524,12 +525,45 @@ Now, when the version `1.2.0` is installed, the following link will be created:
 $ ls -l www/css/1.2.0
 www/css/1.2.0 -> .
 ```
+And when the `main` branch is deployed (on a test server for example), the `www/css/main` link is created the same way.
+
+Before each deployment, the symbolic links created by previous deployments are removed: every *symbolic link* of the configured directories whose name is a version number (`X.Y.Z`) or the main branch's name is deleted — unless it is committed in the git repository. Committed links are never removed, and no new link is created if its name is already used by a committed link or file.
 
 Then you can adapt your templates:
 ```html
 <link href="/css/{$conf.version}/style.css" rel="stylesheet">
 ```
 (in this example, the `$conf.version` variable have been defined in the framework's configuration file, thanks to the [file generation](#34-files-generation) feature)
+
+#### Version alias links
+While the symbolic links described above put the version number in the *path* of the URL (a whole directory at once), Dispak can also put the version number in the *name* of selected files or directories, by creating version-named symbolic links next to them. It is the usual way to do [cache busting](https://www.keycdn.com/support/what-is-cache-busting) with named assets (`bundle-1.2.0.js`).
+
+List the files and/or directories in the `CONF_INSTALL_VERSION_ALIAS` variable of the [configuration file](#311-configuration-file):
+```shell
+CONF_INSTALL_VERSION_ALIAS="
+	www/css/style.css
+	www/js
+"
+```
+
+When the version `1.2.0` is installed, the following links are created:
+```shell
+$ ls -l www/css/style-1.2.0.css www/js-1.2.0
+www/css/style-1.2.0.css -> style.css
+www/js-1.2.0 -> js
+```
+And when the `main` branch is deployed, the `www/css/style-main.css` and `www/js-main` links are created the same way.
+
+The name of the link is computed from the name of the aliased element:
+- For a file with an extension, the version is added before the last extension (`style.css` → `style-1.2.0.css`, `jquery.min.js` → `jquery.min-1.2.0.js`).
+- For a file without extension, a dot file or a directory (even if its name contains a dot), the version is added at the end of the name (`toto` → `toto-1.2.0`, `assets.css/` → `assets.css-1.2.0`).
+
+Then you can adapt your templates:
+```html
+<link href="/css/style-{$conf.version}.css" rel="stylesheet">
+```
+
+The cleanup rules are the same as for the symbolic links above: before each deployment, the version alias links of previous deployments are removed if they are not committed; committed links are never removed, and no new link is created if its name is already used by a committed link or file. If a listed element is removed from the configuration, its old alias links must be removed manually.
 
 #### Amazon S3
 It is also possible to define a bucket on Amazon S3 where your static files will be copied each time you create a *stable* version (or even for *unstable* version if you defined the `CONF_PKG_S3_UNSTABLE` configuration variable). A subdirectory will be created, named as the tag version number, and all configured files will be copied there.
@@ -640,7 +674,8 @@ Here are the definable variables:
   - `CONF_PKG_S3_COMPRESS`: Set this variable to 1 if you want to compress text files (raw text, HTML, JSON, SVG…) sent to Amazon S3. Files are compressed with GZIP. Note that files are compressed and sent one by one, whereas folder synchronization is used when there is no compression. As a result, upload is quite slower with compression.
   - `CONF_PKG_S3_UNSTABLE`: Set this variable to 1 if you want to copy static files to Amazon S3 for stable *and* unstable versions (not only for stable versions).
 - **install rule**
-  - `CONF_INSTALL_SYMLINK`: Use this variable if you need to create symlinks when you install a new version. It is an associative array; the key is the path to the link's directory; the value is the path pointed by the link. The link will be created in its destination directory, and its name is the installed tag's version number.
+  - `CONF_INSTALL_SYMLINK`: Use this variable if you need to create symlinks when you install a new version. It is an associative array; the key is the path to the link's directory; the value is the path pointed by the link (interpreted relative to the link's directory). The link will be created in its destination directory, and its name is the installed tag's version number (or the main branch's name when the main branch is deployed). Links created by previous deployments are removed, unless they are committed.
+  - `CONF_INSTALL_VERSION_ALIAS`: List of files and/or directories that must be aliased by a version-named symlink, created next to them (`www/css/style.css` is pointed by the `www/css/style-1.2.0.css` link when the `1.2.0` tag is installed). Links created by previous deployments are removed, unless they are committed.
   - `CONF_INSTALL_SCRIPTS_PRE`: Here is a list of scripts to execute before install.
   - `CONF_INSTALL_SCRIPTS_POST`: Here is a list of scripts to execute after install. The scripts are not executed if an error has occured during the install process.
   - `CONF_CONFIG_SCRIPTS_PRE`: Here is a list of scripts to execute before install (after pre-install scripts) or at the beginning of configuration (`dpk config` command).

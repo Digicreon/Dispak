@@ -78,16 +78,14 @@ rule_exec_install() {
 		# reset the configuration file
 		git restore --staged --worktree "$GIT_REPO_PATH/etc/dispak.conf"
 	fi
-	# remove symlinks from the currently installed tag
+	# get the currently deployed branch or tag (used as parameter of pre/post scripts)
 	CURRENT_TAG="$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
-	if [ "$CURRENT_TAG" != "$CONF_GIT_MAIN" ] && [ ${#CONF_INSTALL_SYMLINK[@]} -ne 0 ]; then
-		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
-			if [ -L "$_SYMLINK/$CURRENT_TAG" ]; then
-				echo "$(ansi bold)Removing symlink $(ansi reset)$(ansi dim)$_SYMLINK/$CURRENT_TAG$(ansi reset)"
-				rm -f "$_SYMLINK/$CURRENT_TAG"
-			fi
-		done
-	fi
+	# remove version-named symlinks created by previous deployments
+	for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
+		_install_clean_version_links "$_SYMLINK" "" ""
+	done
+	# remove version alias links created by previous deployments
+	_install_version_alias_cleanup
 	# execute pre-install scripts
 	_install_pre_scripts
 	# execute pre-config scripts
@@ -103,12 +101,18 @@ rule_exec_install() {
 		if ! git checkout "tags/${DPK_OPT["tag"]}" --quiet ; then
 			abort "$(ansi red)Failed to update repository to tag '${DPK_OPT["tag"]}'.$(ansi reset)"
 		fi
-		# create symlinks
-		for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
-			echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)${CONF_INSTALL_SYMLINK["$_SYMLINK"]}/${DPK_OPT["tag"]}$(ansi reset)"
-			ln -s "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}" "$_SYMLINK/${DPK_OPT["tag"]}"
-		done
 	fi
+	# create symlinks (named with the tag number, or the main branch's name)
+	for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
+		if [ -e "$_SYMLINK/${DPK_OPT["tag"]}" ] || [ -L "$_SYMLINK/${DPK_OPT["tag"]}" ]; then
+			# a committed link or file already uses this name
+			continue
+		fi
+		echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)$_SYMLINK/${DPK_OPT["tag"]}$(ansi reset)"
+		ln -sn "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}" "$_SYMLINK/${DPK_OPT["tag"]}"
+	done
+	# create version alias links
+	_install_version_alias
 	# install crontab
 	_install_crontab
 	# database migration
@@ -171,6 +175,94 @@ _install_post_scripts() {
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"
+}
+
+# _install_clean_version_links()
+# Remove the symbolic links of a directory which names contain a version number
+# (or the main branch's name) and that are not committed.
+# @param	string	Path to the directory to process.
+# @param	string	Prefix of the links' names (may be empty).
+# @param	string	Suffix of the links' names (may be empty).
+_install_clean_version_links() {
+	for _VLINK in "$1/$2"*"$3"; do
+		# this test must stay the first instruction of the loop: it absorbs the
+		# literal pattern given by bash when the glob matches nothing
+		if [ ! -L "$_VLINK" ]; then
+			continue
+		fi
+		# extract the version part of the link's name
+		_VPART="${_VLINK##*/}"
+		_VPART="${_VPART#"$2"}"
+		_VPART="${_VPART%"$3"}"
+		if ! [[ "$_VPART" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$_VPART" != "$CONF_GIT_MAIN" ]; then
+			continue
+		fi
+		# committed links are never removed
+		if git ls-files --error-unmatch -- "$_VLINK" > /dev/null 2>&1; then
+			continue
+		fi
+		echo "$(ansi bold)Removing symlink $(ansi reset)$(ansi dim)$_VLINK$(ansi reset)"
+		rm -f "$_VLINK"
+	done
+}
+
+# _install_version_alias_cleanup()
+# Remove the version alias links created by previous deployments.
+_install_version_alias_cleanup() {
+	if [ "$CONF_INSTALL_VERSION_ALIAS" = "" ]; then
+		return
+	fi
+	for _ALIAS in $CONF_INSTALL_VERSION_ALIAS; do
+		_ALIAS_DIR="$(dirname "$_ALIAS")"
+		_ALIAS_BASE="$(basename "$_ALIAS")"
+		# version added at the end of the name (directories, files without extension)
+		_install_clean_version_links "$_ALIAS_DIR" "${_ALIAS_BASE}-" ""
+		# version added before the file's extension
+		if [[ "${_ALIAS_BASE:1}" == *.* ]]; then
+			_install_clean_version_links "$_ALIAS_DIR" "${_ALIAS_BASE%.*}-" ".${_ALIAS_BASE##*.}"
+		fi
+	done
+}
+
+# _install_version_alias()
+# Create version alias links: for each listed file or directory, a symbolic link
+# which name contains the installed version number (or the main branch's name).
+_install_version_alias() {
+	if [ "$CONF_INSTALL_VERSION_ALIAS" = "" ]; then
+		return
+	fi
+	# the version must be a tag number or the main branch's name
+	if ! [[ "${DPK_OPT["tag"]}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "${DPK_OPT["tag"]}" != "$CONF_GIT_MAIN" ]; then
+		warn "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' doesn't match the X.Y.Z format, no version alias created."
+		return
+	fi
+	echo "$(ansi bold)Create version alias links$(ansi reset)"
+	for _ALIAS in $CONF_INSTALL_VERSION_ALIAS; do
+		# check the aliased element exists
+		if [ ! -e "$_ALIAS" ] && [ ! -L "$_ALIAS" ]; then
+			warn "Unable to find '$(ansi dim)$_ALIAS$(ansi reset)', no alias created."
+			continue
+		fi
+		_ALIAS_DIR="$(dirname "$_ALIAS")"
+		_ALIAS_BASE="$(basename "$_ALIAS")"
+		# compute the link's name
+		if [ -d "$_ALIAS" ] || [[ "${_ALIAS_BASE:1}" != *.* ]]; then
+			# directory, file without extension or dot file: version added at the end
+			_ALIAS_LINK="$_ALIAS_DIR/${_ALIAS_BASE}-${DPK_OPT["tag"]}"
+		else
+			# file: version added before the extension
+			_ALIAS_LINK="$_ALIAS_DIR/${_ALIAS_BASE%.*}-${DPK_OPT["tag"]}.${_ALIAS_BASE##*.}"
+		fi
+		# create the link, unless its name is already used (committed link or file)
+		if [ -e "$_ALIAS_LINK" ] || [ -L "$_ALIAS_LINK" ]; then
+			continue
+		fi
+		echo "$(ansi dim)> $_ALIAS_LINK$(ansi reset)"
+		ln -sn "$_ALIAS_BASE" "$_ALIAS_LINK"
+		if [ $? -ne 0 ]; then
+			abort "Unable to create the symlink '$(ansi dim)$_ALIAS_LINK$(ansi reset)'."
+		fi
+	done
 }
 
 # _install_crontab()
