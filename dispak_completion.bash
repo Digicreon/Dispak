@@ -15,7 +15,7 @@ _dpk() {
 	_ACTIONS="help branch tags pkg install config origin"
 	declare -A _ACTIONS_OPT
 	_ACTIONS_OPT["help"]="branch tags pkg install config origin"
-	_ACTIONS_OPT["branch"]="--list --graph --create --remove --merge --backport --rebase --rename --prune --tag="
+	_ACTIONS_OPT["branch"]="--list --graph --create --remove --merge --backport --rebase --rename --prune --from= --tag="
 	_ACTIONS_OPT["tags"]="--all"
 	_ACTIONS_OPT["pkg"]="--tag="
 	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-xinetd --no-supervisor --no-systemd --no-db-migration"
@@ -27,18 +27,24 @@ _dpk() {
 		OPTS="--platform=dev --platform=test --platform=prod"
 	elif [ "$CUR" = "--tag" ]; then
 		OPTS="--tag="
+	elif [ "$CUR" = "--from" ]; then
+		OPTS="--from="
 	elif [ "$CUR" = "=" ]; then
 		CUR=""
 		if [ "$PREV" = "--platform" ]; then
 			OPTS="dev test prod"
 		elif [ "$PREV" = "--tag" ]; then
 			OPTS="main"
+		elif [ "$PREV" = "--from" ]; then
+			OPTS="$(git branch -r 2> /dev/null | grep -v -- '->' | sed 's|^ *origin/||')"
 		fi
 	elif [ "$PREV" = "=" ]; then
 		if [ "$PREV2" = "--platform" ]; then
 			OPTS="dev test prod"
 		elif [ "$PREV2" = "--tag" ]; then
 			OPTS="main"
+		elif [ "$PREV2" = "--from" ]; then
+			OPTS="$(git branch -r 2> /dev/null | grep -v -- '->' | sed 's|^ *origin/||')"
 		fi
 	else
 		ACTION="${COMP_WORDS[1]}"

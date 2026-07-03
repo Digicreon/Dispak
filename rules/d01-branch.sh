@@ -13,17 +13,19 @@ RULE_SECTION="Development"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="list graph create tag remove merge backport rebase rename prune"
+RULE_OPTIONAL_PARAMS="list graph create from tag remove merge backport rebase rename prune"
 
 # Show help for this rule.
 rule_help_branch() {
-	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name [--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
+	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name [--from=src_branch|--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
 	echo "       $(ansi dim)Manage branches. One of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
 	echo "       --graph    $(ansi dim)Show a graph of the existing branches.$(ansi reset)"
 	echo "       --create   $(ansi dim)Name of the branch to create (locally and remotely). Move to the branch after its creation.$(ansi reset)"
-	echo "                  $(ansi dim)Branches are always created from the $(ansi reset)$CONF_GIT_MAIN$(ansi dim) branch.$(ansi reset)"
-	echo "                  $(ansi dim)Use the $(ansi reset)--tag$(ansi dim) to tell the tag from which the new branch will be created (optional; use the last $(ansi reset)$CONF_GIT_MAIN$(ansi dim) revision if not given).$(ansi reset)"
+	echo "                  $(ansi dim)Branches are created from the last revision of the $(ansi reset)$CONF_GIT_MAIN$(ansi dim) branch by default.$(ansi reset)"
+	echo "                  $(ansi dim)Use the $(ansi reset)--from$(ansi dim) option to tell the branch from which the new branch will be created.$(ansi reset)"
+	echo "                  $(ansi dim)Use the $(ansi reset)--tag$(ansi dim) option to tell the tag from which the new branch will be created.$(ansi reset)"
+	echo "                  $(ansi dim)The $(ansi reset)--from$(ansi dim) and $(ansi reset)--tag$(ansi dim) options are mutually exclusive.$(ansi reset)"
 	echo "       --remove   $(ansi dim)Name of the branch to delete.$(ansi reset)"
 	echo "       --merge    $(ansi dim)Merge the current branch on the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given).$(ansi reset)"
 	echo "       --backport $(ansi dim)Merge the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given) on the current branch.$(ansi reset)"
@@ -130,10 +132,20 @@ _branch_create() {
 	if [ "$(git_get_branches | grep "$CREATE_BRANCH" | wc -l)" -ne 0 ]; then
 		abort "$(ansi red)A '$CREATE_BRANCH' branch already exists.$(ansi reset)"
 	fi
-	# move to 'main' branch if needed
-	if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
-		echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
-		git checkout "$CONF_GIT_MAIN"
+	# was a source branch given?
+	FROM_SRC="${DPK_OPT["from"]}"
+	if [ -v DPK_OPT["from"] ]; then
+		# the --from and --tag options are mutually exclusive
+		if [ -v DPK_OPT["tag"] ]; then
+			abort "$(ansi red)The --from and --tag options can't be used together.$(ansi reset)"
+		fi
+		if [ "$FROM_SRC" = "" ]; then
+			abort "$(ansi red)Empty source branch name.$(ansi reset)"
+		fi
+		# check if the source branch exists
+		if [ "$(git_get_branches | grep "^$FROM_SRC$" | wc -l)" -eq 0 ]; then
+			abort "$(ansi red)The branch '$FROM_SRC' doesn't exist.$(ansi reset)"
+		fi
 	fi
 	# was a tag given?
 	TAG_SRC="${DPK_OPT["tag"]}"
@@ -142,12 +154,22 @@ _branch_create() {
 		check_tag
 	fi
 	# create the new branch
-	if [ "$TAG_SRC" = "" ]; then
-		echo "$(ansi bold)Create the new branch (from '$CONF_GIT_MAIN' branch)$(ansi reset)"
-		git checkout -b "$CREATE_BRANCH"
+	if [ "$FROM_SRC" != "" ]; then
+		echo "$(ansi bold)Create the new branch (from '$FROM_SRC' branch)$(ansi reset)"
+		git checkout -b "$CREATE_BRANCH" "origin/$FROM_SRC"
 	else
-		echo "$(ansi bold)Create the new branch (from tag '$TAG_SRC' on '$CONF_GIT_MAIN' branch)$(ansi reset)"
-		git checkout -b "$CREATE_BRANCH" "$TAG_SRC"
+		# move to 'main' branch if needed
+		if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
+			echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
+			git checkout "$CONF_GIT_MAIN"
+		fi
+		if [ "$TAG_SRC" = "" ]; then
+			echo "$(ansi bold)Create the new branch (from '$CONF_GIT_MAIN' branch)$(ansi reset)"
+			git checkout -b "$CREATE_BRANCH"
+		else
+			echo "$(ansi bold)Create the new branch (from tag '$TAG_SRC' on '$CONF_GIT_MAIN' branch)$(ansi reset)"
+			git checkout -b "$CREATE_BRANCH" "$TAG_SRC"
+		fi
 	fi
 	echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
 	git push --set-upstream origin "$CREATE_BRANCH"

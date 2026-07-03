@@ -240,14 +240,19 @@ $ dpk branch --graph
 ```
 
 #### Create branches
-You can create a new branch. Branches are created from the last commit of the `main` branch, or from a given tag if the option `--tag` is used.
+You can create a new branch. Branches are created from the last commit of the `main` branch, or from another branch if the option `--from` is used, or from a given tag if the option `--tag` is used.
 ```shell
 # create a branch from the last commit of the 'main' branch
 $ dpk branch --create=name_of_the_branch
 
+# create a branch from another branch
+$ dpk branch --create=name_of_the_branch --from=name_of_the_source_branch
+
 # create a branch from a tag
 $ dpk branch --create=name_of_the_branch --tag=X.Y.Z
 ```
+The `--from` and `--tag` options can't be used together.
+
 Branches are created locally and on the remote git repository.
 
 #### Remove branches
