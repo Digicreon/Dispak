@@ -20,6 +20,7 @@ _dpk() {
 	_ACTIONS_OPT["pkg"]="--tag="
 	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-xinetd --no-supervisor --no-systemd --no-db-migration"
 	_ACTIONS_OPT["config"]="--platform=dev --platform=test --platform=prod --tag=main --tag="
+	_ACTIONS_OPT["origin"]="--branch"
 	COMPREPLY=()
 	if [ "$COMP_CWORD" = "1" ]; then
 		OPTS="$_ACTIONS"
@@ -35,7 +36,7 @@ _dpk() {
 			OPTS="dev test prod"
 		elif [ "$PREV" = "--tag" ]; then
 			OPTS="main"
-		elif [ "$PREV" = "--from" ]; then
+		elif [ "$PREV" = "--from" ] || [ "$PREV" = "--branch" ]; then
 			OPTS="$(git branch -r 2> /dev/null | grep -v -- '->' | sed 's|^ *origin/||')"
 		fi
 	elif [ "$PREV" = "=" ]; then
@@ -43,7 +44,7 @@ _dpk() {
 			OPTS="dev test prod"
 		elif [ "$PREV2" = "--tag" ]; then
 			OPTS="main"
-		elif [ "$PREV2" = "--from" ]; then
+		elif [ "$PREV2" = "--from" ] || [ "$PREV2" = "--branch" ]; then
 			OPTS="$(git branch -r 2> /dev/null | grep -v -- '->' | sed 's|^ *origin/||')"
 		fi
 	else

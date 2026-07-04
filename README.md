@@ -25,7 +25,7 @@ Table of contents
    5. [Install tag](#15-install-tag)
    6. [Refresh configuration](#16-refresh-configuration)
    7. [Branches management](#17-branches-management)
-   8. [Show remote origin](#18-show-remote-origin)
+   8. [Show remote origin and branch information](#18-show-remote-origin-and-branch-information)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
@@ -313,12 +313,22 @@ $ dpk branch --prune=name_of_the_branch
 ```
 
 
-### 1.8 Show remote origin
+### 1.8 Show remote origin and branch information
 
 To display the URL of the repository's remote origin:
 ```shell
 $ dpk origin
 ```
+
+To display the branch from which the current branch (or any given branch) was created, with the number of commits ahead and behind this parent branch:
+```shell
+# information about the current branch
+$ dpk origin --branch
+
+# information about the given branch
+$ dpk origin --branch=name_of_the_branch
+```
+Git doesn't record the branch from which another branch was created. This information is deduced from the local reflog when the branch was created locally; otherwise it is a best-effort guess, based on the most recent merge-base with the remote branches.
 
 
 ************************************************************************

@@ -29,9 +29,81 @@ git_get_current_branch() {
 }
 
 # git_get_parent_branch()
-# Return the name of the current branch's parent branch.
+# Return the name of the branch from which the given branch was created.
+# If the branch was created locally, its reflog gives a reliable answer: the name of the source
+# branch when it was explicitly given at creation, or the exact starting commit otherwise (the
+# parent branch is then the remote branch which shares this commit as a merge-base).
+# Otherwise it is a best-effort guess: the remote branch with the most recent merge-base is chosen
+# (thus a branch created *from* the given branch may be wrongly returned). The main branch is
+# preferred when several branches match.
+# @param	string	(optional) The branch to analyze. Use the current branch if not given.
 git_get_parent_branch() {
-	git show-branch | sed "s/].*//" | grep "\*" | grep -v "$(git rev-parse --abbrev-ref HEAD)" | head -n1 | sed "s/^.*\[//" | sed "s/\^$//"
+	PARENT_TARGET="${1:-$(git rev-parse --abbrev-ref HEAD)}"
+	# get the target's reference (local branch if it exists, remote branch otherwise)
+	PARENT_TARGET_REF="$PARENT_TARGET"
+	if [ "$(git rev-parse --verify --quiet "refs/heads/$PARENT_TARGET")" = "" ]; then
+		PARENT_TARGET_REF="origin/$PARENT_TARGET"
+	fi
+	REMOTE_BRANCHES="$(git_get_branches)"
+	# search the branch's creation entry in its reflog (the branch was created locally)
+	PARENT_CREATION="$(git reflog show --format="%H %gs" "$PARENT_TARGET" 2> /dev/null | tail -1 | grep "branch: Created from")"
+	if [ "$PARENT_CREATION" != "" ]; then
+		# a source was explicitly given at creation: use it if it's still an existing branch
+		PARENT_NAME="$(echo "$PARENT_CREATION" | sed -e 's/^.*branch: Created from //' -e 's/^origin\///')"
+		if [ "$PARENT_NAME" != "HEAD" ] && [ "$(find_in_list "$REMOTE_BRANCHES" "$PARENT_NAME")" != "" ]; then
+			echo "$PARENT_NAME"
+			return
+		fi
+		# no usable source name: the parent branch is the one which shares the starting commit as a merge-base
+		# (a branch created *from* the analyzed branch has a more recent merge-base, so it can't be wrongly chosen)
+		PARENT_START="$(echo "$PARENT_CREATION" | cut -d' ' -f1)"
+		PARENT_BRANCH=""
+		for _BRANCH in $REMOTE_BRANCHES; do
+			if [ "$_BRANCH" = "$PARENT_TARGET" ]; then
+				continue
+			fi
+			if [ "$(git merge-base "$PARENT_TARGET_REF" "origin/$_BRANCH" 2> /dev/null)" = "$PARENT_START" ]; then
+				if [ "$_BRANCH" = "$CONF_GIT_MAIN" ]; then
+					echo "$_BRANCH"
+					return
+				fi
+				if [ "$PARENT_BRANCH" = "" ]; then
+					PARENT_BRANCH="$_BRANCH"
+				fi
+			fi
+		done
+		if [ "$PARENT_BRANCH" != "" ]; then
+			echo "$PARENT_BRANCH"
+			return
+		fi
+	fi
+	# fallback (branch not created locally, or its starting point disappeared):
+	# take the remote branch with the most recent merge-base
+	PARENT_BRANCH=""
+	PARENT_MB=""
+	for _BRANCH in $REMOTE_BRANCHES; do
+		if [ "$_BRANCH" = "$PARENT_TARGET" ]; then
+			continue
+		fi
+		_MB="$(git merge-base "$PARENT_TARGET_REF" "origin/$_BRANCH" 2> /dev/null)"
+		if [ "$_MB" = "" ]; then
+			continue
+		fi
+		if [ "$PARENT_MB" = "" ]; then
+			PARENT_BRANCH="$_BRANCH"
+			PARENT_MB="$_MB"
+		elif [ "$_MB" = "$PARENT_MB" ]; then
+			# same merge-base: prefer the main branch
+			if [ "$_BRANCH" = "$CONF_GIT_MAIN" ]; then
+				PARENT_BRANCH="$_BRANCH"
+			fi
+		elif git merge-base --is-ancestor "$PARENT_MB" "$_MB" 2> /dev/null; then
+			# more recent merge-base
+			PARENT_BRANCH="$_BRANCH"
+			PARENT_MB="$_MB"
+		fi
+	done
+	echo "$PARENT_BRANCH"
 }
 
 # git_get_branches()
