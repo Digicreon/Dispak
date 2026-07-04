@@ -363,7 +363,7 @@ _branch_prune() {
 	FOUND_GIVEN_BRANCH=0
 	for BRANCH in $LOCAL_BRANCHES; do
 		if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
-			abort "$(ansi red)Unable to prune while you are on a remote-only branch.$(ansi reset)"
+			abort "$(ansi red)Unable to prune while you are on a local-only branch.$(ansi reset)"
 		fi
 		if [ "$BRANCH" = "${DPK_OPT["prune"]}" ]; then
 			FOUND_GIVEN_BRANCH=1
@@ -376,7 +376,16 @@ _branch_prune() {
 	# remove the given local-only branche, or all local-only branches (if no branch was given)
 	for BRANCH in $LOCAL_BRANCHES; do
 		if [ "${DPK_OPT["prune"]}" = "" ] || [ "${DPK_OPT["prune"]}" = "$BRANCH" ]; then
-			git branch --delete $BRANCH
+			if ! git branch --delete "$BRANCH" 2> /dev/null; then
+				# the branch is not fully merged, ask for a confirmation before forcing its deletion
+				warn "$(ansi yellow)The branch '$BRANCH' is not fully merged.$(ansi reset)"
+				read -p "Do you want to delete it anyway? [y/N] " ANSWER
+				if [ "$ANSWER" = "y" ] || [ "$ANSWER" = "Y" ]; then
+					git branch -D "$BRANCH"
+				else
+					warn "$(ansi yellow)The branch '$BRANCH' was not deleted.$(ansi reset)"
+				fi
+			fi
 		fi
 	done
 }
