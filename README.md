@@ -178,11 +178,11 @@ Dispak will perform these operations:
 - Perform database migration (see [below](#31-database-migrations)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
 - Install xinetd file (see [below](#38-xinetd-configuration)).
-- Install Supervisor configuration files (see [below](#39-supervisor-configuration)).
-- Install systemd services (see [below](#310-systemd-configuration)).
 - Set files ownership (see [configuration](#311-configuration-file)).
 - Set files access rights (see [configuration](#311-configuration-file)).
 - Generate files (see [below](#34-files-generation)).
+- Install Supervisor configuration files (see [below](#39-supervisor-configuration)).
+- Install systemd services (see [below](#310-systemd-configuration)).
 - Execute post-configuration scripts (see [below](#33-prepost-scripts-execution)).
 - Execute post-install scripts (see [below](#33-prepost-scripts-execution)).
 
@@ -388,13 +388,13 @@ You can install Dispak anywhere on your disk drive. The preferred path (if you h
 
 Get the last version:
 ```shell
-$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.4.0.zip -O Dispak-1.4.0.zip
-$ unzip Dispak-1.4.0.zip
+$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.8.0.zip -O Dispak-1.8.0.zip
+$ unzip Dispak-1.8.0.zip
 
 or
 
-$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.4.0.tar.gz -O Dispak-1.4.0.tar.gz
-$ tar xzf Dispak-1.4.0.tar.gz
+$ wget https://github.com/Digicreon/Dispak/archive/refs/tags/1.8.0.tar.gz -O Dispak-1.8.0.tar.gz
+$ tar xzf Dispak-1.8.0.tar.gz
 ```
 
 You can also clone the git source code repository:
@@ -502,7 +502,7 @@ Dispak gives two parameters to these scripts:
 Pre/post configuration and installation scripts get two additional parameters:
 1. The old tag version number.
 2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
-These two extra parameters are empty if the installation is done over a `main` branch install.
+If the installation is done over a `main` branch install, the first extra parameter contains the branch's name and the second one is empty.
 
 See all these variables in the [configuration file](#311-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`, `CONF_CONFIG_SCRIPTS_PRE`, `CONF_CONFIG_SCRIPTS_POST`
 
@@ -860,6 +860,15 @@ Example:
 FILENAME="$(filenamize "$PATH_TO_FILE")"
 ```
 
+**`html_escape`**
+
+Escape the HTML special characters of the given text (`&`, `<`, `>`, double and single quotes are replaced by their HTML entities).
+
+Example:
+```shell
+ESCAPED="$(html_escape "$TEXT")"
+```
+
 **`ansi`**
 
 Write [ANSI](https://en.wikipedia.org/wiki/ANSI_escape_code)-compatible statements.
@@ -912,7 +921,7 @@ Return the name of the current branch.
 
 **`git_get_parent_branch`**
 
-Return the name of the current branch's parent branch.
+Return the name of the branch from which the given branch was created. Take an optional parameter: the branch to analyze (defaults to the current branch). This information is deduced from the local reflog when the branch was created locally; otherwise it is a best-effort guess (see the [Parent branch](#17-branches-management) section).
 
 **`git_get_branches`**
 

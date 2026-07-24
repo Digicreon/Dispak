@@ -17,7 +17,7 @@ RULE_OPTIONAL_PARAMS="list graph parent create from tag remove merge backport re
 
 # Show help for this rule.
 rule_help_branch() {
-	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--parent$(ansi dim)|$(ansi reset)--parent$(ansi dim)=branch_name] [$(ansi reset)--create$(ansi dim)=branch_name [--from=src_branch|--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
+	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--parent$(ansi dim)|$(ansi reset)--parent$(ansi dim)=branch_name] [$(ansi reset)--create$(ansi dim)=branch_name [--from=src_branch|--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)|$(ansi reset)--rebase$(ansi dim)=branch_name] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
 	echo "       $(ansi dim)Manage branches. One of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
 	echo "       --graph    $(ansi dim)Show a graph of the existing branches.$(ansi reset)"
@@ -31,7 +31,7 @@ rule_help_branch() {
 	echo "       --remove   $(ansi dim)Name of the branch to delete.$(ansi reset)"
 	echo "       --merge    $(ansi dim)Merge the current branch on the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given).$(ansi reset)"
 	echo "       --backport $(ansi dim)Merge the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given) on the current branch.$(ansi reset)"
-	echo "       --rebase   $(ansi dim)Rebase the current branch from $(ansi reset)$CONF_GIT_MAIN$(ansi dim).$(ansi reset)"
+	echo "       --rebase   $(ansi dim)Rebase the current branch from the given branch (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) if no branch was given).$(ansi reset)"
 	echo "       --rename   $(ansi dim)Rename the current branch (not the $(ansi reset)$CONF_GIT_MAIN$(ansi dim) branch) with the given name.$(ansi reset)"
 	echo "       --prune    $(ansi dim)Remove the given local branch that doesn't remotely exist, or all local-only branches if no branch was given.$(ansi reset)"
 }

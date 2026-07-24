@@ -36,7 +36,7 @@ _dpk() {
 			OPTS="dev test prod"
 		elif [ "$PREV" = "--tag" ]; then
 			OPTS="main"
-		elif [ "$PREV" = "--from" ] || [ "$PREV" = "--parent" ]; then
+		elif [ "$PREV" = "--from" ] || [ "$PREV" = "--parent" ] || [ "$PREV" = "--rebase" ]; then
 			OPTS="$(git branch -r 2> /dev/null | grep -v -- '->' | sed 's|^ *origin/||')"
 		fi
 	elif [ "$PREV" = "=" ]; then
@@ -44,7 +44,7 @@ _dpk() {
 			OPTS="dev test prod"
 		elif [ "$PREV2" = "--tag" ]; then
 			OPTS="main"
-		elif [ "$PREV2" = "--from" ] || [ "$PREV2" = "--parent" ]; then
+		elif [ "$PREV2" = "--from" ] || [ "$PREV2" = "--parent" ] || [ "$PREV2" = "--rebase" ]; then
 			OPTS="$(git branch -r 2> /dev/null | grep -v -- '->' | sed 's|^ *origin/||')"
 		fi
 	else
