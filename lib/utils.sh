@@ -38,6 +38,7 @@ git_get_current_branch() {
 # preferred when several branches match.
 # @param	string	(optional) The branch to analyze. Use the current branch if not given.
 git_get_parent_branch() {
+	local PARENT_TARGET PARENT_TARGET_REF REMOTE_BRANCHES PARENT_CREATION PARENT_NAME PARENT_START PARENT_BRANCH PARENT_MB _BRANCH _MB
 	PARENT_TARGET="${1:-$(git rev-parse --abbrev-ref HEAD)}"
 	# get the target's reference (local branch if it exists, remote branch otherwise)
 	PARENT_TARGET_REF="$PARENT_TARGET"
@@ -142,6 +143,7 @@ git_get_current_tag() {
 # @param	string	The item to search.
 # @return	string	The item if it was found.
 find_in_list() {
+	local ITEM
 	for ITEM in $1; do
 		if [ "$ITEM" = "$2" ]; then
 			echo "$ITEM"
@@ -155,6 +157,7 @@ find_in_list() {
 # @param	string	The string which length will be used.
 # @param	string	(optional) Increment or decrement of the length ("+1", "-3", ...).
 align_spaces() {
+	local LEN
 	LEN=$((${#1} $2))
 	printf "%0.s " $(seq 1 $LEN)
 }
@@ -164,6 +167,7 @@ align_spaces() {
 # @param	string	The text that must be escaped.
 # @return	string	The escaped text.
 html_escape() {
+	local RESULT
 	RESULT="$(echo "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&apos;/g')"
 	echo $RESULT
 }
@@ -172,6 +176,7 @@ html_escape() {
 # Remove spaces at the beginning and at the end of a character string.
 # @param	string	The string to trim.
 trim() {
+	local RESULT
 	RESULT="$(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 	echo $RESULT
 }
@@ -181,6 +186,7 @@ trim() {
 # Replace slashes and spaces by dashes.
 # @param	string	The string to modify.
 filenamize() {
+	local RESULT
 	RESULT="$(echo "$1" | sed 's/[[:space:]]\+/-/g' | sed 's/\//-/g' | sed -e 's/^-*//' -e 's/-*$//' | sed 's/-\+/-/g')"
 	echo $RESULT
 }

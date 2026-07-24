@@ -45,6 +45,7 @@ rule_exec_config() {
 # _config_pre_scripts()
 # Execute pre-config scripts.
 _config_pre_scripts() {
+	local _SCRIPT _EXEC
 	if [ "$CONF_CONFIG_SCRIPTS_PRE" = "" ]; then
 		return
 	fi
@@ -67,6 +68,7 @@ _config_pre_scripts() {
 # _config_post_scripts()
 # Execute post-config scripts.
 _config_post_scripts() {
+	local _SCRIPT _EXEC
 	if [ "$CONF_CONFIG_SCRIPTS_POST" = "" ]; then
 		return
 	fi

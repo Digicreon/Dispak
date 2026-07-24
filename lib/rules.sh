@@ -5,6 +5,7 @@
 # @param	string	Rule name.
 # @param	string	Section name.
 _dpk_rule_add() {
+	local RULE_NAME SECTION_NAME SECTION_RULES
 	RULE_NAME="$(trim "$1")"
 	SECTION_NAME="$(trim "$2")"
 	if [ "$SECTION_NAME" = "" ]; then
@@ -19,6 +20,7 @@ _dpk_rule_add() {
 # @param	string	The rule's name.
 # @param	string	The parameters.
 _dpk_rule_mandatory_params() {
+	local RULE_NAME OPTIONS NEW_OPT
 	RULE_NAME=$(trim "$1")
 	shift
 	OPTIONS=""
@@ -33,6 +35,7 @@ _dpk_rule_mandatory_params() {
 # @param	string	The rule's name.
 # @param	string	The parameters.
 _dpk_rule_optional_params() {
+	local RULE_NAME OPTIONS NEW_OPT
 	RULE_NAME=$(trim "$1")
 	shift
 	OPTIONS=""

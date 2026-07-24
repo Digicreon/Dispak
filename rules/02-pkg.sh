@@ -29,6 +29,7 @@ rule_help_pkg() {
 
 # Execution of the rule
 rule_exec_pkg() {
+	local TAGLOGFILE EDITOR_PROGRAM
 	check_git
 	check_platform
 	# check if there was some commits since the last tag
@@ -105,6 +106,7 @@ rule_exec_pkg() {
 # _pkg_pre_scripts()
 # Execute pre-packaging scripts.
 _pkg_pre_scripts() {
+	local _SCRIPT _EXEC
 	if [ "$CONF_PKG_SCRIPTS_PRE" = "" ]; then
 		return
 	fi
@@ -127,6 +129,7 @@ _pkg_pre_scripts() {
 # _pkg_post_scripts()
 # Execute post-packaging scripts.
 _pkg_post_scripts() {
+	local _SCRIPT _EXEC
 	if [ "$CONF_PKG_SCRIPTS_POST" = "" ]; then
 		return
 	fi
@@ -149,6 +152,7 @@ _pkg_post_scripts() {
 # _pkg_unconcat()
 # Delete concatenated files that are not version controlled.
 _pkg_unconcat() {
+	local _FILE
 	if [ ${#CONF_PKG_CONCAT[@]} -eq 0 ]; then
 		# no file to unconcat
 		return
@@ -169,6 +173,7 @@ _pkg_unconcat() {
 # _pkg_concat()
 # Concatenate files.
 _pkg_concat() {
+	local _FILE
 	if [ ${#CONF_PKG_CONCAT[@]} -eq 0 ]; then
 		# no file to concatenate
 		return
@@ -200,6 +205,7 @@ _pkg_concat() {
 # _pkg_unminify()
 # Delete minified files that are not version controlled.
 _pkg_unminify() {
+	local _FILE
 	if [ ${#CONF_PKG_MINIFY[@]} -eq 0 ]; then
 		# no file to unminify
 		return
@@ -235,6 +241,7 @@ _pkg_check_minify() {
 # _pkg_minify()
 # Minify files. If the generated files are already version controlled, they are committed.
 _pkg_minify() {
+	local _FILE
 	if [ ${#CONF_PKG_MINIFY[@]} -eq 0 ]; then
 		# no file to minify
 		return
@@ -275,6 +282,7 @@ _pkg_minify() {
 # _pkg_s3()
 # Send static files to Amazon S3
 _pkg_s3() {
+	local TAG_MINOR _S3 FOUND_MAIN_LINK _FILE MUST_COMPRESS _MIME _SRC _UNZIP_MIME
 	if [ "${DPK_OPT["tag"]}" = "" ] || [ "${DPK_OPT["tag"]}" = "$CONF_GIT_MAIN" ]; then
 		return
 	fi

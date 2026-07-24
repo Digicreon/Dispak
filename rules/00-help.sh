@@ -23,6 +23,7 @@ rule_help_help() {
 
 # Execution of this rule
 rule_exec_help() {
+	local HELP_FUNCTION SECTION RULE
 	if [ "$1" != "" ]; then
 		HELP_FUNCTION="rule_help_$1"
 		$HELP_FUNCTION

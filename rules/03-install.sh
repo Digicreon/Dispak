@@ -21,6 +21,15 @@ declare -A CONF_INSTALL_CHOWN
 declare -A CONF_INSTALL_CHGRP
 declare -A CONF_INSTALL_CHMOD
 
+# Global variables shared between functions, set by rule_exec_install() and given as parameters
+# to the pre/post-install and pre/post-config scripts (see the _install_pre_scripts(),
+# _install_post_scripts(), _config_pre_scripts() and _config_post_scripts() functions):
+# the tag or branch which was deployed before the installation...
+CURRENT_TAG=""
+# ...and the direction of the version change ("+" if the newly installed tag is more recent
+# than the previously installed one, "-" otherwise).
+TAG_EVOLUTION=""
+
 # Show help for this rule.
 rule_help_install() {
 	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-systemd$(ansi dim)] [$(ansi reset)--no-supervisor$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
@@ -38,6 +47,7 @@ rule_help_install() {
 
 # Execution of the rule
 rule_exec_install() {
+	local TAG_MAJOR TAG_MINOR TAG_REVISION CURRENT_TAG_MAJOR CURRENT_TAG_MINOR CURRENT_TAG_REVISION _SYMLINK
 	check_git
 	check_sudo
 	check_tag
@@ -136,6 +146,7 @@ rule_exec_install() {
 # _install_pre_scripts()
 # Execute pre-install scripts.
 _install_pre_scripts() {
+	local _SCRIPT _EXEC
 	if [ "$CONF_INSTALL_SCRIPTS_PRE" = "" ]; then
 		return
 	fi
@@ -158,6 +169,7 @@ _install_pre_scripts() {
 # _install_post_scripts()
 # Execute post-install scripts.
 _install_post_scripts() {
+	local _SCRIPT _EXEC
 	if [ "$CONF_INSTALL_SCRIPTS_POST" = "" ]; then
 		return
 	fi
@@ -184,6 +196,7 @@ _install_post_scripts() {
 # @param	string	Prefix of the links' names (may be empty).
 # @param	string	Suffix of the links' names (may be empty).
 _install_clean_version_links() {
+	local _VLINK _VPART
 	for _VLINK in "$1/$2"*"$3"; do
 		# this test must stay the first instruction of the loop: it absorbs the
 		# literal pattern given by bash when the glob matches nothing
@@ -209,6 +222,7 @@ _install_clean_version_links() {
 # _install_version_alias_cleanup()
 # Remove the version alias links created by previous deployments.
 _install_version_alias_cleanup() {
+	local _ALIAS _ALIAS_DIR _ALIAS_BASE
 	if [ "$CONF_INSTALL_VERSION_ALIAS" = "" ]; then
 		return
 	fi
@@ -228,6 +242,7 @@ _install_version_alias_cleanup() {
 # Create version alias links: for each listed file or directory, a symbolic link
 # which name contains the installed version number (or the main branch's name).
 _install_version_alias() {
+	local _ALIAS _ALIAS_DIR _ALIAS_BASE _ALIAS_LINK
 	if [ "$CONF_INSTALL_VERSION_ALIAS" = "" ]; then
 		return
 	fi
@@ -268,6 +283,7 @@ _install_version_alias() {
 # _install_crontab()
 # Install new crontab file.
 _install_crontab() {
+	local START_MARK END_MARK BEGIN_GEN END_GEN
 	if [ -v DPK_OPT["no-crontab"] ]; then
 		return
 	fi
@@ -301,6 +317,7 @@ _install_crontab() {
 # _install_xinetd()
 # Install new xinetd file.
 _install_xinetd() {
+	local START_MARK END_MARK BEGIN_GEN END_GEN XINETD_TMP_FILE
 	if [ -v DPK_OPT["no-xinetd"] ]; then
 		return
 	fi
@@ -341,6 +358,7 @@ _install_xinetd() {
 # _install_supervisor()
 # Install new Supervisor files.
 _install_supervisor() {
+	local CONFIG_FOUND FILENAME DEST
 	if [ -v DPK_OPT["no-supervisor"] ]; then
 		return
 	fi
@@ -388,6 +406,7 @@ _install_supervisor() {
 # _install_systemd
 # Install new systemd files.
 _install_systemd() {
+	local FILENAME SERVICE_NAME SERVICE_FILE DEST DEST_SERVICE
 	if [ -v DPK_OPT["no-systemd"] ]; then
 		return
 	fi
@@ -540,6 +559,7 @@ _install_systemd() {
 # _install_db_migration()
 # Do the migration of a new version of the database.
 _install_db_migration() {
+	local MIGRATION NBR MIGRATION_ID
 	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ -v DPK_OPT["no-db-migration"] ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
@@ -561,6 +581,7 @@ _install_db_migration() {
 # _install_config_apache()
 # Generation and installation of Apache files.
 _install_config_apache() {
+	local _CONF_FILE
 	if [ -v DPK_OPT["no-apache"] ] || [ "$CONF_INSTALL_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
@@ -597,6 +618,7 @@ _install_config_apache() {
 # _install_config_files()
 # Configure files.
 _install_config_files() {
+	local LOGIN RIGHTS _FILE
 	# chown
 	if [ ${#CONF_INSTALL_CHOWN[@]} -ne 0 ]; then
 		echo "$(ansi bold)Setting files owner$(ansi reset)"

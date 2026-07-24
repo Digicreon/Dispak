@@ -15,6 +15,16 @@ RULE_MANDATORY_PARAMS=""
 # Rule's optional parameters.
 RULE_OPTIONAL_PARAMS="list graph parent create from tag remove merge backport rebase rename prune"
 
+# Global variables shared between the rule's functions:
+# path to the ".git" directory of the current repository (set by rule_exec_branch()).
+GIT_DIR_PATH=""
+# branch processed by the --rebase option, and source branch of the rebase (set by
+# _branch_rebase(), used by the other _branch_rebase*() functions).
+REBASE_BRANCH=""
+REBASE_SRC=""
+# number of tries left for the rebase+push operation (see _branch_rebase_push()).
+REBASE_TRIES=0
+
 # Show help for this rule.
 rule_help_branch() {
 	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--parent$(ansi dim)|$(ansi reset)--parent$(ansi dim)=branch_name] [$(ansi reset)--create$(ansi dim)=branch_name [--from=src_branch|--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)|$(ansi reset)--rebase$(ansi dim)=branch_name] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
@@ -91,6 +101,7 @@ rule_exec_branch() {
 # _branch_list()
 # List all existing branches, with the tag from wich they were created.
 _branch_list() {
+	local CURRENT_BRANCH LOCAL_BRANCHES REMOTE_BRANCHES BRANCH LAST_COMMIT_DATE
 	CURRENT_BRANCH="$(git_get_current_branch)"
 	# show local branches that doesn't exist remotely
 	LOCAL_BRANCHES="$(git_get_branches_local_only)"
@@ -132,6 +143,7 @@ _branch_graph() {
 # _branch_parent()
 # Show the branch from which a branch was created, with the numbers of commits ahead and behind.
 _branch_parent() {
+	local BRANCH BRANCH_REF PARENT_SRC COUNT_AHEAD COUNT_BEHIND
 	# get the branch to analyze (the current branch if no branch name was given)
 	BRANCH="${DPK_OPT["parent"]}"
 	if [ "$BRANCH" = "" ]; then
@@ -169,6 +181,7 @@ _branch_parent() {
 # _branch_create()
 # Create a new branch.
 _branch_create() {
+	local CREATE_BRANCH FROM_SRC TAG_SRC
 	# get the branch to create
 	CREATE_BRANCH="${DPK_OPT["create"]}"
 	if [ ! "$CREATE_BRANCH" ]; then
@@ -231,6 +244,7 @@ _branch_create() {
 # _branch_remove()
 # Delete a branch.
 _branch_remove() {
+	local RM_BRANCH IS_REMOTE_BRANCH
 	# get the branch to remove and check its name
 	RM_BRANCH="${DPK_OPT["remove"]}"
 	if [ ! "$RM_BRANCH" ]; then
@@ -267,6 +281,7 @@ _branch_remove() {
 # _branch_merge()
 # Merge the current branch on the given branch (defaults to 'main').
 _branch_merge() {
+	local BRANCH BRANCH_DEST
 	check_git_branch
 	check_git_clean
 	check_git_pushed
@@ -301,6 +316,7 @@ _branch_merge() {
 # _branch_backport()
 # Merge the given branch (defaults to 'main') on the current branch.
 _branch_backport() {
+	local BRANCH BRANCH_SRC
 	check_git_branch
 	check_git_clean
 	check_git_pushed
@@ -336,6 +352,7 @@ _branch_backport() {
 # Rebase the current branch from 'main' (or from the given branch), and push the result.
 # If a previous rebase was interrupted by a conflict, resume it once the conflicts are solved.
 _branch_rebase() {
+	local REBASE_DIR STATE_BRANCH
 	REBASE_TRIES=3
 	# resume mode: a previous execution was interrupted by a rebase conflict
 	REBASE_DIR="$GIT_DIR_PATH/rebase-merge"
@@ -346,14 +363,14 @@ _branch_rebase() {
 		# get the rebase context (rebased branch, source branch), and check that the rebase in
 		# progress is one started by Dispak: the context file must exist and its branch must be
 		# the branch that is being rebased (the file could be a leftover of an aborted rebase)
-		BRANCH="$(sed 's|^refs/heads/||' "$REBASE_DIR/head-name" 2> /dev/null)"
+		REBASE_BRANCH="$(sed 's|^refs/heads/||' "$REBASE_DIR/head-name" 2> /dev/null)"
 		STATE_BRANCH="$(cut -d' ' -f1 "$GIT_DIR_PATH/dispak-rebase" 2> /dev/null)"
-		BRANCH_SRC="$(cut -d' ' -f2 "$GIT_DIR_PATH/dispak-rebase" 2> /dev/null)"
-		if [ "$BRANCH" = "" ] || [ "$BRANCH_SRC" = "" ] || [ "$STATE_BRANCH" != "$BRANCH" ]; then
+		REBASE_SRC="$(cut -d' ' -f2 "$GIT_DIR_PATH/dispak-rebase" 2> /dev/null)"
+		if [ "$REBASE_BRANCH" = "" ] || [ "$REBASE_SRC" = "" ] || [ "$STATE_BRANCH" != "$REBASE_BRANCH" ]; then
 			rm -f "$GIT_DIR_PATH/dispak-rebase"
 			abort "$(ansi red)A rebase not started by Dispak is in progress. Finish it with $(ansi reset)git rebase --continue$(ansi red) or $(ansi reset)git rebase --abort$(ansi red).$(ansi reset)"
 		fi
-		echo "$(ansi bold)Resuming the rebase of the '$BRANCH' branch on '$BRANCH_SRC'$(ansi reset)"
+		echo "$(ansi bold)Resuming the rebase of the '$REBASE_BRANCH' branch on '$REBASE_SRC'$(ansi reset)"
 		if ! GIT_EDITOR=true git rebase --continue; then
 			_branch_rebase_conflict
 		fi
@@ -365,31 +382,31 @@ _branch_rebase() {
 	check_git_clean
 	check_git_pushed
 	# get the current branch
-	BRANCH="$(git_get_current_branch)"
+	REBASE_BRANCH="$(git_get_current_branch)"
 	# get the branch to rebase onto
-	BRANCH_SRC="$CONF_GIT_MAIN"
+	REBASE_SRC="$CONF_GIT_MAIN"
 	if [ "${DPK_OPT["rebase"]}" != "" ]; then
 		# a branch was given
-		BRANCH_SRC="${DPK_OPT["rebase"]}"
+		REBASE_SRC="${DPK_OPT["rebase"]}"
 		# check if this branch exists
-		if [ "$(git_get_branches | grep "$BRANCH_SRC" | wc -l)" -eq 0 ]; then
-			abort "$(ansi red)The branch '$BRANCH_SRC' doesn't exist.$(ansi reset)"
+		if [ "$(git_get_branches | grep "$REBASE_SRC" | wc -l)" -eq 0 ]; then
+			abort "$(ansi red)The branch '$REBASE_SRC' doesn't exist.$(ansi reset)"
 		fi
 	fi
 	# check the source and destination are different
-	if [ "$BRANCH" = "$BRANCH_SRC" ]; then
-		abort "$(ansi red)Unable to rebase the '$BRANCH' branch on itself.$(ansi reset)"
+	if [ "$REBASE_BRANCH" = "$REBASE_SRC" ]; then
+		abort "$(ansi red)Unable to rebase the '$REBASE_BRANCH' branch on itself.$(ansi reset)"
 	fi
-	if [ "$BRANCH" = "$CONF_GIT_MAIN" ]; then
+	if [ "$REBASE_BRANCH" = "$CONF_GIT_MAIN" ]; then
 		abort "$(ansi red)Unable to rebase '$CONF_GIT_MAIN' branch.$(ansi reset)"
 	fi
 	# update the source branch
-	echo "$(ansi bold)Updating '$BRANCH_SRC' branch$(ansi reset)"
-	git checkout "$BRANCH_SRC"
+	echo "$(ansi bold)Updating '$REBASE_SRC' branch$(ansi reset)"
+	git checkout "$REBASE_SRC"
 	git pull
 	# update the branch to rebase (fetch the commits pushed since the last synchronization)
-	echo "$(ansi bold)Updating '$BRANCH' branch$(ansi reset)"
-	git checkout "$BRANCH"
+	echo "$(ansi bold)Updating '$REBASE_BRANCH' branch$(ansi reset)"
+	git checkout "$REBASE_BRANCH"
 	git pull
 	# rebase and push
 	_branch_rebase_exec
@@ -397,15 +414,15 @@ _branch_rebase() {
 }
 
 # _branch_rebase_exec()
-# Rebase the $BRANCH branch on the $BRANCH_SRC branch.
+# Rebase the $REBASE_BRANCH branch on the $REBASE_SRC branch.
 # Save the rebase context first, to make it possible to resume after a conflict.
 _branch_rebase_exec() {
 	# save the rebase context: the rebased branch, the source branch, and the remote revision of
 	# the rebased branch (the push will be refused if the remote branch moves away from this
 	# revision); this file is what makes it possible to resume after a conflict
-	echo "$BRANCH $BRANCH_SRC $(git rev-parse "origin/$BRANCH" 2> /dev/null)" > "$GIT_DIR_PATH/dispak-rebase"
-	echo "$(ansi bold)Rebasing '$BRANCH' branch on '$BRANCH_SRC'$(ansi reset)"
-	if ! git rebase "$BRANCH_SRC"; then
+	echo "$REBASE_BRANCH $REBASE_SRC $(git rev-parse "origin/$REBASE_BRANCH" 2> /dev/null)" > "$GIT_DIR_PATH/dispak-rebase"
+	echo "$(ansi bold)Rebasing '$REBASE_BRANCH' branch on '$REBASE_SRC'$(ansi reset)"
+	if ! git rebase "$REBASE_SRC"; then
 		_branch_rebase_conflict
 	fi
 }
@@ -417,9 +434,10 @@ _branch_rebase_conflict() {
 }
 
 # _branch_rebase_push()
-# Force-push the rebased $BRANCH branch. If commits were pushed on the branch in the meantime,
-# fetch them and replay the whole rebase operation.
+# Force-push the rebased $REBASE_BRANCH branch. If commits were pushed on the branch in the
+# meantime, fetch them and replay the whole rebase operation.
 _branch_rebase_push() {
+	local BRANCH_REMOTE_SHA PUSH_OUTPUT PUSH_STATUS
 	while true; do
 		# read the remote revision saved before the rebase (used as the expected remote state),
 		# then delete the context file: the rebase is done, no resume will be needed (the file
@@ -427,28 +445,28 @@ _branch_rebase_push() {
 		BRANCH_REMOTE_SHA="$(cut -d' ' -f3 "$GIT_DIR_PATH/dispak-rebase" 2> /dev/null)"
 		rm -f "$GIT_DIR_PATH/dispak-rebase"
 		echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
-		PUSH_OUTPUT="$(git push --porcelain --force-with-lease="$BRANCH:$BRANCH_REMOTE_SHA" origin "$BRANCH" 2>&1)"
+		PUSH_OUTPUT="$(git push --porcelain --force-with-lease="$REBASE_BRANCH:$BRANCH_REMOTE_SHA" origin "$REBASE_BRANCH" 2>&1)"
 		PUSH_STATUS=$?
 		echo "$PUSH_OUTPUT"
 		if [ $PUSH_STATUS -eq 0 ]; then
 			return
 		fi
 		if ! echo "$PUSH_OUTPUT" | grep -q "stale info"; then
-			abort "$(ansi red)Failed to push the '$BRANCH' branch.$(ansi reset)"
+			abort "$(ansi red)Failed to push the '$REBASE_BRANCH' branch.$(ansi reset)"
 		fi
 		REBASE_TRIES=$((REBASE_TRIES - 1))
 		if [ $REBASE_TRIES -le 0 ]; then
-			abort "$(ansi red)Commits keep being pushed on the '$BRANCH' branch. Run $(ansi reset)dpk branch --rebase$(ansi red) again.$(ansi reset)"
+			abort "$(ansi red)Commits keep being pushed on the '$REBASE_BRANCH' branch. Run $(ansi reset)dpk branch --rebase$(ansi red) again.$(ansi reset)"
 		fi
 		# commits were pushed on the branch during the rebase: fetch them and replay the whole operation
-		warn "$(ansi yellow)Commits were pushed on the '$BRANCH' branch during the rebase. Fetching them and replaying the rebase.$(ansi reset)"
+		warn "$(ansi yellow)Commits were pushed on the '$REBASE_BRANCH' branch during the rebase. Fetching them and replaying the rebase.$(ansi reset)"
 		git_fetch
-		echo "$(ansi bold)Updating '$BRANCH_SRC' branch$(ansi reset)"
-		git checkout "$BRANCH_SRC"
+		echo "$(ansi bold)Updating '$REBASE_SRC' branch$(ansi reset)"
+		git checkout "$REBASE_SRC"
 		git pull
-		echo "$(ansi bold)Updating '$BRANCH' branch$(ansi reset)"
-		git checkout "$BRANCH"
-		git reset --hard "origin/$BRANCH"
+		echo "$(ansi bold)Updating '$REBASE_BRANCH' branch$(ansi reset)"
+		git checkout "$REBASE_BRANCH"
+		git reset --hard "origin/$REBASE_BRANCH"
 		_branch_rebase_exec
 	done
 }
@@ -456,6 +474,7 @@ _branch_rebase_push() {
 # _branch_rename()
 # Rename the current branch to the given name.
 _branch_rename() {
+	local OLD_NAME NEW_NAME
 	check_git_branch
 	check_git_clean
 	check_git_pushed
@@ -488,6 +507,7 @@ _branch_rename() {
 # _branch_prune()
 # Remove the given local branch that doesn't remotely exist, or all local-only branches if no branch was given.
 _branch_prune() {
+	local CURRENT_BRANCH LOCAL_BRANCHES FOUND_GIVEN_BRANCH BRANCH ANSWER
 	CURRENT_BRANCH="$(git_get_current_branch)"
 	# get local branches
 	LOCAL_BRANCHES="$(git_get_branches_local_only)"

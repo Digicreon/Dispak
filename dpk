@@ -102,7 +102,7 @@ if [ "$COMMAND" = "" ] || [ "$COMMAND" = "h" ] || [ "$COMMAND" = "help" ]; then
 	rule_exec_help $2
 	exit 0
 fi
-# fetch command-line options
+# fetch command-line options (KEY and VALUE are the name and the value of the parsed option)
 shift
 while getopts "h-:" OPTCHAR; do
 	case "$OPTCHAR" in
@@ -124,7 +124,7 @@ while getopts "h-:" OPTCHAR; do
 			;;
 	esac
 done
-# check if the asked command is known
+# check if the asked command is known (CMD_FOUND tells if it was found in the declared rules)
 CMD_FOUND=0
 for _SECTION in "${!_DPK_RULES[@]}"; do
 	for _RULE in ${_DPK_RULES["$_SECTION"]}; do
@@ -143,7 +143,7 @@ for _OPT in ${_DPK_RULES_MANDATORY_PARAMS[$COMMAND]}; do
 		abort "$(ansi red)Mising parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
 	fi
 done
-# check if extraneous parameters are given
+# check if extraneous parameters are given (FOUND tells if the checked option is expected by the rule)
 for _OPT in "${!DPK_OPT[@]}"; do
 	if [ "$_OPT" = "platform" ]; then
 		continue
@@ -166,6 +166,7 @@ if [ "$GIT_REPO_PATH" != "" ]; then
 	_NEED_POPD=1
 	pushd "$GIT_REPO_PATH" > /dev/null
 fi
+# name of the rule's execution function
 EXEC_FUNCTION="rule_exec_${COMMAND}"
 $EXEC_FUNCTION
 success

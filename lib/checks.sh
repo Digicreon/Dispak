@@ -24,7 +24,7 @@ check_dbhost() {
 	fi
 	echo "SELECT 1;" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST -P $CONF_DB_PORT > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		abort "$(ansi red)Database connection error on$(ansi reset) $DATABASE_HOSTNAME $(ansi red).$(ansi reset)"
+		abort "$(ansi red)Database connection error on$(ansi reset) $CONF_DB_HOST $(ansi red).$(ansi reset)"
 	fi
 }
 
@@ -63,6 +63,7 @@ check_git_branch() {
 # Check if the Git repository is clean (all files are committed, no new file and no modified file).
 # @param	bool	Strict mode: If equal 1, abort if there is uncommitted files. Otherwise ask the user.
 check_git_clean() {
+	local ANSWER
 	if [ "$(git status --porcelain)" = "" ]; then
 		# everything is clean
 		return
@@ -83,6 +84,7 @@ $(git status -s)
 # check_git_pushed()
 # Check if all files have been pushed to the remote repository. Abort if not.
 check_git_pushed() {
+	local BRANCH
 	BRANCH="$(git_get_current_branch)"
 	if [ "$(git diff --stat origin/$BRANCH..)" != "" ]; then
 		warn "$(ansi yellow)Some committed files have not been pushed to the remote git repository.$(ansi reset)"
@@ -97,6 +99,7 @@ check_git_pushed() {
 # check_platform()
 # Check the platform given as a parameter, or detect the platform.
 check_platform() {
+	local HOSTNAME
 	if [ "${DPK_OPT["platform"]}" = "dev" ] || [ "${DPK_OPT["platform"]}" = "test" ] || [ "${DPK_OPT["platform"]}" = "prod" ]; then
 		return
 	fi
@@ -127,6 +130,7 @@ check_platform() {
 # Check if the tag given as a parameter already exists. Quit if not.
 # If no tag is given, use the last created tag.
 check_tag() {
+	local _TAG FOUND
 	git_fetch
 	if [ "${DPK_OPT["tag"]}" = "" ]; then
 		_TAG=$(git tag | sort -V | tail -1)
@@ -146,6 +150,7 @@ check_tag() {
 # check_next_tag()
 # Ask for the next tag number.
 check_next_tag() {
+	local LAST_TAG LAST_MAJOR LAST_MINOR LAST_REVISION NEXT_MAJOR NEXT_REVISION NEXT_MINOR_STABLE NEXT_MINOR_UNSTABLE VERSION_TYPE ANSWER
 	git_fetch
 	LAST_TAG=$(git tag | sort -V | tail -1)
 	# no existing tag
