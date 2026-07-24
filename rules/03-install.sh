@@ -23,7 +23,7 @@ declare -A CONF_INSTALL_CHMOD
 
 # Show help for this rule.
 rule_help_install() {
-	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-systemd$(ansi dim)] [$(ansi reset)--no-supervisor$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)Deploy source code (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
 	echo "       --platform        $(ansi dim)Definition of the current platform. Otherwise, Dispak will try to detect it.$(ansi reset)"
 	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
@@ -268,7 +268,7 @@ _install_version_alias() {
 # _install_crontab()
 # Install new crontab file.
 _install_crontab() {
-	if [ "${DPK_OPT["no-crontab"]}" != "" ]; then
+	if [ -v DPK_OPT["no-crontab"] ]; then
 		return
 	fi
 	if [ ! -f "$GIT_REPO_PATH/etc/crontab" ] && [ ! -f "$GIT_REPO_PATH/etc/crontab.gen" ]; then
@@ -301,7 +301,7 @@ _install_crontab() {
 # _install_xinetd()
 # Install new xinetd file.
 _install_xinetd() {
-	if [ "${DPK_OPT["no-xinetd"]}" != "" ]; then
+	if [ -v DPK_OPT["no-xinetd"] ]; then
 		return
 	fi
 	if [ ! -f "$GIT_REPO_PATH/etc/xinetd" ] && [ ! -f "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
@@ -341,7 +341,7 @@ _install_xinetd() {
 # _install_supervisor()
 # Install new Supervisor files.
 _install_supervisor() {
-	if [ "${DPK_OPT["no-supervisor"]}" != "" ]; then
+	if [ -v DPK_OPT["no-supervisor"] ]; then
 		return
 	fi
 	if [ ! -d "$GIT_REPO_PATH/etc/supervisor" ]; then
@@ -388,7 +388,7 @@ _install_supervisor() {
 # _install_systemd
 # Install new systemd files.
 _install_systemd() {
-	if [ "${DPK_OPT["no-systemd"]}" != "" ]; then
+	if [ -v DPK_OPT["no-systemd"] ]; then
 		return
 	fi
 	if [ ! -d "$GIT_REPO_PATH/etc/systemd" ]; then
@@ -540,7 +540,7 @@ _install_systemd() {
 # _install_db_migration()
 # Do the migration of a new version of the database.
 _install_db_migration() {
-	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ "${DPK_OPT["no-db-migration"]}" != "" ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
+	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ -v DPK_OPT["no-db-migration"] ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
@@ -561,7 +561,7 @@ _install_db_migration() {
 # _install_config_apache()
 # Generation and installation of Apache files.
 _install_config_apache() {
-	if [ "${DPK_OPT["no-apache"]}" != "" ] || [ "$CONF_INSTALL_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
+	if [ -v DPK_OPT["no-apache"] ] || [ "$CONF_INSTALL_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
 	echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
