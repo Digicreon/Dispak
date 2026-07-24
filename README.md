@@ -52,6 +52,7 @@ Table of contents
    7. [Advanced example](#47-advanced-example)
    8. [Provided variables](#48-provided-variables)
    9. [Provided functions](#49-provided-functions)
+5. [Tests](#5-tests)
 
 
 ************************************************************************
@@ -1000,4 +1001,23 @@ If no tag is given, fetch the last created tag and put it in the `${DPK_OPT["tag
 Check if the tag given as a parameter is valid as the next tag. If not or if no tag is given, a list of valid tags is shown to the user, who must choose between them.
 
 Then the tag is available in the `${DPK_OPT["tag"]}` variable.
+
+
+************************************************************************
+
+## 5. Tests
+
+Dispak comes with a test suite, located in the `tests/` directory.
+
+To run all the tests:
+```shell
+$ ./tests/run.sh
+```
+Each `tests/test-*.sh` script can also be run individually.
+
+The tests need nothing but `bash` and `git` (no sudo rights, no network access): each script builds a disposable environment (a bare repository used as the remote origin, and two clones to simulate two developers) in a temporary directory, which is automatically removed when the script exits. Your own repositories and configuration are never used.
+
+The `run.sh` script exits with a 0 status if all the tests pass, so it can be used in a continuous integration process.
+
+The `install` and `config` rules are not tested end-to-end (they need sudo rights and write into system directories); their internal functions are tested with stubbed system commands.
 
