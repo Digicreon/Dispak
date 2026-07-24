@@ -13,14 +13,16 @@ RULE_SECTION="Development"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="list graph create from tag remove merge backport rebase rename prune"
+RULE_OPTIONAL_PARAMS="list graph parent create from tag remove merge backport rebase rename prune"
 
 # Show help for this rule.
 rule_help_branch() {
-	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--create$(ansi dim)=branch_name [--from=src_branch|--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
+	echo "   dpk $(ansi bold)branch$(ansi reset) $(ansi dim)[$(ansi reset)--list$(ansi dim)] [$(ansi reset)--graph$(ansi dim)] [$(ansi reset)--parent$(ansi dim)|$(ansi reset)--parent$(ansi dim)=branch_name] [$(ansi reset)--create$(ansi dim)=branch_name [--from=src_branch|--tag=X.Y.Z]] [$(ansi reset)--remove$(ansi dim)=branch_name] [$(ansi reset)--merge$(ansi dim)|$(ansi reset)--merge$(ansi dim)=branch_name] [$(ansi reset)--backport$(ansi dim)|$(ansi reset)--backport$(ansi dim)=branch_name] [$(ansi reset)--rebase$(ansi dim)] [$(ansi reset)--rename$(ansi dim)=new_name] [$(ansi reset)--prune$(ansi dim)|$(ansi reset)--prune$(ansi dim)=branch_name]$(ansi reset)"
 	echo "       $(ansi dim)Manage branches. One of these parameters must be given:$(ansi reset)"
 	echo "       --list     $(ansi dim)List all existing branches, with the tag from wich they were created.$(ansi reset)"
 	echo "       --graph    $(ansi dim)Show a graph of the existing branches.$(ansi reset)"
+	echo "       --parent   $(ansi dim)Show the branch from which the current branch (or the given branch) was created,$(ansi reset)"
+	echo "                  $(ansi dim)with the number of commits ahead and behind this parent branch.$(ansi reset)"
 	echo "       --create   $(ansi dim)Name of the branch to create (locally and remotely). Move to the branch after its creation.$(ansi reset)"
 	echo "                  $(ansi dim)Branches are created from the last revision of the $(ansi reset)$CONF_GIT_MAIN$(ansi dim) branch by default.$(ansi reset)"
 	echo "                  $(ansi dim)Use the $(ansi reset)--from$(ansi dim) option to tell the branch from which the new branch will be created.$(ansi reset)"
@@ -44,6 +46,9 @@ rule_exec_branch() {
 	elif [ -v DPK_OPT["graph"] ]; then
 		# show branches graph
 		_branch_graph
+	elif [ -v DPK_OPT["parent"] ]; then
+		# show parent branch
+		_branch_parent
 	elif [ -v DPK_OPT["create"] ]; then
 		# create new branch
 		_branch_create
@@ -111,6 +116,43 @@ _branch_list() {
 # Show a graph of the existing branches.
 _branch_graph() {
 	git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+}
+
+# _branch_parent()
+# Show the branch from which a branch was created, with the numbers of commits ahead and behind.
+_branch_parent() {
+	# get the branch to analyze (the current branch if no branch name was given)
+	BRANCH="${DPK_OPT["parent"]}"
+	if [ "$BRANCH" = "" ]; then
+		BRANCH="$(git_get_current_branch)"
+		if [ "$BRANCH" = "HEAD" ]; then
+			abort "$(ansi red)Not currently on a branch.$(ansi reset)"
+		fi
+	fi
+	# check the branch name (can't be 'main')
+	if [ "$BRANCH" = "$CONF_GIT_MAIN" ]; then
+		abort "$(ansi red)The '$CONF_GIT_MAIN' branch was not created from another branch.$(ansi reset)"
+	fi
+	# get the branch reference (local branch if it exists, remote branch otherwise)
+	BRANCH_REF="$BRANCH"
+	if [ "$(git rev-parse --verify --quiet "refs/heads/$BRANCH")" = "" ]; then
+		if [ "$(git rev-parse --verify --quiet "refs/remotes/origin/$BRANCH")" = "" ]; then
+			abort "$(ansi red)The branch '$BRANCH' doesn't exist.$(ansi reset)"
+		fi
+		BRANCH_REF="origin/$BRANCH"
+	fi
+	# find the parent branch
+	PARENT_SRC="$(git_get_parent_branch "$BRANCH")"
+	if [ "$PARENT_SRC" = "" ]; then
+		abort "$(ansi red)Unable to find the branch from which '$BRANCH' was created.$(ansi reset)"
+	fi
+	# count the commits ahead and behind the parent branch
+	COUNT_AHEAD="$(git rev-list --right-only --count "origin/$PARENT_SRC...$BRANCH_REF")"
+	COUNT_BEHIND="$(git rev-list --left-only --count "origin/$PARENT_SRC...$BRANCH_REF")"
+	echo "$(ansi bold)Branch:$(ansi reset)        $BRANCH"
+	echo "$(ansi bold)Created from:$(ansi reset)  $PARENT_SRC"
+	echo "$(ansi bold)Ahead:$(ansi reset)         $COUNT_AHEAD commit(s)"
+	echo "$(ansi bold)Behind:$(ansi reset)        $COUNT_BEHIND commit(s)"
 }
 
 # _branch_create()
