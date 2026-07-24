@@ -296,7 +296,7 @@ $ dpk branch --backport=name_of_the_branch
 The merged result is pushed to the remote git repository.
 
 #### Rebase
-You can rebase the current branch from the `main` branch (or from any given branch):
+You can rebase the current branch from the `main` branch (or from any given branch), i.e. rewrite its history as if the branch was created from the last commit of the source branch:
 ```shell
 # rebase the current branch from the 'main' branch
 $ dpk branch --rebase
@@ -304,7 +304,11 @@ $ dpk branch --rebase
 # rebase the current branch from the given branch
 $ dpk branch --rebase=name_of_the_branch
 ```
-The result is pushed to the remote git repository.
+The source branch and the current branch are updated from the remote git repository first; the rebased branch is then pushed with `--force-with-lease` (the rebase rewrites the branch's history).
+
+If the rebase stops on a conflict, solve the conflicts (see `git status`), add the solved files with `git add`, and run `dpk branch --rebase` again: Dispak will detect the rebase in progress, resume it and push the result. You can also cancel everything with `git rebase --abort`.
+
+If commits are pushed on the branch while it is being rebased, the push is safely rejected; Dispak then fetches the new commits and replays the whole rebase operation (a solved conflict may have to be solved again).
 
 #### Rename
 You can rename the current branch (locally and on the remote git repository):
