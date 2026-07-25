@@ -59,7 +59,7 @@ _config_pre_scripts() {
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Execution failed.$(ansi reset)"
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_CONFIG_PRE
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"
@@ -82,7 +82,7 @@ _config_post_scripts() {
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Execution failed.$(ansi reset)"
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_CONFIG_POST
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"

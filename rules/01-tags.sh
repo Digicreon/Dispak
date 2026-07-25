@@ -34,7 +34,7 @@ rule_exec_tags() {
 	SHOWN="no"
 	TAGS=$(git tag | sort -V)
 	if [ "$TAGS" = "" ]; then
-		abort "$(ansi red)No tag.$(ansi reset)"
+		abort "$(ansi red)No tag.$(ansi reset)" $DPK_EXIT_GIT_TAG
 	fi
 	for TAG in $TAGS; do
 		TAG_DATE=`git log -1 --format=%ai $TAG`

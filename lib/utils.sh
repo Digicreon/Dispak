@@ -4,6 +4,39 @@
 # @type bool
 _NEED_POPD=0
 
+# Exit codes returned by Dispak, to use as the second parameter of the abort() function.
+# They are documented in the README file. Each range of ten is reserved for a category of
+# errors, the "round" value being the generic code of the category; unused values are
+# reserved for future use.
+DPK_EXIT_OK=0                    # success
+DPK_EXIT_ERROR=1                 # generic error (default code of the abort() function)
+DPK_EXIT_SUDO=3                  # sudo rights error
+DPK_EXIT_USAGE=10                # command-line usage error (generic)
+DPK_EXIT_USAGE_COMMAND=11        # unknown command
+DPK_EXIT_USAGE_MISSING_PARAM=12  # missing mandatory parameter
+DPK_EXIT_USAGE_OPTION=13         # unknown or extraneous option
+DPK_EXIT_USAGE_VALUE=14          # invalid parameter value
+DPK_EXIT_ENV=20                  # environment error (generic)
+DPK_EXIT_ENV_PROGRAM=21          # required program not found
+DPK_EXIT_ENV_URL=22              # check URL returning an error
+DPK_EXIT_GIT=30                  # git operation error (generic)
+DPK_EXIT_GIT_REPO=31             # not inside a git repository
+DPK_EXIT_GIT_BRANCH=32           # not on the right branch
+DPK_EXIT_GIT_DIRTY=33            # uncommitted files in the repository
+DPK_EXIT_GIT_UNPUSHED=34         # committed files not pushed to the remote repository
+DPK_EXIT_GIT_TAG=35              # nonexistent tag
+DPK_EXIT_DB=40                   # database error (generic)
+DPK_EXIT_DB_CONNECTION=41        # missing database configuration or connection error
+DPK_EXIT_DB_MIGRATION=42         # database migration file execution error
+DPK_EXIT_DB_TRACKING=43          # database migration tracking error
+DPK_EXIT_SCRIPT_PKG_PRE=51       # pre-packaging script execution error
+DPK_EXIT_SCRIPT_PKG_POST=52      # post-packaging script execution error
+DPK_EXIT_SCRIPT_CONFIG_PRE=53    # pre-configuration script execution error
+DPK_EXIT_SCRIPT_CONFIG_POST=54   # post-configuration script execution error
+DPK_EXIT_SCRIPT_INSTALL_PRE=55   # pre-install script execution error
+DPK_EXIT_SCRIPT_INSTALL_POST=56  # post-install script execution error
+DPK_EXIT_SCRIPT_GENERATOR=57     # generator script execution error
+
 # git_fetch
 # Fetch new tags and branches.
 git_fetch() {
@@ -265,13 +298,15 @@ warn() {
 
 # abort()
 # Write an error message and exit.
+# @param	string	(optional) The message to write.
+# @param	int	(optional) The exit code (see the DPK_EXIT_* variables; 1 by default).
 abort() {
 	echo "$(ansi red)⛔$(ansi reset) $1 $(ansi red)ABORT$(ansi reset)"
 	# go back to previous directory
 	if [ "$_NEED_POPD" -eq 1 ]; then
 		popd > /dev/null
 	fi
-	exit 1
+	exit "${2:-1}"
 }
 
 # success()

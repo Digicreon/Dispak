@@ -103,8 +103,11 @@ if [ "$COMMAND" = "" ] || [ "$COMMAND" = "h" ] || [ "$COMMAND" = "help" ]; then
 	exit 0
 fi
 # fetch command-line options (KEY and VALUE are the name and the value of the parsed option)
+# (the leading colon of the getopts string enables its silent mode: unknown short options
+# fall in the default case, with the letter in OPTARG; don't remove it, a getopts string
+# starting with a dash would break the parsing of the long options)
 shift
-while getopts "h-:" OPTCHAR; do
+while getopts ":-:" OPTCHAR; do
 	case "$OPTCHAR" in
 		"-")
 			KEY=$(echo $OPTARG | cut -d"=" -f 1)
@@ -115,12 +118,8 @@ while getopts "h-:" OPTCHAR; do
 			fi
 			DPK_OPT[$KEY]="$VALUE"
 			;;
-		"h")
-			rule_exec_help
-			exit 1
-			;;
 		*)
-			abort "$(ansi red)Bad command line option '-$OPTCHAR'.$(ansi reset)"
+			abort "$(ansi red)Bad command line option '-$OPTARG'.$(ansi reset)" $DPK_EXIT_USAGE_OPTION
 			;;
 	esac
 done
@@ -135,12 +134,12 @@ for _SECTION in "${!_DPK_RULES[@]}"; do
 	done
 done
 if [ $CMD_FOUND -eq 0 ]; then
-	abort "$(ansi red)Unknown command $(ansi reset)'$COMMAND'$(ansi red).$(ansi reset)"
+	abort "$(ansi red)Unknown command $(ansi reset)'$COMMAND'$(ansi red).$(ansi reset)" $DPK_EXIT_USAGE_COMMAND
 fi
 # check if all mandatory options are given
 for _OPT in ${_DPK_RULES_MANDATORY_PARAMS[$COMMAND]}; do
 	if [ "${DPK_OPT[$_OPT]}" = "" ]; then
-		abort "$(ansi red)Mising parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
+		abort "$(ansi red)Missing parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)" $DPK_EXIT_USAGE_MISSING_PARAM
 	fi
 done
 # check if extraneous parameters are given (FOUND tells if the checked option is expected by the rule)
@@ -156,7 +155,7 @@ for _OPT in "${!DPK_OPT[@]}"; do
 		fi
 	done
 	if [ $FOUND -eq 0 ]; then
-		abort "$(ansi red)Extraneous parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)"
+		abort "$(ansi red)Extraneous parameter $(ansi reset)--$_OPT$(ansi red).$(ansi reset)" $DPK_EXIT_USAGE_OPTION
 	fi
 done
 

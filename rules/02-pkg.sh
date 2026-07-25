@@ -34,7 +34,7 @@ rule_exec_pkg() {
 	check_platform
 	# check if there was some commits since the last tag
 	if [ "$(git tag)" != "" ] && [ "$(git describe --long | cut -d"-" -f 2)" -eq 0 ]; then
-		abort "No file committed since last tag."
+		abort "No file committed since last tag." $DPK_EXIT_GIT
 	fi
 	# get next tags number
 	check_next_tag
@@ -51,7 +51,7 @@ rule_exec_pkg() {
 	# commit database migration file
 	if [ -f "$GIT_REPO_PATH/etc/database/migrations/current" ] && [ "$(du "$GIT_REPO_PATH/etc/database/migrations/current" | cut -f1)" != "0" ]; then
 		if [ "$(git status --short | grep --count "^A")" != "0" ]; then
-			abort "$(ansi red)Need to commit database migration files, but you have files waiting to be committed.$(ansi reset)"
+			abort "$(ansi red)Need to commit database migration files, but you have files waiting to be committed.$(ansi reset)" $DPK_EXIT_GIT_DIRTY
 		fi
 		git mv "$GIT_REPO_PATH/etc/database/migrations/current" "$GIT_REPO_PATH/etc/database/migrations/${DPK_OPT["tag"]}"
 		touch "$GIT_REPO_PATH/etc/database/migrations/current"
@@ -120,7 +120,7 @@ _pkg_pre_scripts() {
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Execution failed.$(ansi reset)"
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_PRE
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"
@@ -143,7 +143,7 @@ _pkg_post_scripts() {
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Execution failed.$(ansi reset)"
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_POST
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"
@@ -183,7 +183,7 @@ _pkg_concat() {
 		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" > /dev/null 2>&1 && [ "$(git diff --name-only "$_FILE")" != "" ]; then
 			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but it is locally modified.
   $(ansi yellow)Please, commit/stash/rollback the file.$(ansi reset)
-"
+" $DPK_EXIT_GIT_DIRTY
 		fi
 	done
 	# concatenation
@@ -197,7 +197,7 @@ _pkg_concat() {
 		echo "$(ansi dim)> $_FILE$(ansi reset)"
 		cat ${CONF_PKG_CONCAT["$_FILE"]} > "$_FILE"
 		if [ $? -ne 0 ]; then
-			abort "Unable to concatenate file '$(ansi dim)$_FILE$(ansi reset)'."
+			abort "Unable to concatenate file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
 		fi
 	done
 }
@@ -234,7 +234,7 @@ _pkg_check_minify() {
 		# minifier program not found
 		abort "Minification program '$(ansi dim)minify$(ansi reset)' not found.
   Please install NodeJS with NPM, and the 'minifier' package. See https://www.npmjs.com/package/minifier
-  "
+  " $DPK_EXIT_ENV_PROGRAM
 	fi
 }
 
@@ -251,7 +251,7 @@ _pkg_minify() {
 		if [ -e "$_FILE" ] && git ls-files --error-unmatch "$_FILE" > /dev/null 2>&1 && [ "$(git diff --name-only "$_FILE")" != "" ]; then
 			abort "Need to generate the file '$(ansi dim)$_FILE$(ansi reset)' from its source but it is locally modified.
   $(ansi yellow)Please, commit/stash/rollback the file.$(ansi reset)
-"
+" $DPK_EXIT_GIT_DIRTY
 		fi
 	done
 	# minification
@@ -260,7 +260,7 @@ _pkg_minify() {
 		echo "$(ansi dim)> $_FILE$(ansi reset)"
 		minify -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		if [ $? -ne 0 ]; then
-			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'."
+			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
 		fi
 	done
 	# commit minified files that were alreay version controlled (only if the source and minified files are not the same)
@@ -302,7 +302,7 @@ _pkg_s3() {
 	for _S3 in ${!CONF_PKG_S3[@]}; do
 		# check if the source path exists
 		if [ ! -d "${CONF_PKG_S3["$_S3"]}" ]; then
-			abort "The path '${CONF_PKG_S3["$_S3"]}' doesn't exist."
+			abort "The path '${CONF_PKG_S3["$_S3"]}' doesn't exist." $DPK_EXIT_ENV
 		fi
 		# search for a "main" symlink (and remove it)
 		FOUND_MAIN_LINK=0
@@ -394,7 +394,7 @@ _pkg_s3() {
 _pkg_check_url() {
 	if [ "$CONF_PKG_CHECK_URL" != "" ]; then
 		if [ "$(curl -I -k "$CONF_PKG_CHECK_URL" 2> /dev/null | head -1 | cut -d' ' -f 2)" != "200" ]; then
-			abort "$(ansi red)The URL $(ansi reset)$(ansi dim)$CONF_PKG_CHECK_URL$(ansi reset) $(ansi red)is returning an error.$(ansi reset)"
+			abort "$(ansi red)The URL $(ansi reset)$(ansi dim)$CONF_PKG_CHECK_URL$(ansi reset) $(ansi red)is returning an error.$(ansi reset)" $DPK_EXIT_ENV_URL
 		fi
 	fi
 }

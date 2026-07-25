@@ -12,7 +12,7 @@ check_aws() {
                     $(ansi dim)\$ sudo pip install awscli$(ansi reset) (Python installer)
      Configuration: $(ansi dim)http://docs.aws.amazon.com/fr_fr/cli/latest/userguide/cli-chap-getting-started.html$(ansi reset)
      Usage:         $(ansi dim)http://docs.aws.amazon.com/fr_fr/cli/latest/userguide/cli-chap-using.html$(ansi reset)
-  "
+  " $DPK_EXIT_ENV_PROGRAM
 	fi
 }
 
@@ -20,18 +20,18 @@ check_aws() {
 # Check if the database host is defined and reachable.
 check_dbhost() {
 	if [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ]; then
-		abort "Empty database configuration."
+		abort "Empty database configuration." $DPK_EXIT_DB_CONNECTION
 	fi
 	echo "SELECT 1;" | MYSQL_PWD="$CONF_DB_PWD" mysql -u $CONF_DB_USER -h $CONF_DB_HOST -P $CONF_DB_PORT > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		abort "$(ansi red)Database connection error on$(ansi reset) $CONF_DB_HOST $(ansi red).$(ansi reset)"
+		abort "$(ansi red)Database connection error on$(ansi reset) $CONF_DB_HOST $(ansi red).$(ansi reset)" $DPK_EXIT_DB_CONNECTION
 	fi
 }
 
 # check_sudo()
 # Check if the user has sudo rights.
 check_sudo() {
-	sudo echo "$(ansi green)✓ sudo rights checked$(ansi reset)" || exit 3
+	sudo echo "$(ansi green)✓ sudo rights checked$(ansi reset)" || exit $DPK_EXIT_SUDO
 }
 
 # check_git()
@@ -39,7 +39,7 @@ check_sudo() {
 check_git() {
 	git rev-parse --is-inside-work-tree > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		abort "$(ansi red)The command $(ansi reset)$COMMAND$(ansi red) must be executed inside a git repository.$(ansi reset)"
+		abort "$(ansi red)The command $(ansi reset)$COMMAND$(ansi red) must be executed inside a git repository.$(ansi reset)" $DPK_EXIT_GIT_REPO
 	fi
 }
 
@@ -47,7 +47,7 @@ check_git() {
 # Check if we are on the 'main' branch. Abort if not.
 check_git_main() {
 	if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
-		abort "$(ansi red)You have to be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)"
+		abort "$(ansi red)You have to be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)" $DPK_EXIT_GIT_BRANCH
 	fi
 }
 
@@ -55,7 +55,7 @@ check_git_main() {
 # Check if we are on a branch (not the 'main' branch). Abort if not.
 check_git_branch() {
 	if [ "$(git_get_current_branch)" = "$CONF_GIT_MAIN" ]; then
-		abort "$(ansi red)You must not be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)"
+		abort "$(ansi red)You must not be on the $(ansi reset)$CONF_GIT_MAIN$(ansi red) branch.$(ansi reset)" $DPK_EXIT_GIT_BRANCH
 	fi
 }
 
@@ -71,13 +71,13 @@ check_git_clean() {
 	if [ "$1" != "" ] && [ "$1" != "0" ]; then
 		abort "There is some uncommitted files.
 $(git status -s)
-"
+" $DPK_EXIT_GIT_DIRTY
 	fi
 	warn "$(ansi yellow)There is some uncommitted files.$(ansi reset)"
 	git status -s
 	read -p "Do you want to proceed anyway? [y/N] " ANSWER
 	if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
-		abort
+		abort "" $DPK_EXIT_GIT_DIRTY
 	fi
 }
 
@@ -92,7 +92,7 @@ check_git_pushed() {
 		echo
 		abort "$(ansi red)Please, push them with the command$(ansi reset)
   git push origin $BRANCH
-"
+" $DPK_EXIT_GIT_UNPUSHED
 	fi
 }
 
@@ -135,14 +135,14 @@ check_tag() {
 	if [ "${DPK_OPT["tag"]}" = "" ]; then
 		_TAG=$(git tag | sort -V | tail -1)
 		if [ "$_TAG" = "" ]; then
-			abort "No tag found."
+			abort "No tag found." $DPK_EXIT_GIT_TAG
 		fi
 		DPK_OPT["tag"]=$_TAG
 		echo "Using tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)'."
 	elif [ "${DPK_OPT["tag"]}" != "$CONF_GIT_MAIN" ]; then
 		FOUND=$(git tag | grep "^${DPK_OPT["tag"]}$" | wc -l)
 		if [ $FOUND -eq 0 ]; then
-			abort "$(ansi red)Bad value for 'tag' parameter (not an existing tag).$(ansi reset)"
+			abort "$(ansi red)Bad value for 'tag' parameter (not an existing tag).$(ansi reset)" $DPK_EXIT_GIT_TAG
 		fi
 	fi
 }
@@ -174,7 +174,7 @@ check_next_tag() {
 		elif [ "$ANSWER" = "c" ] || [ "$ANSWER" = "C" ]; then
 			DPK_OPT["tag"]="1.0.0"
 		else
-			abort "$(ansi red)Bad choice.$(ansi reset)"
+			abort "$(ansi red)Bad choice.$(ansi reset)" $DPK_EXIT_USAGE_VALUE
 		fi
 		return
 	fi
@@ -250,7 +250,7 @@ check_next_tag() {
 	elif [ "$ANSWER" = "d" ] || [ "$ANSWER" = "D" ]; then
 		DPK_OPT["tag"]="$NEXT_MAJOR"
 	else
-		abort "$(ansi red)Bad choice.$(ansi reset)"
+		abort "$(ansi red)Bad choice.$(ansi reset)" $DPK_EXIT_USAGE_VALUE
 	fi
 }
 

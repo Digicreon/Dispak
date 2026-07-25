@@ -133,4 +133,24 @@ check $? "prune of all local-only branches succeeds"
 ! git rev-parse --verify --quiet localonly > /dev/null && ! git rev-parse --verify --quiet lp2 > /dev/null
 check $? "all local-only branches removed (with confirmation for the unmerged one)"
 
+echo "== exit codes of the git checks =="
+"$DPK" branch --merge > /dev/null 2>&1
+[ $? -eq 32 ]
+check $? "merge refused on the main branch (exit code 32)"
+"$DPK" branch --create=xtag --tag=9.9.9 > /dev/null 2>&1
+[ $? -eq 35 ]
+check $? "creation from a nonexistent tag refused (exit code 35)"
+git checkout -q feat1
+echo "dirty" >> fa.txt
+echo "n" | "$DPK" branch --merge > /dev/null 2>&1
+[ $? -eq 33 ]
+check $? "merge refused on a dirty repository (exit code 33)"
+git checkout -q -- fa.txt
+echo "unpushed" >> fa.txt
+git commit -qam "unpushed commit"
+"$DPK" branch --merge > /dev/null 2>&1
+[ $? -eq 34 ]
+check $? "merge refused with unpushed commits (exit code 34)"
+git reset -q --hard origin/feat1
+
 test_end

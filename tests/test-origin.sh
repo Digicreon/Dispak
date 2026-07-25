@@ -15,7 +15,7 @@ check $? "the remote origin URL is displayed"
 echo "== error case =="
 cd "$TEST_DIR"
 "$DPK" origin > /dev/null 2>&1
-[ $? -ne 0 ]
-check $? "refused outside a git repository"
+[ $? -eq 31 ]
+check $? "refused outside a git repository (exit code 31)"
 
 test_end

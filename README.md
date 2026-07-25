@@ -26,6 +26,7 @@ Table of contents
    6. [Refresh configuration](#16-refresh-configuration)
    7. [Branches management](#17-branches-management)
    8. [Show remote origin](#18-show-remote-origin)
+   9. [Exit codes](#19-exit-codes)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
@@ -174,9 +175,9 @@ Dispak will perform these operations:
 - Execute pre-install scripts (see [below](#33-prepost-scripts-execution)).
 - Execute pre-configuration scripts (see [below](#33-prepost-scripts-execution)).
 - **Deploy new version's source code.**
+- Perform database migration (see [below](#31-database-migrations)). If a migration fails, the installation stops immediately, before any system configuration.
 - Create version-named symlinks and version alias links (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - Install crontab file (see [below](#32-crontab-installation)).
-- Perform database migration (see [below](#31-database-migrations)).
 - Install Apache configuration files (see [below](#37-apache-configuration)).
 - Install xinetd file (see [below](#38-xinetd-configuration)).
 - Set files ownership (see [configuration](#311-configuration-file)).
@@ -337,6 +338,44 @@ $ dpk origin
 ```
 
 
+### 1.9 Exit codes
+
+When everything went fine, `dpk` exits with a 0 status. When an error occurs, the exit status tells the category of the error, which is convenient for deployment or continuous integration scripts. These codes are stable and can be relied upon; the unused values of each range are reserved for future use.
+
+| Code | Meaning                                              |
+|------|------------------------------------------------------|
+| 0    | Success                                              |
+| 1    | Generic error                                        |
+| 3    | Sudo rights error                                    |
+| 10   | Command-line usage error (generic)                   |
+| 11   | Unknown command                                      |
+| 12   | Missing mandatory parameter                          |
+| 13   | Unknown or extraneous option                         |
+| 14   | Invalid parameter value                              |
+| 20   | Environment error (generic)                          |
+| 21   | Required program not found                           |
+| 22   | Check URL returning an error                         |
+| 30   | Git operation error (generic)                        |
+| 31   | Not inside a git repository                          |
+| 32   | Not on the right branch                              |
+| 33   | Uncommitted files in the repository                  |
+| 34   | Committed files not pushed to the remote repository  |
+| 35   | Nonexistent tag                                      |
+| 40   | Database error (generic)                             |
+| 41   | Missing database configuration, or connection error  |
+| 42   | Database migration file execution error              |
+| 43   | Database migration tracking error                    |
+| 51   | Pre-packaging script execution error                 |
+| 52   | Post-packaging script execution error                |
+| 53   | Pre-configuration script execution error             |
+| 54   | Post-configuration script execution error            |
+| 55   | Pre-install script execution error                   |
+| 56   | Post-install script execution error                  |
+| 57   | Generator script execution error                     |
+
+These codes are available as `DPK_EXIT_*` variables in the rules' code (see [below](#48-provided-variables)).
+
+
 ************************************************************************
 
 ## 2. Installation
@@ -448,6 +487,7 @@ CREATE TABLE DatabaseMigration (
 	dbm_t_update	TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	dbm_d_done	DATETIME DEFAULT NULL,
 	dbm_s_version	TINYTEXT NOT NULL,
+	dbm_s_error	TEXT DEFAULT NULL,
 	PRIMARY KEY (dbm_i_id),
 	INDEX dbm_d_creation (dbm_d_creation),
 	INDEX dbm_t_update (dbm_t_update),
@@ -462,6 +502,14 @@ The rest of the process is fairly simple:
 3. In this directory, you must create a file named `current` which will contain all your `ALTER` commands. You must commit this file.
 4. When you create a new tag with `dpk pkg`, the `current` file will be renamed with the tag version number(`X.Y.Z`), and a new empty `current` file is created.
 5. When you deploy a tag on a server (`dpk install` command), Dispak will check in the migration table which was the last migration executed; then it will process every migration files that are not already processed, in their creation order.
+
+The migration is done right after the deployment of the source code, before any system configuration. The connection to the database server is checked first; if it fails, the installation stops (exit code 41).
+
+Each migration file is executed inside a transaction (`START TRANSACTION`/`COMMIT`). Be aware of a MySQL limitation: DDL statements (`CREATE`, `ALTER`, `DROP`...) generate implicit commits, so only pure-DML migrations are really atomic. It is thus a good practice to write re-runnable migration files (`CREATE TABLE IF NOT EXISTS`...).
+
+If a migration file fails, the installation stops immediately, displaying the MySQL error message (exit code 42). The migration is *not* marked as done: its tracking row is kept with a NULL `dbm_d_done` field (as a trace of the failed attempt) and the MySQL error message is stored in its `dbm_s_error` column. The migration will be executed again at the next install, with a new tracking row; keep in mind that the statements executed before the error may still be applied (see the transaction limitation above).
+
+The `dbm_s_error` column is automatically added to migration tables created before its introduction. The configured database user then needs the `ALTER` privilege; otherwise a warning is displayed and the error messages are simply not stored in the database.
 
 As you can see, there is no process for migration roll-back. The main reason is to keep the system simple, by only writing  `ALTER` commands in plain SQL (whereas other database migration tools are usually using code written in a more complex programming language).
 If you need to roll-back easily, maybe you should spend more time on your testing/staging platform. Anyway, you can do database backups before migrations. The recommended way to do that is to add the execution of [Arkiv](https://github.com/Digicreon/Arkiv) in a pre-install script.
@@ -821,6 +869,7 @@ Some variables are set by Dispak and available to your rule:
 - `DPK_ROOT`: Path to the root of the used Dispak installation.
 - `GIT_REPO_PATH`: When Dispak is called from inside a Git repository, this variable contains the root path to this repository.
 - `DPK_OPT`: Contains the options given on the command-line (see [above](#44-parameters-management)).
+- `DPK_EXIT_*`: The exit codes to use as the second parameter of the `abort()` function (see [above](#19-exit-codes)).
 
 
 ### 4.9 Provided functions
@@ -838,11 +887,12 @@ Your message should be written in yellow, but it's up to you (using the `ansi` f
 
 **`abort`**
 
-You *must* call this function when your rule failed. It displays a red "⛔" (no entry) character, followed by your message, followed by a red "ABORT" string. Then it exits with a status of 1 (which means an error).
+You *must* call this function when your rule failed. It displays a red "⛔" (no entry) character, followed by your message, followed by a red "ABORT" string. Then it exits with the status given as its optional second parameter (see the [exit codes](#19-exit-codes) and the `DPK_EXIT_*` variables), or with a status of 1 by default.
 
 Example:
 ```shell
 abort "Something went really bad."
+abort "Unable to reach the server." $DPK_EXIT_ENV
 ```
 
 Your message should be written in red, but it's up to you (using the `ansi` function, see below).

@@ -9,8 +9,8 @@ create_test_repos
 
 echo "== error case: no tag =="
 "$DPK" tags > /dev/null 2>&1
-[ $? -ne 0 ]
-check $? "refused when no tag exists"
+[ $? -eq 35 ]
+check $? "refused when no tag exists (exit code 35)"
 
 # create some tags (0.1.0, 0.1.1, 0.2.0) and one commit after the last tag
 git tag -a 0.1.0 -m "first unstable version"

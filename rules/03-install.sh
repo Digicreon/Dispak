@@ -74,14 +74,14 @@ rule_exec_install() {
 	# check that only stable tag is installed on production servers
 	if [ "${DPK_OPT["platform"]}" = "prod" ]; then
 		if [ "$(($TAG_MINOR % 2))" != "0" ]; then
-			abort "$(ansi red)It's forbidden to install $(ansi reset)unstable$(ansi red) tags on production server.$(ansi reset)"
+			abort "$(ansi red)It's forbidden to install $(ansi reset)unstable$(ansi red) tags on production server.$(ansi reset)" $DPK_EXIT_USAGE_VALUE
 		fi
 	fi
 	# get the tag's configuration file
 	if [ -f "$GIT_REPO_PATH/etc/dispak.conf" ]; then
 		git checkout "${DPK_OPT["tag"]}" -- "$GIT_REPO_PATH/etc/dispak.conf"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Unable to checkout file $(ansi reset)etc/dispak.conf$(ansi red) from tag $(ansi reset)${DPK_OPT["tag"]}"
+			abort "$(ansi red)Unable to checkout file $(ansi reset)etc/dispak.conf$(ansi red) from tag $(ansi reset)${DPK_OPT["tag"]}" $DPK_EXIT_GIT
 		fi
 		# read the tag's configuration file
 		. "$(eval realpath "$GIT_REPO_PATH/etc/dispak.conf")"
@@ -105,13 +105,17 @@ rule_exec_install() {
 	echo "$(ansi bold)Updating source code repository$(ansi reset)"
 	if [ "${DPK_OPT["tag"]}" = "$CONF_GIT_MAIN" ]; then
 		if ! git checkout "$CONF_GIT_MAIN" --quiet ; then
-			abort "$(ansi red)Failed to move back to '$CONF_GIT_MAIN' branch.$(ansi reset)"
+			abort "$(ansi red)Failed to move back to '$CONF_GIT_MAIN' branch.$(ansi reset)" $DPK_EXIT_GIT
 		fi
 	else
 		if ! git checkout "tags/${DPK_OPT["tag"]}" --quiet ; then
-			abort "$(ansi red)Failed to update repository to tag '${DPK_OPT["tag"]}'.$(ansi reset)"
+			abort "$(ansi red)Failed to update repository to tag '${DPK_OPT["tag"]}'.$(ansi reset)" $DPK_EXIT_GIT
 		fi
 	fi
+	# database migration (executed right after the code deployment and before any system
+	# configuration: if a migration fails, the installation stops while the machine
+	# configuration is still untouched)
+	_install_db_migration
 	# create symlinks (named with the tag number, or the main branch's name)
 	for _SYMLINK in ${!CONF_INSTALL_SYMLINK[@]}; do
 		if [ -e "$_SYMLINK/${DPK_OPT["tag"]}" ] || [ -L "$_SYMLINK/${DPK_OPT["tag"]}" ]; then
@@ -125,8 +129,6 @@ rule_exec_install() {
 	_install_version_alias
 	# install crontab
 	_install_crontab
-	# database migration
-	_install_db_migration
 	# Apache configuration
 	_install_config_apache
 	# xinetd configuration
@@ -160,7 +162,7 @@ _install_pre_scripts() {
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Execution failed.$(ansi reset)"
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_INSTALL_PRE
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"
@@ -183,7 +185,7 @@ _install_post_scripts() {
 		fi
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" "$CURRENT_TAG" "$TAG_EVOLUTION"
 		if [ $? -ne 0 ]; then
-			abort "$(ansi red)Execution failed.$(ansi reset)"
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_INSTALL_POST
 		fi
 	done
 	echo "$(ansi gree)Done$(ansi reset)"
@@ -275,7 +277,7 @@ _install_version_alias() {
 		echo "$(ansi dim)> $_ALIAS_LINK$(ansi reset)"
 		ln -sn "$_ALIAS_BASE" "$_ALIAS_LINK"
 		if [ $? -ne 0 ]; then
-			abort "Unable to create the symlink '$(ansi dim)$_ALIAS_LINK$(ansi reset)'."
+			abort "Unable to create the symlink '$(ansi dim)$_ALIAS_LINK$(ansi reset)'." $DPK_EXIT_ENV
 		fi
 	done
 }
@@ -297,7 +299,7 @@ _install_crontab() {
 		"$GIT_REPO_PATH/etc/crontab.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$GIT_REPO_PATH/etc/crontab"
 		if [ $? -ne 0 ]; then
 			echo
-			abort "$(ansi red)Crontab configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/crontab.gen$(ansi red) execution failed.$(ansi reset)"
+			abort "$(ansi red)Crontab configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/crontab.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 		fi
 		echo "$(ansi green)done$(ansi reset)"
 	fi
@@ -335,7 +337,7 @@ _install_xinetd() {
 		"$GIT_REPO_PATH/etc/xinetd.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$GIT_REPO_PATH/etc/xinetd"
 		if [ $? -ne 0 ]; then
 			echo
-			abort "$(ansi red)Xinetd configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/xinetd.gen$(ansi red) execution failed.$(ansi reset)"
+			abort "$(ansi red)Xinetd configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/xinetd.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 		fi
 		echo "$(ansi green)done$(ansi reset)"
 	fi
@@ -368,7 +370,7 @@ _install_supervisor() {
 	echo "$(ansi bold)Installing Supervisor configuration$(ansi reset)"
 	if [ ! -d /etc/supervisor/conf.d ]; then
 		echo
-		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/supervisor/conf.d"
+		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/supervisor/conf.d" $DPK_EXIT_ENV
 	fi
 	CONFIG_FOUND=0
 	for FILENAME in $GIT_REPO_PATH/etc/supervisor/*; do
@@ -379,7 +381,7 @@ _install_supervisor() {
 			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
 				echo
-				abort "$(ansi red)Supervisor configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
+				abort "$(ansi red)Supervisor configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 			fi
 			echo "$(ansi green)done$(ansi reset)"
 			CONFIG_FOUND=1
@@ -388,7 +390,7 @@ _install_supervisor() {
 			echo -n "$(ansi dim)+ Copying $(ansi reset) $DEST "
 			if ! sudo cp "$FILENAME" "$DEST"; then
 				echo
-				abort "$(ansi red)Unable to copy file $(ansi reset)$FILENAME$(ansi red) to $(ansi reset)$DEST$(ansi red).$(ansi reset)"
+				abort "$(ansi red)Unable to copy file $(ansi reset)$FILENAME$(ansi red) to $(ansi reset)$DEST$(ansi red).$(ansi reset)" $DPK_EXIT_ENV
 			fi
 			echo "$(ansi green)done$(ansi reset)"
 			CONFIG_FOUND=1
@@ -397,7 +399,7 @@ _install_supervisor() {
 	if [ $CONFIG_FOUND -eq 1 ]; then
 		echo "$(ansi dim)+ Restarting Supervisor$(ansi reset)"
 		if ! sudo supervisorctl reread || ! sudo supervisorctl update; then
-			abort "$(ansi red)Unable to restart Supervisor.$(ansi reset)"
+			abort "$(ansi red)Unable to restart Supervisor.$(ansi reset)" $DPK_EXIT_ENV
 		fi
 		echo "$(ansi green)Done$(ansi reset)"
 	fi
@@ -416,7 +418,7 @@ _install_systemd() {
 	echo "$(ansi bold)Installing systemd configuration$(ansi reset)"
 	if [ ! -d /etc/systemd/system ]; then
 		echo
-		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/systemd/system"
+		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/systemd/system" $DPK_EXIT_ENV
 	fi
 	for FILENAME in $GIT_REPO_PATH/etc/systemd/*; do
 		SERVICE_NAME=""
@@ -428,7 +430,7 @@ _install_systemd() {
 			# check associated "@.service" file
 			if [ ! -f "$SERVICE_FILE" ] || [ ! -f "$SERVICE_FILE.gen" ]; then
 				echo
-				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE"
+				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE" $DPK_EXIT_ENV
 			fi
 			# generate target file
 			DEST="/etc/systemd/system/$(basename "${FILENAME::-4}")"
@@ -437,7 +439,7 @@ _install_systemd() {
 			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
 				echo
-				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
+				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 			fi
 			if [ ! -s "$DEST" ]; then
 				echo "$(ansi yellow)empty$(ansi reset)"
@@ -455,7 +457,7 @@ _install_systemd() {
 				if [ $? -ne 0 ]; then
 					echo
 					sudo rm -f "$DEST"
-					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)"
+					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 				fi
 				if [ ! -s "$DEST_SERVICE" ]; then
 					echo "$(ansi yellow)empty$(ansi reset)"
@@ -468,7 +470,7 @@ _install_systemd() {
 				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
 					echo
 					rm -f "$DEST"
-					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE"
+					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE" $DPK_EXIT_ENV
 				fi
 			fi
 			SERVICE_NAME="$SERVICE_NAME.target"
@@ -479,11 +481,11 @@ _install_systemd() {
 			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
 			if [ ! -f "$SERVICE_FILE" ]; then
 				echo
-				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE"
+				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE" $DPK_EXIT_ENV
 			fi
 			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
 				echo
-				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.target"
+				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.target" $DPK_EXIT_ENV
 			fi
 			# process associated "@.service" file
 			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
@@ -494,7 +496,7 @@ _install_systemd() {
 				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
 				if [ $? -ne 0 ]; then
 					echo
-					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)"
+					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 				fi
 				if [ ! -s "$DEST_SERVICE" ]; then
 					echo "$(ansi yellow)empty$(ansi reset)"
@@ -507,7 +509,7 @@ _install_systemd() {
 				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
 					echo
 					rm -f "/etc/systemd/system/$SERVICE_NAME.target"
-					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE"
+					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE" $DPK_EXIT_ENV
 				fi
 			fi
 			SERVICE_NAME="$SERVICE_NAME.target"
@@ -519,7 +521,7 @@ _install_systemd() {
 			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
 				echo
-				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)"
+				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 			fi
 			if [ ! -s "$DEST" ]; then
 				echo "$(ansi yellow)empty$(ansi reset)"
@@ -533,7 +535,7 @@ _install_systemd() {
 			echo -n "$(ansi dim)+ Add service$(ansi reset) $SERVICE_NAME "
 			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
 				echo
-				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.service"
+				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.service" $DPK_EXIT_ENV
 			fi
 		fi
 		if [ "$SERVICE_NAME" != "" ]; then
@@ -556,24 +558,74 @@ _install_systemd() {
 	done
 }
 
+# _install_db_query()
+# Execute SQL statements on the configured database server, and print the raw result
+# (without the column headers). Return the mysql client exit status.
+# @param	string	The SQL statements to execute.
+_install_db_query() {
+	echo "$1" | MYSQL_PWD="$CONF_DB_PWD" mysql --skip-column-names -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" 2> /dev/null
+}
+
 # _install_db_migration()
 # Do the migration of a new version of the database.
+# The database connection is checked first. Each migration file is executed inside a
+# transaction (with a MySQL limitation: DDL statements generate implicit commits, so only
+# pure-DML migrations are atomic). If a migration fails, the installation is aborted with
+# the MySQL error message: the migration is not marked as done (its tracking row is kept
+# with a NULL dbm_d_done field, and the error message is stored in its dbm_s_error column),
+# so it will be executed again at the next install, with a new tracking row.
 _install_db_migration() {
-	local MIGRATION NBR MIGRATION_ID
+	local ERROR_COLUMN MIGRATION MIGRATION_FILE NBR MIGRATION_ID OUTPUT ERROR_SQL
 	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ -v DPK_OPT["no-db-migration"] ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
 	echo "$(ansi bold)Database migration$(ansi reset)"
+	# check the database connection
+	check_dbhost
+	# check the migration table has the error storage column, otherwise try to add it
+	ERROR_COLUMN=1
+	if [ "$(_install_db_query "SHOW COLUMNS FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE LIKE 'dbm_s_error'")" = "" ]; then
+		if ! _install_db_query "ALTER TABLE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE ADD COLUMN dbm_s_error TEXT DEFAULT NULL" > /dev/null; then
+			warn "$(ansi yellow)Unable to add the '$(ansi reset)dbm_s_error$(ansi yellow)' column to the migration table (missing ALTER privilege?). Migration error messages will not be stored in the database.$(ansi reset)"
+			ERROR_COLUMN=0
+		fi
+	fi
 	# loop on migration files
 	for MIGRATION in $(ls "$GIT_REPO_PATH/etc/database/migrations" | grep -v current | sort -V); do
-		NBR=$(echo "SELECT COUNT(*) AS n FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" | tail -1)
+		MIGRATION_FILE="$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
+		# check if the migration was already processed
+		NBR="$(_install_db_query "SELECT COUNT(*) FROM $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE WHERE dbm_s_version = '$MIGRATION' AND dbm_d_done IS NOT NULL")"
+		if ! [[ "$NBR" =~ ^[0-9]+$ ]]; then
+			abort "$(ansi red)Unable to get the status of the migration file $(ansi reset)$MIGRATION_FILE$(ansi red).$(ansi reset)" $DPK_EXIT_DB_TRACKING
+		fi
 		if [ "$NBR" != "0" ]; then
 			continue
 		fi
-		echo "$(ansi dim)Executing database migration file $(ansi blue)$GIT_REPO_PATH/etc/database/migrations/$MIGRATION$(ansi reset)"
-		MIGRATION_ID=$(echo "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" | tail -1)
-		MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" < "$GIT_REPO_PATH/etc/database/migrations/$MIGRATION"
-		echo "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" | MYSQL_PWD="$CONF_DB_PWD" mysql -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT"
+		echo "$(ansi dim)Executing database migration file $(ansi blue)$MIGRATION_FILE$(ansi reset)"
+		# create the tracking row of this migration attempt
+		MIGRATION_ID="$(_install_db_query "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()")"
+		if ! [[ "$MIGRATION_ID" =~ ^[0-9]+$ ]]; then
+			abort "$(ansi red)Unable to create the tracking row of the migration file $(ansi reset)$MIGRATION_FILE$(ansi red).$(ansi reset)" $DPK_EXIT_DB_TRACKING
+		fi
+		# execute the migration file inside a transaction
+		# (DDL statements are not transactional in MySQL: they generate implicit commits)
+		OUTPUT="$({ echo "START TRANSACTION;"; cat "$MIGRATION_FILE"; echo; echo "COMMIT;"; } | MYSQL_PWD="$CONF_DB_PWD" mysql --skip-column-names -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" 2>&1)"
+		if [ $? -ne 0 ]; then
+			# the migration failed: display the MySQL error, store it in the tracking row
+			# (which keeps a NULL dbm_d_done field, so the migration will be executed again
+			# at the next install, with a new tracking row), and stop the installation
+			echo "$OUTPUT"
+			if [ $ERROR_COLUMN -eq 1 ]; then
+				ERROR_SQL="${OUTPUT//\\/\\\\}"
+				ERROR_SQL="${ERROR_SQL//\'/\\\'}"
+				_install_db_query "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_s_error = '$ERROR_SQL' WHERE dbm_i_id = '$MIGRATION_ID'" > /dev/null
+			fi
+			abort "$(ansi red)The migration file $(ansi reset)$MIGRATION_FILE$(ansi red) failed. It is not marked as done and will be executed again at the next install; the statements executed before the error may still be applied.$(ansi reset)" $DPK_EXIT_DB_MIGRATION
+		fi
+		# mark the migration as done
+		if ! _install_db_query "UPDATE $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_done = NOW() WHERE dbm_i_id = '$MIGRATION_ID'" > /dev/null; then
+			abort "$(ansi red)Unable to mark the migration file $(ansi reset)$MIGRATION_FILE$(ansi red) as done.$(ansi reset)" $DPK_EXIT_DB_TRACKING
+		fi
 	done
 	echo "$(ansi green)Done$(ansi reset)"
 }
