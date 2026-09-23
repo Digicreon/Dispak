@@ -23,6 +23,11 @@ create_test_dir
 GIT_REPO_PATH="$TEST_DIR/repo"
 CONF_GIT_MAIN="main"
 mkdir -p "$GIT_REPO_PATH/etc"
+# system paths redirected to the temporary directory
+DPK_SYSTEMD_DIR="$TEST_DIR/systemd"
+DPK_SUPERVISOR_DIR="$TEST_DIR/supervisor"
+DPK_XINETD_FILE="$TEST_DIR/xinetd.d/dispak"
+mkdir -p "$DPK_SYSTEMD_DIR" "$DPK_SUPERVISOR_DIR" "$TEST_DIR/xinetd.d"
 
 echo "== --no-crontab =="
 echo "0 0 * * * true" > "$GIT_REPO_PATH/etc/crontab"

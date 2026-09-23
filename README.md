@@ -555,6 +555,8 @@ So your crontab will end looking like that:
 
 If you manage multiple projects with Dispak, the contents of all their `etc/crontab` files will be copied in the user's crontab, hence the markers.
 
+If the `etc/crontab` file is removed from the project, the block between the markers is removed from the crontab at the next deployment.
+
 If you need to generate the crontab file dynamically, you can create an `etc/crontab.gen` file. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the crontab content.
 
 
@@ -714,6 +716,10 @@ service myservice2
 
 If you manage multiple projects with Dispak, the contents of all their `etc/xinetd` files will be copied in the `/etc/xinetd.d/dispak` file, hence the markers.
 
+If the `etc/xinetd` file is removed from the project, the block between the markers is removed from the `/etc/xinetd.d/dispak` file at the next deployment.
+
+After each modification of this file, Dispak asks xinetd to reload its configuration (`systemctl reload xinetd`).
+
 If you need to generate the xinetd file dynamically, you can create an `etc/xinetd.gen` file. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the xinetd configuration content.
 
 
@@ -721,7 +727,14 @@ If you need to generate the xinetd file dynamically, you can create an `etc/xine
 
 You can add Supervisor configuration files in the `etc/supervisor/` directory. These files must have the extension `.conf`. Dispak will copy them to the `/etc/supervisor/conf.d` directory. This operation is done every time you install a new tagged version, so you just have to keep your configuration files up-to-date. The previous content is replaced by the new files' content.
 
-If a configuration file has the `.conf.gen` extension, it is considered as a file generator. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the content of the destination file (which name will have the `.conf` extension).
+If a configuration file has the `.conf.gen` extension, it is considered as a file generator. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the content of the destination file (which name will have the `.conf` extension). If the generated output is empty, the file is not installed on the current machine.
+
+Each installed file begins with a marker line which holds the path of its source file in the project (the generator script, for a generated file):
+```
+# ┏━━━━━┥DISPAK SUPERVISOR┝━━━┥/path/to/project/etc/supervisor/myprogram.conf┝━━━━━┓
+```
+
+Thanks to this marker, Dispak removes the files it installed from the project during previous deployments and which are not installed anymore (source file removed from the project, or generator outputting nothing on the current machine). Supervisor is then asked to reload its configuration, so the corresponding programs are stopped. Files installed by other means, or from other projects, are never touched. Note that files installed by an old version of Dispak have no marker, they must be removed manually once.
 
 
 ### 3.10 Systemd configuration
@@ -730,9 +743,16 @@ You can add files in the `etc/systemd` directory, to add new services that will 
 
 For a simple service, the configuration file must have the `.service` extension. It will be copied to the `/etc/systemd/system` directory, the service will be enabled and started.
 
-For a target, you must have two files, one with the `.target` extension, the other with the `@.service` extension. They will also be copied to the `/etc/systemd/system` directory. Then the target will be enabled and started.
+For a target, you must have two files, one with the `.target` extension, the other with the `@.service` extension (template unit). They will also be copied to the `/etc/systemd/system` directory. Then the target will be enabled and started (the template unit is not started by itself).
 
-If a file has the `.gen` extension (e.g. `myservice.service.gen`), it is considered as a file generator. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the content of the unit file. If the generated output is empty, the service is not installed on the current machine.
+If a file has the `.gen` extension (e.g. `myservice.service.gen`), it is considered as a file generator. This script will be executed (like other [generator scripts](#34-files-generation)) and its output will be used as the content of the unit file. If the generated output is empty, the service is not installed on the current machine (for a target, the target and its template unit are not installed if any of them has an empty output).
+
+Each installed unit file begins with a marker line which holds the path of its source file in the project (the generator script, for a generated file):
+```
+# ┏━━━━━┥DISPAK SYSTEMD┝━━━┥/path/to/project/etc/systemd/myservice.service.gen┝━━━━━┓
+```
+
+Thanks to this marker, Dispak removes the units it installed from the project during previous deployments and which are not installed anymore (source file removed from the project, or generator outputting nothing on the current machine): each unit is stopped and disabled, then its file is removed (a template unit is removed with its target, its instances are stopped when the target is stopped). Units installed by other means, or from other projects, are never touched. Note that units installed by an old version of Dispak have no marker, they must be removed manually once.
 
 
 ### 3.11 Configuration file

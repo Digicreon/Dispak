@@ -30,6 +30,12 @@ CURRENT_TAG=""
 # than the previously installed one, "-" otherwise).
 TAG_EVOLUTION=""
 
+# Paths of the system configuration files managed by the install rule. Defined as variables
+# so that the tests can redirect them to a temporary directory.
+DPK_SYSTEMD_DIR="/etc/systemd/system"
+DPK_SUPERVISOR_DIR="/etc/supervisor/conf.d"
+DPK_XINETD_FILE="/etc/xinetd.d/dispak"
+
 # Show help for this rule.
 rule_help_install() {
 	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-systemd$(ansi dim)] [$(ansi reset)--no-supervisor$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
@@ -282,14 +288,113 @@ _install_version_alias() {
 	done
 }
 
+# _install_remove_block()
+# Remove the lines between two marker lines (markers included) from the text read on the
+# standard input, and write the result on the standard output.
+# @param	string	Start marker line.
+# @param	string	End marker line.
+_install_remove_block() {
+	local _LINE _SKIP=0
+	while IFS= read -r _LINE || [ -n "$_LINE" ]; do
+		if [ "$_LINE" = "$1" ]; then
+			_SKIP=1
+		fi
+		if [ $_SKIP -eq 0 ]; then
+			printf '%s\n' "$_LINE"
+		fi
+		if [ "$_LINE" = "$2" ]; then
+			_SKIP=0
+		fi
+	done
+}
+
+# _install_config_marker()
+# Write the ownership marker line added at the top of the system configuration files
+# installed by Dispak (systemd units, Supervisor files). The marker holds the path of the
+# source file in the repository, so the origin of an installed file is easy to find, and
+# so the files installed from the current repository can be recognized and cleaned up.
+# @param	string	Type of configuration ("SYSTEMD" or "SUPERVISOR").
+# @param	string	Path to the source file in the repository (generator script if any).
+_install_config_marker() {
+	echo "# ┏━━━━━┥DISPAK $1┝━━━┥$2┝━━━━━┓"
+}
+
+# _install_copy_config()
+# Copy a configuration file to its system destination, preceded by an ownership marker.
+# @param	string	Path to the source file.
+# @param	string	Path to the destination file.
+# @param	string	Ownership marker line.
+# @return	0 if the file was written.
+_install_copy_config() {
+	{ echo "$3"; cat "$1"; } | sudo tee "$2" > /dev/null
+}
+
+# _install_generate_config()
+# Execute a generator script and write its output to a system configuration file, preceded
+# by an ownership marker. The output is generated in a temporary file first, so the
+# destination file is left untouched if the generator fails or outputs nothing.
+# @param	string	Path to the generator script.
+# @param	string	Path to the destination file.
+# @param	string	Ownership marker line.
+# @return	0 if the file was written, 1 if the generated output was empty (nothing written),
+#		2 if the generator failed.
+_install_generate_config() {
+	local _TMP_FILE
+	chmod +x "$1"
+	_TMP_FILE="$(mktemp --tmpdir=/tmp dispak-config.XXXXXXXXXX)"
+	if ! sudo bash -c "\"$1\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$_TMP_FILE\""; then
+		rm -f "$_TMP_FILE"
+		return 2
+	fi
+	if [ ! -s "$_TMP_FILE" ]; then
+		rm -f "$_TMP_FILE"
+		return 1
+	fi
+	_install_copy_config "$_TMP_FILE" "$2" "$3"
+	rm -f "$_TMP_FILE"
+}
+
+# _install_find_orphan_configs()
+# List the system configuration files which were installed by Dispak from the current
+# repository (recognized by their ownership marker), but not during the current execution:
+# their source file was removed from the repository, or its generator outputs nothing now.
+# @param	string	Type of configuration ("SYSTEMD" or "SUPERVISOR").
+# @param	string	Path to the source directory in the repository.
+# @param	string	Space-separated list of the files installed during the current execution.
+# @param	string...	System files to inspect (usually given as glob patterns).
+_install_find_orphan_configs() {
+	local _TYPE="$1" _SOURCE_DIR="$2" _INSTALLED="$3" _MARK_PREFIX _FILE
+	shift 3
+	# marker line without its ending, to match any source file of the directory
+	_MARK_PREFIX="$(_install_config_marker "$_TYPE" "$_SOURCE_DIR/")"
+	_MARK_PREFIX="${_MARK_PREFIX%┝━━━━━┓}"
+	for _FILE in $(sudo grep -lF -- "$_MARK_PREFIX" "$@" 2> /dev/null); do
+		if [ ! -f "$_FILE" ]; then
+			continue
+		fi
+		if [[ " $_INSTALLED " != *" $_FILE "* ]]; then
+			echo "$_FILE"
+		fi
+	done
+}
+
 # _install_crontab()
-# Install new crontab file.
+# Install new crontab file. If the repository has no crontab file anymore, the block
+# installed by a previous deployment is removed from the crontab.
 _install_crontab() {
 	local START_MARK END_MARK BEGIN_GEN END_GEN
 	if [ -v DPK_OPT["no-crontab"] ]; then
 		return
 	fi
+	START_MARK="# ┏━━━━━┥DISPAK CRONTAB START┝━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┓"
+	END_MARK="# ┗━━━━━┥DISPAK CRONTAB END┝━━━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┛"
 	if [ ! -f "$GIT_REPO_PATH/etc/crontab" ] && [ ! -f "$GIT_REPO_PATH/etc/crontab.gen" ]; then
+		if ! crontab -l 2> /dev/null | grep -qxF -- "$START_MARK"; then
+			return
+		fi
+		dpk_echo "$(ansi bold)Removing crontab configuration$(ansi reset)"
+		crontab -l 2> /dev/null | _install_remove_block "$START_MARK" "$END_MARK" | crontab -
+		dpk_echo "$(ansi green)Done$(ansi reset)"
 		return
 	fi
 	dpk_echo "$(ansi bold)Installing crontab$(ansi reset)"
@@ -303,33 +408,55 @@ _install_crontab() {
 		fi
 		dpk_echo "$(ansi green)done$(ansi reset)"
 	fi
-	START_MARK="# ┏━━━━━┥DISPAK CRONTAB START┝━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┓"
-	END_MARK="# ┗━━━━━┥DISPAK CRONTAB END┝━━━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┛"
-	echo "$(crontab -l 2>/dev/null)" | grep "^$START_MARK$" > /dev/null
-	if [ $? -ne 0 ]; then
+	if ! crontab -l 2> /dev/null | grep -qxF -- "$START_MARK"; then
 		(crontab -l 2>/dev/null; echo; echo $START_MARK; echo; cat "$GIT_REPO_PATH/etc/crontab"; echo $END_MARK) | crontab -
 	else
-		BEGIN_GEN=$(crontab -l 2>/dev/null | grep -n "$START_MARK" | sed 's/\(.*\):.*/\1/g')
-		END_GEN=$(crontab -l 2>/dev/null | grep -n "$END_MARK" | sed 's/\(.*\):.*/\1/g')
+		BEGIN_GEN=$(crontab -l 2>/dev/null | grep -nxF -- "$START_MARK" | cut -d: -f 1)
+		END_GEN=$(crontab -l 2>/dev/null | grep -nxF -- "$END_MARK" | cut -d: -f 1)
 		(crontab -l 2>/dev/null | head -n $BEGIN_GEN; echo; cat "$GIT_REPO_PATH/etc/crontab"; crontab -l 2>/dev/null | tail -n +$END_GEN) | crontab -
 	fi
 	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
+# _install_xinetd_reload()
+# Ask xinetd to reload its configuration.
+_install_xinetd_reload() {
+	dpk_echo -n "$(ansi dim)+ Reloading xinetd$(ansi reset) "
+	if ! sudo systemctl reload xinetd; then
+		dpk_echo
+		warn "Unable to reload xinetd."
+		return
+	fi
+	dpk_echo "$(ansi green)done$(ansi reset)"
+}
+
 # _install_xinetd()
-# Install new xinetd file.
+# Install new xinetd file. If the repository has no xinetd file anymore, the block
+# installed by a previous deployment is removed from the system file.
 _install_xinetd() {
 	local START_MARK END_MARK BEGIN_GEN END_GEN XINETD_TMP_FILE
 	if [ -v DPK_OPT["no-xinetd"] ]; then
 		return
 	fi
+	START_MARK="# ┏━━━━━┥DISPAK XINETD START┝━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┓"
+	END_MARK="# ┗━━━━━┥DISPAK XINETD END┝━━━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┛"
 	if [ ! -f "$GIT_REPO_PATH/etc/xinetd" ] && [ ! -f "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
+		if [ ! -e "$DPK_XINETD_FILE" ] || ! sudo grep -qxF -- "$START_MARK" "$DPK_XINETD_FILE"; then
+			return
+		fi
+		dpk_echo "$(ansi bold)Removing xinetd configuration$(ansi reset)"
+		XINETD_TMP_FILE="$(mktemp --tmpdir=/tmp dispak-xinetd.XXXXXXXXXX)"
+		sudo cat "$DPK_XINETD_FILE" | _install_remove_block "$START_MARK" "$END_MARK" > "$XINETD_TMP_FILE"
+		sudo tee "$DPK_XINETD_FILE" < "$XINETD_TMP_FILE" > /dev/null
+		rm -f "$XINETD_TMP_FILE"
+		_install_xinetd_reload
+		dpk_echo "$(ansi green)Done$(ansi reset)"
 		return
 	fi
 	dpk_echo "$(ansi bold)Installing xinetd configuration$(ansi reset)"
-	if [ ! -e /etc/xinetd.d/dispak ]; then
-		sudo touch /etc/xinetd.d/dispak
-		sudo chmod 644 /etc/xinetd.d/dispak
+	if [ ! -e "$DPK_XINETD_FILE" ]; then
+		sudo touch "$DPK_XINETD_FILE"
+		sudo chmod 644 "$DPK_XINETD_FILE"
 	fi
 	if [ -e "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
 		dpk_echo -n "$(ansi dim)+ Generating... $(ansi reset)"
@@ -341,62 +468,81 @@ _install_xinetd() {
 		fi
 		dpk_echo "$(ansi green)done$(ansi reset)"
 	fi
-	START_MARK="# ┏━━━━━┥DISPAK XINETD START┝━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┓"
-	END_MARK="# ┗━━━━━┥DISPAK XINETD END┝━━━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┛"
-	sudo cat /etc/xinetd.d/dispak | grep "^$START_MARK$" > /dev/null
+	sudo cat "$DPK_XINETD_FILE" | grep -qxF -- "$START_MARK"
 	if [ $? -ne 0 ]; then
-		sudo bash -c "(echo; echo \"$START_MARK\"; cat \"$GIT_REPO_PATH/etc/xinetd\"; echo \"$END_MARK\") >> /etc/xinetd.d/dispak"
+		sudo bash -c "(echo; echo \"$START_MARK\"; cat \"$GIT_REPO_PATH/etc/xinetd\"; echo \"$END_MARK\") >> \"$DPK_XINETD_FILE\""
 	else
-		BEGIN_GEN=$(cat /etc/xinetd.d/dispak | grep -n "$START_MARK" | sed 's/\(.*\):.*/\1/g')
-		END_GEN=$(cat /etc/xinetd.d/dispak | grep -n "$END_MARK" | sed 's/\(.*\):.*/\1/g')
-		XINETD_TMP_FILE="$(sudo mktemp --tmpdir=/tmp dispak-xinetd.XXXXXXXXXX)"
-		sudo bash -c "(cat /etc/xinetd.d/dispak | head -n $BEGIN_GEN > $XINETD_TMP_FILE; cat \"$GIT_REPO_PATH/etc/xinetd\" >> $XINETD_TMP_FILE; cat /etc/xinetd.d/dispak | tail -n +$END_GEN >> $XINETD_TMP_FILE)"
-		sudo bash -c "cat $XINETD_TMP_FILE > /etc/xinetd.d/dispak"
-		sudo rm $XINETD_TMP_FILE
+		BEGIN_GEN=$(sudo cat "$DPK_XINETD_FILE" | grep -nxF -- "$START_MARK" | cut -d: -f 1)
+		END_GEN=$(sudo cat "$DPK_XINETD_FILE" | grep -nxF -- "$END_MARK" | cut -d: -f 1)
+		XINETD_TMP_FILE="$(mktemp --tmpdir=/tmp dispak-xinetd.XXXXXXXXXX)"
+		sudo cat "$DPK_XINETD_FILE" | head -n $BEGIN_GEN > "$XINETD_TMP_FILE"
+		cat "$GIT_REPO_PATH/etc/xinetd" >> "$XINETD_TMP_FILE"
+		sudo cat "$DPK_XINETD_FILE" | tail -n +$END_GEN >> "$XINETD_TMP_FILE"
+		sudo tee "$DPK_XINETD_FILE" < "$XINETD_TMP_FILE" > /dev/null
+		rm -f "$XINETD_TMP_FILE"
 	fi
+	_install_xinetd_reload
 	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _install_supervisor()
-# Install new Supervisor files.
+# Install new Supervisor files, and remove the files installed by previous deployments
+# which are not part of the repository anymore.
 _install_supervisor() {
-	local CONFIG_FOUND FILENAME DEST
+	local FILENAME DEST MARK INSTALLED ORPHANS CHANGED
 	if [ -v DPK_OPT["no-supervisor"] ]; then
 		return
 	fi
-	if [ ! -d "$GIT_REPO_PATH/etc/supervisor" ]; then
-		return
-	fi
-	dpk_echo "$(ansi bold)Installing Supervisor configuration$(ansi reset)"
-	if [ ! -d /etc/supervisor/conf.d ]; then
-		dpk_echo
-		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/supervisor/conf.d" $DPK_EXIT_ENV
-	fi
-	CONFIG_FOUND=0
-	for FILENAME in $GIT_REPO_PATH/etc/supervisor/*; do
-		if [[ "$FILENAME" == *.conf.gen ]]; then
-			DEST="/etc/supervisor/conf.d/$(basename "${FILENAME::-4}")"
-			dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
-			chmod +x "$FILENAME"
-			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
-			if [ $? -ne 0 ]; then
-				dpk_echo
-				abort "$(ansi red)Supervisor configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
-			fi
-			dpk_echo "$(ansi green)done$(ansi reset)"
-			CONFIG_FOUND=1
-		elif [[ "$FILENAME" == *.conf ]]; then
-			DEST="/etc/supervisor/conf.d/$(basename "$FILENAME")"
-			dpk_echo -n "$(ansi dim)+ Copying $(ansi reset) $DEST "
-			if ! sudo cp "$FILENAME" "$DEST"; then
-				dpk_echo
-				abort "$(ansi red)Unable to copy file $(ansi reset)$FILENAME$(ansi red) to $(ansi reset)$DEST$(ansi red).$(ansi reset)" $DPK_EXIT_ENV
-			fi
-			dpk_echo "$(ansi green)done$(ansi reset)"
-			CONFIG_FOUND=1
+	INSTALLED=""
+	CHANGED=0
+	if [ -d "$GIT_REPO_PATH/etc/supervisor" ]; then
+		dpk_echo "$(ansi bold)Installing Supervisor configuration$(ansi reset)"
+		if [ ! -d "$DPK_SUPERVISOR_DIR" ]; then
+			dpk_echo
+			abort "$(ansi red)Unable to find directory $(ansi reset)$DPK_SUPERVISOR_DIR" $DPK_EXIT_ENV
 		fi
-	done
-	if [ $CONFIG_FOUND -eq 1 ]; then
+		for FILENAME in "$GIT_REPO_PATH"/etc/supervisor/*; do
+			if [[ "$FILENAME" != *.conf ]] && [[ "$FILENAME" != *.conf.gen ]]; then
+				continue
+			fi
+			DEST="$DPK_SUPERVISOR_DIR/$(basename "${FILENAME%.gen}")"
+			MARK="$(_install_config_marker SUPERVISOR "$FILENAME")"
+			if [[ "$FILENAME" == *.gen ]]; then
+				dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
+				_install_generate_config "$FILENAME" "$DEST" "$MARK"
+				case $? in
+					1)
+						dpk_echo "$(ansi yellow)empty$(ansi reset)"
+						continue
+						;;
+					2)
+						dpk_echo
+						abort "$(ansi red)Supervisor configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
+						;;
+				esac
+			else
+				dpk_echo -n "$(ansi dim)+ Copying$(ansi reset) $DEST "
+				if ! _install_copy_config "$FILENAME" "$DEST" "$MARK"; then
+					dpk_echo
+					abort "$(ansi red)Unable to copy file $(ansi reset)$FILENAME$(ansi red) to $(ansi reset)$DEST$(ansi red).$(ansi reset)" $DPK_EXIT_ENV
+				fi
+			fi
+			dpk_echo "$(ansi green)done$(ansi reset)"
+			INSTALLED="$INSTALLED $DEST"
+			CHANGED=1
+		done
+	fi
+	# remove the files installed by previous deployments and not installed this time
+	ORPHANS="$(_install_find_orphan_configs SUPERVISOR "$GIT_REPO_PATH/etc/supervisor" "$INSTALLED" "$DPK_SUPERVISOR_DIR"/*.conf)"
+	if [ "$ORPHANS" != "" ]; then
+		dpk_echo "$(ansi bold)Removing obsolete Supervisor configuration$(ansi reset)"
+		for FILENAME in $ORPHANS; do
+			dpk_echo "$(ansi dim)+ Removing$(ansi reset) $FILENAME"
+			sudo rm -f "$FILENAME"
+		done
+		CHANGED=1
+	fi
+	if [ $CHANGED -eq 1 ]; then
 		dpk_echo "$(ansi dim)+ Restarting Supervisor$(ansi reset)"
 		if ! sudo supervisorctl reread || ! sudo supervisorctl update; then
 			abort "$(ansi red)Unable to restart Supervisor.$(ansi reset)" $DPK_EXIT_ENV
@@ -405,157 +551,134 @@ _install_supervisor() {
 	fi
 }
 
-# _install_systemd
-# Install new systemd files.
+# _install_systemd_unit()
+# Install a systemd unit file: copied to the system directory, or generated if the source
+# file is a generator script.
+# @param	string	Path to the source file in the repository.
+# @param	string	Path to the destination unit file.
+# @return	0 if the unit file was installed, 1 if the generated output was empty (nothing installed).
+_install_systemd_unit() {
+	local _MARK
+	_MARK="$(_install_config_marker SYSTEMD "$1")"
+	if [[ "$1" == *.gen ]]; then
+		dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $2 "
+		_install_generate_config "$1" "$2" "$_MARK"
+		case $? in
+			1)
+				dpk_echo "$(ansi yellow)empty$(ansi reset)"
+				return 1
+				;;
+			2)
+				dpk_echo
+				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$1$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
+				;;
+		esac
+	else
+		dpk_echo -n "$(ansi dim)+ Copying$(ansi reset) $2 "
+		if ! _install_copy_config "$1" "$2" "$_MARK"; then
+			dpk_echo
+			abort "$(ansi red)Unable to copy file$(ansi reset) $1 $(ansi red)to$(ansi reset) $2" $DPK_EXIT_ENV
+		fi
+	fi
+	dpk_echo "$(ansi green)done$(ansi reset)"
+}
+
+# _install_systemd_start()
+# Reload the systemd configuration, then enable and (re)start the given unit.
+# @param	string	Name of the unit (e.g. "myservice.service" or "mytarget.target").
+_install_systemd_start() {
+	dpk_echo -n "$(ansi dim)+ Starting$(ansi reset) $1 "
+	if ! sudo systemctl daemon-reload; then
+		dpk_echo
+		dpk_echo "$(ansi red)Systemd is unable to reload the daemon configuration files.$(ansi reset)"
+	elif ! sudo systemctl enable "$1"; then
+		dpk_echo
+		dpk_echo "$(ansi red)Unable to enable unit$(ansi reset) $1$(ansi red).$(ansi reset)"
+	elif ! sudo systemctl restart "$1"; then
+		dpk_echo
+		dpk_echo "$(ansi red)Unable to start unit$(ansi reset) $1$(ansi red).$(ansi reset)"
+	else
+		dpk_echo "$(ansi green)done$(ansi reset)"
+	fi
+}
+
+# _install_systemd()
+# Install new systemd files, and remove the units installed by previous deployments
+# which are not part of the repository anymore (or which generator outputs nothing now).
 _install_systemd() {
-	local FILENAME SERVICE_NAME SERVICE_FILE DEST DEST_SERVICE
+	local FILENAME UNIT_NAME TEMPLATE_NAME SOURCE_FILE INSTALLED ORPHANS UNIT_FILE
 	if [ -v DPK_OPT["no-systemd"] ]; then
 		return
 	fi
-	if [ ! -d "$GIT_REPO_PATH/etc/systemd" ]; then
+	INSTALLED=""
+	if [ -d "$GIT_REPO_PATH/etc/systemd" ]; then
+		dpk_echo "$(ansi bold)Installing systemd configuration$(ansi reset)"
+		if [ ! -d "$DPK_SYSTEMD_DIR" ]; then
+			dpk_echo
+			abort "$(ansi red)Unable to find directory $(ansi reset)$DPK_SYSTEMD_DIR" $DPK_EXIT_ENV
+		fi
+		for FILENAME in "$GIT_REPO_PATH"/etc/systemd/*; do
+			if [[ "$FILENAME" == *@.service ]] || [[ "$FILENAME" == *@.service.gen ]]; then
+				# template units are installed with their target
+				continue
+			elif [[ "$FILENAME" == *.target ]] || [[ "$FILENAME" == *.target.gen ]]; then
+				# target, with its associated "@.service" template unit
+				UNIT_NAME="$(basename "${FILENAME%.gen}")"
+				TEMPLATE_NAME="${UNIT_NAME%.target}@.service"
+				SOURCE_FILE="$GIT_REPO_PATH/etc/systemd/$TEMPLATE_NAME"
+				if [ -f "$SOURCE_FILE.gen" ]; then
+					SOURCE_FILE="$SOURCE_FILE.gen"
+				elif [ ! -f "$SOURCE_FILE" ]; then
+					abort "$(ansi red)Unable to find file$(ansi reset) $SOURCE_FILE" $DPK_EXIT_ENV
+				fi
+				if ! _install_systemd_unit "$FILENAME" "$DPK_SYSTEMD_DIR/$UNIT_NAME"; then
+					continue
+				fi
+				if ! _install_systemd_unit "$SOURCE_FILE" "$DPK_SYSTEMD_DIR/$TEMPLATE_NAME"; then
+					# no template unit, no target
+					sudo rm -f "$DPK_SYSTEMD_DIR/$UNIT_NAME"
+					continue
+				fi
+				INSTALLED="$INSTALLED $DPK_SYSTEMD_DIR/$UNIT_NAME $DPK_SYSTEMD_DIR/$TEMPLATE_NAME"
+			elif [[ "$FILENAME" == *.service ]] || [[ "$FILENAME" == *.service.gen ]]; then
+				# simple service
+				UNIT_NAME="$(basename "${FILENAME%.gen}")"
+				if ! _install_systemd_unit "$FILENAME" "$DPK_SYSTEMD_DIR/$UNIT_NAME"; then
+					continue
+				fi
+				INSTALLED="$INSTALLED $DPK_SYSTEMD_DIR/$UNIT_NAME"
+			else
+				continue
+			fi
+			_install_systemd_start "$UNIT_NAME"
+		done
+	fi
+	# remove the units installed by previous deployments and not installed this time
+	# (targets first: their template units' instances are stopped with them)
+	ORPHANS="$(_install_find_orphan_configs SYSTEMD "$GIT_REPO_PATH/etc/systemd" "$INSTALLED" "$DPK_SYSTEMD_DIR"/*.target "$DPK_SYSTEMD_DIR"/*.service)"
+	if [ "$ORPHANS" = "" ]; then
 		return
 	fi
-	dpk_echo "$(ansi bold)Installing systemd configuration$(ansi reset)"
-	if [ ! -d /etc/systemd/system ]; then
-		dpk_echo
-		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/systemd/system" $DPK_EXIT_ENV
-	fi
-	for FILENAME in $GIT_REPO_PATH/etc/systemd/*; do
-		SERVICE_NAME=""
-		if [[ "$FILENAME" == *.target.gen ]]; then
-			# target - generate
-			SERVICE_NAME="$(basename "${FILENAME::-11}")"
-			dpk_echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
-			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
-			# check associated "@.service" file
-			if [ ! -f "$SERVICE_FILE" ] || [ ! -f "$SERVICE_FILE.gen" ]; then
+	dpk_echo "$(ansi bold)Removing obsolete systemd configuration$(ansi reset)"
+	for UNIT_FILE in $ORPHANS; do
+		UNIT_NAME="$(basename "$UNIT_FILE")"
+		dpk_echo -n "$(ansi dim)+ Removing$(ansi reset) $UNIT_FILE "
+		# a template unit can't be stopped by itself (its instances are stopped with their target)
+		if [[ "$UNIT_NAME" != *@.service ]]; then
+			if ! sudo systemctl stop "$UNIT_NAME"; then
 				dpk_echo
-				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE" $DPK_EXIT_ENV
-			fi
-			# generate target file
-			DEST="/etc/systemd/system/$(basename "${FILENAME::-4}")"
-			dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
-			chmod +x "$FILENAME"
-			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
-			if [ $? -ne 0 ]; then
+				warn "Unable to stop unit $UNIT_NAME."
+			elif ! sudo systemctl disable "$UNIT_NAME"; then
 				dpk_echo
-				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
-			fi
-			if [ ! -s "$DEST" ]; then
-				dpk_echo "$(ansi yellow)empty$(ansi reset)"
-				sudo rm -f "$DEST"
-				continue
-			fi
-			dpk_echo "$(ansi green)done$(ansi reset)"
-			# process associated "@.service" file
-			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
-			if [ -f "$SERVICE_FILE.gen" ]; then
-				# generate
-				dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
-				chmod +x "$SERVICE_FILE.gen"
-				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
-				if [ $? -ne 0 ]; then
-					dpk_echo
-					sudo rm -f "$DEST"
-					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
-				fi
-				if [ ! -s "$DEST_SERVICE" ]; then
-					dpk_echo "$(ansi yellow)empty$(ansi reset)"
-					sudo rm -f "$DEST" "$DEST_SERVICE"
-					continue
-				fi
-				dpk_echo "$(ansi green)done$(ansi reset)"
-			else
-				# copy
-				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
-					dpk_echo
-					rm -f "$DEST"
-					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE" $DPK_EXIT_ENV
-				fi
-			fi
-			SERVICE_NAME="$SERVICE_NAME.target"
-		elif [[ "$FILENAME" == *.target ]]; then
-			# target - copy
-			SERVICE_NAME="$(basename "${FILENAME::-7}")"
-			dpk_echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
-			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
-			if [ ! -f "$SERVICE_FILE" ]; then
-				dpk_echo
-				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE" $DPK_EXIT_ENV
-			fi
-			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
-				dpk_echo
-				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.target" $DPK_EXIT_ENV
-			fi
-			# process associated "@.service" file
-			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
-			if [ -f "$SERVICE_FILE.gen" ]; then
-				# generate
-				dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
-				chmod +x "$SERVICE_FILE.gen"
-				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
-				if [ $? -ne 0 ]; then
-					dpk_echo
-					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
-				fi
-				if [ ! -s "$DEST_SERVICE" ]; then
-					dpk_echo "$(ansi yellow)empty$(ansi reset)"
-					sudo rm -f "$DEST" "$DEST_SERVICE"
-					continue
-				fi
-				dpk_echo "$(ansi green)done$(ansi reset)"
-			else
-				# copy
-				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
-					dpk_echo
-					rm -f "/etc/systemd/system/$SERVICE_NAME.target"
-					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE" $DPK_EXIT_ENV
-				fi
-			fi
-			SERVICE_NAME="$SERVICE_NAME.target"
-		elif [[ "$FILENAME" == *.service.gen ]] && [[ "$FILENAME" != *@.service.gen ]]; then
-			# service - generate
-			SERVICE_NAME="$(basename "${FILENAME::-12}")"
-			DEST="/etc/systemd/system/$SERVICE_NAME.service"
-			dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
-			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
-			if [ $? -ne 0 ]; then
-				dpk_echo
-				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
-			fi
-			if [ ! -s "$DEST" ]; then
-				dpk_echo "$(ansi yellow)empty$(ansi reset)"
-				sudo rm -f "$DEST"
-				continue
-			fi
-			dpk_echo "$(ansi green)done$(ansi reset)"
-		elif [[ "$FILENAME" == *.service ]] && [[ "$FILENAME" != *@.service ]]; then
-			# service - copy
-			SERVICE_NAME="$(basename "${FILENAME::-8}")"
-			dpk_echo -n "$(ansi dim)+ Add service$(ansi reset) $SERVICE_NAME "
-			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
-				dpk_echo
-				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.service" $DPK_EXIT_ENV
+				warn "Unable to disable unit $UNIT_NAME."
 			fi
 		fi
-		if [ "$SERVICE_NAME" != "" ]; then
-			if ! sudo systemctl stop $SERVICE_NAME; then
-				dpk_echo
-				dpk_echo "$(ansi red)Unable to stop service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
-			elif ! sudo systemctl daemon-reload; then
-				dpk_echo
-				dpk_echo "$(ansi red)Systemd is unable to reload the daemon configuration files.$(ansi reset)"
-			elif ! sudo systemctl enable $SERVICE_NAME; then
-				dpk_echo
-				dpk_echo "$(ansi red)Unable to enable server$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
-			elif ! sudo systemctl start $SERVICE_NAME; then
-				dpk_echo
-				dpk_echo "$(ansi red)Unable to start service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
-			else
-				dpk_echo "$(ansi green)done$(ansi reset)"
-			fi
-		fi
+		sudo rm -f "$UNIT_FILE"
+		dpk_echo "$(ansi green)done$(ansi reset)"
 	done
+	if ! sudo systemctl daemon-reload; then
+		dpk_echo "$(ansi red)Systemd is unable to reload the daemon configuration files.$(ansi reset)"
+	fi
 }
 
 # _install_db_query()
