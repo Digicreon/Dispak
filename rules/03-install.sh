@@ -165,7 +165,7 @@ _install_pre_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_INSTALL_PRE
 		fi
 	done
-	dpk_echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _install_post_scripts()
@@ -188,7 +188,7 @@ _install_post_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_INSTALL_POST
 		fi
 	done
-	dpk_echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _install_clean_version_links()

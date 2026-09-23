@@ -62,7 +62,7 @@ _config_pre_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_CONFIG_PRE
 		fi
 	done
-	dpk_echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _config_post_scripts()
@@ -85,6 +85,6 @@ _config_post_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_CONFIG_POST
 		fi
 	done
-	dpk_echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 

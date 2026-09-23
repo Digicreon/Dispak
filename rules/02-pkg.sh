@@ -123,7 +123,7 @@ _pkg_pre_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_PRE
 		fi
 	done
-	dpk_echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _pkg_post_scripts()
@@ -146,7 +146,7 @@ _pkg_post_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_POST
 		fi
 	done
-	dpk_echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _pkg_unconcat()
