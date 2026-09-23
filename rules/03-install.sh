@@ -102,7 +102,7 @@ rule_exec_install() {
 	_config_pre_scripts
 	# deploy source code
 	git_fetch
-	echo "$(ansi bold)Updating source code repository$(ansi reset)"
+	dpk_echo "$(ansi bold)Updating source code repository$(ansi reset)"
 	if [ "${DPK_OPT["tag"]}" = "$CONF_GIT_MAIN" ]; then
 		if ! git checkout "$CONF_GIT_MAIN" --quiet ; then
 			abort "$(ansi red)Failed to move back to '$CONF_GIT_MAIN' branch.$(ansi reset)" $DPK_EXIT_GIT
@@ -122,7 +122,7 @@ rule_exec_install() {
 			# a committed link or file already uses this name
 			continue
 		fi
-		echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)$_SYMLINK/${DPK_OPT["tag"]}$(ansi reset)"
+		dpk_echo "$(ansi bold)Create symlink $(ansi reset)$(ansi dim)$_SYMLINK/${DPK_OPT["tag"]}$(ansi reset)"
 		ln -sn "${CONF_INSTALL_SYMLINK["$_SYMLINK"]}" "$_SYMLINK/${DPK_OPT["tag"]}"
 	done
 	# create version alias links
@@ -152,11 +152,11 @@ _install_pre_scripts() {
 	if [ "$CONF_INSTALL_SCRIPTS_PRE" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Execute pre-install scripts$(ansi reset)"
+	dpk_echo "$(ansi bold)Execute pre-install scripts$(ansi reset)"
 	for _SCRIPT in $CONF_INSTALL_SCRIPTS_PRE; do
 		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
 		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
-		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_EXEC" ]; then
 			chmod +x "$_EXEC"
 		fi
@@ -165,7 +165,7 @@ _install_pre_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_INSTALL_PRE
 		fi
 	done
-	echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi gree)Done$(ansi reset)"
 }
 
 # _install_post_scripts()
@@ -175,11 +175,11 @@ _install_post_scripts() {
 	if [ "$CONF_INSTALL_SCRIPTS_POST" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Execute post-install scripts$(ansi reset)"
+	dpk_echo "$(ansi bold)Execute post-install scripts$(ansi reset)"
 	for _SCRIPT in $CONF_INSTALL_SCRIPTS_POST; do
 		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
 		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
-		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_EXEC" ]; then
 			chmod +x "$_EXEC"
 		fi
@@ -188,7 +188,7 @@ _install_post_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_INSTALL_POST
 		fi
 	done
-	echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi gree)Done$(ansi reset)"
 }
 
 # _install_clean_version_links()
@@ -216,7 +216,7 @@ _install_clean_version_links() {
 		if git ls-files --error-unmatch -- "$_VLINK" > /dev/null 2>&1; then
 			continue
 		fi
-		echo "$(ansi bold)Removing symlink $(ansi reset)$(ansi dim)$_VLINK$(ansi reset)"
+		dpk_echo "$(ansi bold)Removing symlink $(ansi reset)$(ansi dim)$_VLINK$(ansi reset)"
 		rm -f "$_VLINK"
 	done
 }
@@ -253,7 +253,7 @@ _install_version_alias() {
 		warn "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' doesn't match the X.Y.Z format, no version alias created."
 		return
 	fi
-	echo "$(ansi bold)Create version alias links$(ansi reset)"
+	dpk_echo "$(ansi bold)Create version alias links$(ansi reset)"
 	for _ALIAS in $CONF_INSTALL_VERSION_ALIAS; do
 		# check the aliased element exists
 		if [ ! -e "$_ALIAS" ] && [ ! -L "$_ALIAS" ]; then
@@ -274,7 +274,7 @@ _install_version_alias() {
 		if [ -e "$_ALIAS_LINK" ] || [ -L "$_ALIAS_LINK" ]; then
 			continue
 		fi
-		echo "$(ansi dim)> $_ALIAS_LINK$(ansi reset)"
+		dpk_echo "$(ansi dim)> $_ALIAS_LINK$(ansi reset)"
 		ln -sn "$_ALIAS_BASE" "$_ALIAS_LINK"
 		if [ $? -ne 0 ]; then
 			abort "Unable to create the symlink '$(ansi dim)$_ALIAS_LINK$(ansi reset)'." $DPK_EXIT_ENV
@@ -292,16 +292,16 @@ _install_crontab() {
 	if [ ! -f "$GIT_REPO_PATH/etc/crontab" ] && [ ! -f "$GIT_REPO_PATH/etc/crontab.gen" ]; then
 		return
 	fi
-	echo "$(ansi bold)Installing crontab$(ansi reset)"
+	dpk_echo "$(ansi bold)Installing crontab$(ansi reset)"
 	if [ -e "$GIT_REPO_PATH/etc/crontab.gen" ]; then
-		echo -n "$(ansi dim)+ Generating... $(ansi reset)"
+		dpk_echo -n "$(ansi dim)+ Generating... $(ansi reset)"
 		chmod +x "$GIT_REPO_PATH/etc/crontab.gen"
 		"$GIT_REPO_PATH/etc/crontab.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$GIT_REPO_PATH/etc/crontab"
 		if [ $? -ne 0 ]; then
-			echo
+			dpk_echo
 			abort "$(ansi red)Crontab configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/crontab.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 		fi
-		echo "$(ansi green)done$(ansi reset)"
+		dpk_echo "$(ansi green)done$(ansi reset)"
 	fi
 	START_MARK="# ┏━━━━━┥DISPAK CRONTAB START┝━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┓"
 	END_MARK="# ┗━━━━━┥DISPAK CRONTAB END┝━━━━━┥$GIT_REPO_PATH/etc/crontab┝━━━━━┛"
@@ -313,7 +313,7 @@ _install_crontab() {
 		END_GEN=$(crontab -l 2>/dev/null | grep -n "$END_MARK" | sed 's/\(.*\):.*/\1/g')
 		(crontab -l 2>/dev/null | head -n $BEGIN_GEN; echo; cat "$GIT_REPO_PATH/etc/crontab"; crontab -l 2>/dev/null | tail -n +$END_GEN) | crontab -
 	fi
-	echo "$(ansi green)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _install_xinetd()
@@ -326,20 +326,20 @@ _install_xinetd() {
 	if [ ! -f "$GIT_REPO_PATH/etc/xinetd" ] && [ ! -f "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
 		return
 	fi
-	echo "$(ansi bold)Installing xinetd configuration$(ansi reset)"
+	dpk_echo "$(ansi bold)Installing xinetd configuration$(ansi reset)"
 	if [ ! -e /etc/xinetd.d/dispak ]; then
 		sudo touch /etc/xinetd.d/dispak
 		sudo chmod 644 /etc/xinetd.d/dispak
 	fi
 	if [ -e "$GIT_REPO_PATH/etc/xinetd.gen" ]; then
-		echo -n "$(ansi dim)+ Generating... $(ansi reset)"
+		dpk_echo -n "$(ansi dim)+ Generating... $(ansi reset)"
 		chmod +x "$GIT_REPO_PATH/etc/xinetd.gen"
 		"$GIT_REPO_PATH/etc/xinetd.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$GIT_REPO_PATH/etc/xinetd"
 		if [ $? -ne 0 ]; then
-			echo
+			dpk_echo
 			abort "$(ansi red)Xinetd configuration generation script $(ansi reset)$GIT_REPO_PATH/etc/xinetd.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 		fi
-		echo "$(ansi green)done$(ansi reset)"
+		dpk_echo "$(ansi green)done$(ansi reset)"
 	fi
 	START_MARK="# ┏━━━━━┥DISPAK XINETD START┝━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┓"
 	END_MARK="# ┗━━━━━┥DISPAK XINETD END┝━━━━━┥$GIT_REPO_PATH/etc/xinetd┝━━━━━┛"
@@ -354,7 +354,7 @@ _install_xinetd() {
 		sudo bash -c "cat $XINETD_TMP_FILE > /etc/xinetd.d/dispak"
 		sudo rm $XINETD_TMP_FILE
 	fi
-	echo "$(ansi green)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _install_supervisor()
@@ -367,41 +367,41 @@ _install_supervisor() {
 	if [ ! -d "$GIT_REPO_PATH/etc/supervisor" ]; then
 		return
 	fi
-	echo "$(ansi bold)Installing Supervisor configuration$(ansi reset)"
+	dpk_echo "$(ansi bold)Installing Supervisor configuration$(ansi reset)"
 	if [ ! -d /etc/supervisor/conf.d ]; then
-		echo
+		dpk_echo
 		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/supervisor/conf.d" $DPK_EXIT_ENV
 	fi
 	CONFIG_FOUND=0
 	for FILENAME in $GIT_REPO_PATH/etc/supervisor/*; do
 		if [[ "$FILENAME" == *.conf.gen ]]; then
 			DEST="/etc/supervisor/conf.d/$(basename "${FILENAME::-4}")"
-			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
+			dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
 			chmod +x "$FILENAME"
 			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Supervisor configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 			fi
-			echo "$(ansi green)done$(ansi reset)"
+			dpk_echo "$(ansi green)done$(ansi reset)"
 			CONFIG_FOUND=1
 		elif [[ "$FILENAME" == *.conf ]]; then
 			DEST="/etc/supervisor/conf.d/$(basename "$FILENAME")"
-			echo -n "$(ansi dim)+ Copying $(ansi reset) $DEST "
+			dpk_echo -n "$(ansi dim)+ Copying $(ansi reset) $DEST "
 			if ! sudo cp "$FILENAME" "$DEST"; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Unable to copy file $(ansi reset)$FILENAME$(ansi red) to $(ansi reset)$DEST$(ansi red).$(ansi reset)" $DPK_EXIT_ENV
 			fi
-			echo "$(ansi green)done$(ansi reset)"
+			dpk_echo "$(ansi green)done$(ansi reset)"
 			CONFIG_FOUND=1
 		fi
 	done
 	if [ $CONFIG_FOUND -eq 1 ]; then
-		echo "$(ansi dim)+ Restarting Supervisor$(ansi reset)"
+		dpk_echo "$(ansi dim)+ Restarting Supervisor$(ansi reset)"
 		if ! sudo supervisorctl reread || ! sudo supervisorctl update; then
 			abort "$(ansi red)Unable to restart Supervisor.$(ansi reset)" $DPK_EXIT_ENV
 		fi
-		echo "$(ansi green)Done$(ansi reset)"
+		dpk_echo "$(ansi green)Done$(ansi reset)"
 	fi
 }
 
@@ -415,9 +415,9 @@ _install_systemd() {
 	if [ ! -d "$GIT_REPO_PATH/etc/systemd" ]; then
 		return
 	fi
-	echo "$(ansi bold)Installing systemd configuration$(ansi reset)"
+	dpk_echo "$(ansi bold)Installing systemd configuration$(ansi reset)"
 	if [ ! -d /etc/systemd/system ]; then
-		echo
+		dpk_echo
 		abort "$(ansi red)Unable to find directory $(ansi reset)/etc/systemd/system" $DPK_EXIT_ENV
 	fi
 	for FILENAME in $GIT_REPO_PATH/etc/systemd/*; do
@@ -425,50 +425,50 @@ _install_systemd() {
 		if [[ "$FILENAME" == *.target.gen ]]; then
 			# target - generate
 			SERVICE_NAME="$(basename "${FILENAME::-11}")"
-			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
+			dpk_echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
 			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
 			# check associated "@.service" file
 			if [ ! -f "$SERVICE_FILE" ] || [ ! -f "$SERVICE_FILE.gen" ]; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE" $DPK_EXIT_ENV
 			fi
 			# generate target file
 			DEST="/etc/systemd/system/$(basename "${FILENAME::-4}")"
-			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
+			dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST "
 			chmod +x "$FILENAME"
 			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 			fi
 			if [ ! -s "$DEST" ]; then
-				echo "$(ansi yellow)empty$(ansi reset)"
+				dpk_echo "$(ansi yellow)empty$(ansi reset)"
 				sudo rm -f "$DEST"
 				continue
 			fi
-			echo "$(ansi green)done$(ansi reset)"
+			dpk_echo "$(ansi green)done$(ansi reset)"
 			# process associated "@.service" file
 			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
 			if [ -f "$SERVICE_FILE.gen" ]; then
 				# generate
-				echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
+				dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
 				chmod +x "$SERVICE_FILE.gen"
 				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
 				if [ $? -ne 0 ]; then
-					echo
+					dpk_echo
 					sudo rm -f "$DEST"
 					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 				fi
 				if [ ! -s "$DEST_SERVICE" ]; then
-					echo "$(ansi yellow)empty$(ansi reset)"
+					dpk_echo "$(ansi yellow)empty$(ansi reset)"
 					sudo rm -f "$DEST" "$DEST_SERVICE"
 					continue
 				fi
-				echo "$(ansi green)done$(ansi reset)"
+				dpk_echo "$(ansi green)done$(ansi reset)"
 			else
 				# copy
 				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
-					echo
+					dpk_echo
 					rm -f "$DEST"
 					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE" $DPK_EXIT_ENV
 				fi
@@ -477,37 +477,37 @@ _install_systemd() {
 		elif [[ "$FILENAME" == *.target ]]; then
 			# target - copy
 			SERVICE_NAME="$(basename "${FILENAME::-7}")"
-			echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
+			dpk_echo -n "$(ansi dim)+ Add target$(ansi reset) $SERVICE_NAME "
 			SERVICE_FILE="$GIT_REPO_PATH/etc/systemd/$SERVICE_NAME@.service"
 			if [ ! -f "$SERVICE_FILE" ]; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Unable to find file$(ansi reset) $SERVICE_FILE" $DPK_EXIT_ENV
 			fi
 			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.target" $DPK_EXIT_ENV
 			fi
 			# process associated "@.service" file
 			DEST_SERVICE="/etc/systemd/system/$SERVICE_NAME@.service"
 			if [ -f "$SERVICE_FILE.gen" ]; then
 				# generate
-				echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
+				dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST_SERVICE "
 				chmod +x "$SERVICE_FILE.gen"
 				sudo bash -c "\"$SERVICE_FILE.gen\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST_SERVICE\""
 				if [ $? -ne 0 ]; then
-					echo
+					dpk_echo
 					abort "$(ansi red)Systemd configuration generation script $(ansi reset)$SERVICE_FILE.gen$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 				fi
 				if [ ! -s "$DEST_SERVICE" ]; then
-					echo "$(ansi yellow)empty$(ansi reset)"
+					dpk_echo "$(ansi yellow)empty$(ansi reset)"
 					sudo rm -f "$DEST" "$DEST_SERVICE"
 					continue
 				fi
-				echo "$(ansi green)done$(ansi reset)"
+				dpk_echo "$(ansi green)done$(ansi reset)"
 			else
 				# copy
 				if ! sudo cp "$SERVICE_FILE" /etc/systemd/system; then
-					echo
+					dpk_echo
 					rm -f "/etc/systemd/system/$SERVICE_NAME.target"
 					abort "$(ansi red)Unable to copy file$(ansi reset) $SERVICE_FILE $(ansi red)to$(ansi reset) $DEST_SERVICE" $DPK_EXIT_ENV
 				fi
@@ -517,42 +517,42 @@ _install_systemd() {
 			# service - generate
 			SERVICE_NAME="$(basename "${FILENAME::-12}")"
 			DEST="/etc/systemd/system/$SERVICE_NAME.service"
-			echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST"
+			dpk_echo -n "$(ansi dim)+ Generating$(ansi reset) $DEST"
 			sudo bash -c "\"$FILENAME\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$DEST\""
 			if [ $? -ne 0 ]; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Systemd configuration generation script $(ansi reset)$FILENAME$(ansi red) execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_GENERATOR
 			fi
 			if [ ! -s "$DEST" ]; then
-				echo "$(ansi yellow)empty$(ansi reset)"
+				dpk_echo "$(ansi yellow)empty$(ansi reset)"
 				sudo rm -f "$DEST"
 				continue
 			fi
-			echo "$(ansi green)done$(ansi reset)"
+			dpk_echo "$(ansi green)done$(ansi reset)"
 		elif [[ "$FILENAME" == *.service ]] && [[ "$FILENAME" != *@.service ]]; then
 			# service - copy
 			SERVICE_NAME="$(basename "${FILENAME::-8}")"
-			echo -n "$(ansi dim)+ Add service$(ansi reset) $SERVICE_NAME "
+			dpk_echo -n "$(ansi dim)+ Add service$(ansi reset) $SERVICE_NAME "
 			if ! sudo cp "$FILENAME" /etc/systemd/system/; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Unable to copy file$(ansi reset) $FILENAME $(ansi red)to$(ansi reset) /etc/systemd/system/$SERVICE_NAME.service" $DPK_EXIT_ENV
 			fi
 		fi
 		if [ "$SERVICE_NAME" != "" ]; then
 			if ! sudo systemctl stop $SERVICE_NAME; then
-				echo
-				echo "$(ansi red)Unable to stop service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+				dpk_echo
+				dpk_echo "$(ansi red)Unable to stop service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
 			elif ! sudo systemctl daemon-reload; then
-				echo
-				echo "$(ansi red)Systemd is unable to reload the daemon configuration files.$(ansi reset)"
+				dpk_echo
+				dpk_echo "$(ansi red)Systemd is unable to reload the daemon configuration files.$(ansi reset)"
 			elif ! sudo systemctl enable $SERVICE_NAME; then
-				echo
-				echo "$(ansi red)Unable to enable server$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+				dpk_echo
+				dpk_echo "$(ansi red)Unable to enable server$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
 			elif ! sudo systemctl start $SERVICE_NAME; then
-				echo
-				echo "$(ansi red)Unable to start service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
+				dpk_echo
+				dpk_echo "$(ansi red)Unable to start service$(ansi reset) $SERVICE_NAME $(ansi red).$(ansi reset)"
 			else
-				echo "$(ansi green)done$(ansi reset)"
+				dpk_echo "$(ansi green)done$(ansi reset)"
 			fi
 		fi
 	done
@@ -579,7 +579,7 @@ _install_db_migration() {
 	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ -v DPK_OPT["no-db-migration"] ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Database migration$(ansi reset)"
+	dpk_echo "$(ansi bold)Database migration$(ansi reset)"
 	# check the database connection
 	check_dbhost
 	# check the migration table has the error storage column, otherwise try to add it
@@ -601,7 +601,7 @@ _install_db_migration() {
 		if [ "$NBR" != "0" ]; then
 			continue
 		fi
-		echo "$(ansi dim)Executing database migration file $(ansi blue)$MIGRATION_FILE$(ansi reset)"
+		dpk_echo "$(ansi dim)Executing database migration file $(ansi blue)$MIGRATION_FILE$(ansi reset)"
 		# create the tracking row of this migration attempt
 		MIGRATION_ID="$(_install_db_query "INSERT INTO $CONF_DB_MIGRATION_BASE.$CONF_DB_MIGRATION_TABLE SET dbm_d_creation = NOW(), dbm_s_version = '$MIGRATION'; SELECT LAST_INSERT_ID()")"
 		if ! [[ "$MIGRATION_ID" =~ ^[0-9]+$ ]]; then
@@ -614,7 +614,7 @@ _install_db_migration() {
 			# the migration failed: display the MySQL error, store it in the tracking row
 			# (which keeps a NULL dbm_d_done field, so the migration will be executed again
 			# at the next install, with a new tracking row), and stop the installation
-			echo "$OUTPUT"
+			dpk_echo "$OUTPUT"
 			if [ $ERROR_COLUMN -eq 1 ]; then
 				ERROR_SQL="${OUTPUT//\\/\\\\}"
 				ERROR_SQL="${ERROR_SQL//\'/\\\'}"
@@ -627,7 +627,7 @@ _install_db_migration() {
 			abort "$(ansi red)Unable to mark the migration file $(ansi reset)$MIGRATION_FILE$(ansi red) as done.$(ansi reset)" $DPK_EXIT_DB_TRACKING
 		fi
 	done
-	echo "$(ansi green)Done$(ansi reset)"
+	dpk_echo "$(ansi green)Done$(ansi reset)"
 }
 
 # _install_config_apache()
@@ -637,8 +637,8 @@ _install_config_apache() {
 	if [ -v DPK_OPT["no-apache"] ] || [ "$CONF_INSTALL_APACHE_FILES" = "" ] || [ ! -d /etc/apache2 ]; then
 		return
 	fi
-	echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
-	echo "$(ansi dim)> main configuration files$(ansi reset)"
+	dpk_echo "$(ansi bold)Installing Apache configuration$(ansi reset)"
+	dpk_echo "$(ansi dim)> main configuration files$(ansi reset)"
 	if [ ! -e /etc/apache2/sites-available/dispak.conf ]; then
 		sudo touch /etc/apache2/sites-available/dispak.conf
 	fi
@@ -646,23 +646,23 @@ _install_config_apache() {
 		sudo ln -s /etc/apache2/sites-available/dispak.conf /etc/apache2/sites-enabled/001-dispak.conf
 	fi
 	for _CONF_FILE in $CONF_INSTALL_APACHE_FILES; do
-		echo "$(ansi blue)> $_CONF_FILE$(ansi reset)"
+		dpk_echo "$(ansi blue)> $_CONF_FILE$(ansi reset)"
 		if [ -e "${_CONF_FILE}.gen" ]; then
-			echo -n "$(ansi dim)+ Generating... $(ansi reset)"
+			dpk_echo -n "$(ansi dim)+ Generating... $(ansi reset)"
 			if [ ! -x "$_CONF_FILE.gen" ]; then
 				chmod +x "$_CONF_FILE.gen"
 			fi
 			"${_CONF_FILE}.gen" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$_CONF_FILE"
 			if [ $? -ne 0 ]; then
-				echo
+				dpk_echo
 				abort "$(ansi red)Apache configuration generation script $(ansi reset)$_CONF_FILE.gen$(ansi red) execution failed.$(ansi reset)"
 			fi
 		fi
-		echo "$(ansi green)done$(ansi reset)"
+		dpk_echo "$(ansi green)done$(ansi reset)"
 		if ! grep --quiet "$_CONF_FILE" /etc/apache2/sites-available/dispak.conf ; then
-			echo -n "$(ansi dim)+ Adding to Apache configuration... $(ansi reset)"
+			dpk_echo -n "$(ansi dim)+ Adding to Apache configuration... $(ansi reset)"
 			sudo bash -c "echo 'Include $_CONF_FILE' >> /etc/apache2/sites-available/dispak.conf"
-			echo "$(ansi green)done$(ansi reset)"
+			dpk_echo "$(ansi green)done$(ansi reset)"
 		fi
 	done
 }
@@ -673,25 +673,25 @@ _install_config_files() {
 	local LOGIN RIGHTS _FILE
 	# chown
 	if [ ${#CONF_INSTALL_CHOWN[@]} -ne 0 ]; then
-		echo "$(ansi bold)Setting files owner$(ansi reset)"
+		dpk_echo "$(ansi bold)Setting files owner$(ansi reset)"
 		for LOGIN in "${!CONF_INSTALL_CHOWN[@]}"; do
-			echo "$(ansi dim)> $LOGIN$(ansi reset)"
+			dpk_echo "$(ansi dim)> $LOGIN$(ansi reset)"
 			sudo chown "$LOGIN" ${CONF_INSTALL_CHOWN["$LOGIN"]}
 		done
 	fi
 	# chgrp
 	if [ ${#CONF_INSTALL_CHGRP[@]} -ne 0 ]; then
-		echo "$(ansi bold)Setting files group$(ansi reset)"
+		dpk_echo "$(ansi bold)Setting files group$(ansi reset)"
 		for LOGIN in "${!CONF_INSTALL_CHGRP[@]}"; do
-			echo "$(ansi dim)> $LOGIN$(ansi reset)"
+			dpk_echo "$(ansi dim)> $LOGIN$(ansi reset)"
 			sudo chgrp -R "$LOGIN" ${CONF_INSTALL_CHGRP["$LOGIN"]}
 		done
 	fi
 	# chmod
 	if [ ${#CONF_INSTALL_CHMOD[@]} -ne 0 ]; then
-		echo "$(ansi bold)Setting files access rights$(ansi reset)"
+		dpk_echo "$(ansi bold)Setting files access rights$(ansi reset)"
 		for RIGHTS in "${!CONF_INSTALL_CHMOD[@]}"; do
-			echo "$(ansi dim)> $RIGHTS$(ansi reset)"
+			dpk_echo "$(ansi dim)> $RIGHTS$(ansi reset)"
 			sudo chmod -R "$RIGHTS" ${CONF_INSTALL_CHMOD["$RIGHTS"]}
 			for _FILE in ${CONF_INSTALL_CHMOD["$RIGHTS"]}; do
 				if [ -d "$_FILE" ]; then
@@ -702,9 +702,9 @@ _install_config_files() {
 	fi
 	# files generation
 	if [ "$CONF_INSTALL_GENERATE" != "" ]; then
-		echo "$(ansi bold)Generate files$(ansi reset)"
+		dpk_echo "$(ansi bold)Generate files$(ansi reset)"
 		for _FILE in $CONF_INSTALL_GENERATE; do
-			echo "$(ansi dim)> $_FILE$(ansi reset)"
+			dpk_echo "$(ansi dim)> $_FILE$(ansi reset)"
 			if [ ! -e "$_FILE.gen" ]; then
 				warn "$(ansi yellow)Generator file $(ansi reset)$_FILE.gen$(ansi yellow) doesn't exist.$(ansi reset)"
 				continue

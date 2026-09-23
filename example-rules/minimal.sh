@@ -16,6 +16,6 @@ rule_help_minimal() {
 rule_exec_minimal() {
 	USER_LOGIN="$(id -un)"
 	WORKING_DIR="$(pwd)"
-	echo "Current user login:        $(ansi blue)$USER_LOGIN$(ansi reset)"
-	echo "Current working directory: $(ansi yellow)$WORKING_DIR$(ansi reset)"
+	dpk_echo "Current user login:        $(ansi blue)$USER_LOGIN$(ansi reset)"
+	dpk_echo "Current working directory: $(ansi yellow)$WORKING_DIR$(ansi reset)"
 }

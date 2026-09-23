@@ -10,6 +10,7 @@
 # stubs (no system command is really executed)
 declare -A DPK_OPT
 ansi() { :; }
+dpk_echo() { echo "$@"; }
 abort() { echo "ABORT: $*"; exit 1; }
 warn() { echo "WARN: $*"; }
 crontab() { echo "[stub crontab $*]"; }

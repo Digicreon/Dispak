@@ -27,6 +27,7 @@ Table of contents
    7. [Branches management](#17-branches-management)
    8. [Show remote origin](#18-show-remote-origin)
    9. [Exit codes](#19-exit-codes)
+   10. [Verbose mode](#110-verbose-mode)
 2. [Installation](#2-installation)
    1. [Prerequisites](#21-prerequisites)
    2. [Source installation](#22-source-installation)
@@ -374,6 +375,21 @@ When everything went fine, `dpk` exits with a 0 status. When an error occurs, th
 | 57   | Generator script execution error                     |
 
 These codes are available as `DPK_EXIT_*` variables in the rules' code (see [below](#48-provided-variables)).
+
+
+### 1.10 Verbose mode
+
+Add the `-v` (or `--verbose`) option to any command, and every line written by Dispak will start with the current date and time (written in faint text), which is convenient to follow long deployments or to read logs:
+```shell
+$ dpk install -v --tag=3.2.1
+[2026-09-23 14:05:12] Fetching new tags and branches
+[2026-09-23 14:05:13] Updating source code repository
+...
+```
+
+The next lines of a multi-line message are indented to be aligned with the first line. Empty lines are written without date.
+
+The output of the programs executed by Dispak (git, mysql, pre/post scripts...) is written as is, without date. The rules' documentation (`dpk help`) is never prefixed.
 
 
 ************************************************************************
@@ -811,8 +827,8 @@ rule_help_minimal() {
 rule_exec_minimal() {
 	USER_LOGIN="$(id -un)"
 	WORKING_DIR="$(pwd)"
-	echo "Current user login:        $(ansi blue)$USER_LOGIN$(ansi reset)"
-	echo "Current working directory: $(ansi yellow)$WORKING_DIR$(ansi reset)"
+	dpk_echo "Current user login:        $(ansi blue)$USER_LOGIN$(ansi reset)"
+	dpk_echo "Current working directory: $(ansi yellow)$WORKING_DIR$(ansi reset)"
 }
 ```
 
@@ -820,7 +836,7 @@ Here you can see the four minimal things in a Dispak rule:
 1. The Bash [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) on the first line (`#!/usr/bin/env bash`).
 2. The `RULE_NAME` variable, which contains the name of the rule. This name must be unique.
 3. The function used to display the rule's documentation. It must be called `rule_help_` followed by the rule's name. Please try to follow the same layout of other rules; use the `ansi` function (see [below](#49-provided-functions)) to change text color and decoration.
-4. The function called when the rule is executed. It must be called `rule_exec_` followed by the rule's name.
+4. The function called when the rule is executed. It must be called `rule_exec_` followed by the rule's name. It should write its messages using the `dpk_echo` function instead of `echo` (see [below](#49-provided-functions)), to support the [verbose mode](#110-verbose-mode).
 
 As you can see, when you execute this command:
 ```shell
@@ -870,9 +886,30 @@ Some variables are set by Dispak and available to your rule:
 - `GIT_REPO_PATH`: When Dispak is called from inside a Git repository, this variable contains the root path to this repository.
 - `DPK_OPT`: Contains the options given on the command-line (see [above](#44-parameters-management)).
 - `DPK_EXIT_*`: The exit codes to use as the second parameter of the `abort()` function (see [above](#19-exit-codes)).
+- `OPT_VERBOSE`: Equal to 1 if the [verbose mode](#110-verbose-mode) is activated (`-v` or `--verbose` option), 0 otherwise. This option is available to all rules, it is not stored in `DPK_OPT`.
 
 
 ### 4.9 Provided functions
+
+**`dpk_echo`**
+
+Write a text, like the `echo` command. Your rule should use it to write all its messages (but not in the documentation function), so they are prefixed with the date and time in [verbose mode](#110-verbose-mode). The `-n` option can be given as the first parameter, to not write the trailing newline (the text written after it continues the same line, and is not prefixed).
+
+Example:
+```shell
+dpk_echo "$(ansi bold)Copying files$(ansi reset)"
+dpk_echo -n "Generating... "
+dpk_echo "$(ansi green)done$(ansi reset)"
+```
+
+**`dpk_echo_prefix`**
+
+Return the prefix written by `dpk_echo` at the beginning of the lines in verbose mode (nothing otherwise). Useful for the texts that are not written by `dpk_echo`, like the prompt of the `read` command.
+
+Example:
+```shell
+read -p "$(dpk_echo_prefix)Do you want to proceed? [y/N] " ANSWER
+```
 
 **`warn`**
 

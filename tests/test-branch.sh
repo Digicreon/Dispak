@@ -153,4 +153,36 @@ git commit -qam "unpushed commit"
 check $? "merge refused with unpushed commits (exit code 34)"
 git reset -q --hard origin/feat1
 
+echo "== merge and backport conflicts =="
+# create a branch and a conflicting change on the main branch
+create_branch conflict1 fc.txt "branch content"
+git checkout -q main
+git pull -q
+echo "main content" > fc.txt
+git add fc.txt
+git commit -qm "conflicting change on main"
+git push -q origin main
+# backport: the merge of the main branch stops on a conflict
+git checkout -q conflict1
+BRANCH_SHA="$(git rev-parse origin/conflict1)"
+"$DPK" branch --backport > /dev/null 2>&1
+[ $? -eq 30 ]
+check $? "backport aborted on a conflict (exit code 30)"
+[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]
+check $? "the conflicting merge is left in progress"
+git fetch -q origin
+[ "$(git rev-parse origin/conflict1)" = "$BRANCH_SHA" ]
+check $? "nothing was pushed by the aborted backport"
+git merge --abort
+# merge: the merge on the main branch stops on the same conflict
+MAIN_SHA="$(git rev-parse origin/main)"
+"$DPK" branch --merge > /dev/null 2>&1
+[ $? -eq 30 ]
+check $? "merge aborted on a conflict (exit code 30)"
+git fetch -q origin
+[ "$(git rev-parse origin/main)" = "$MAIN_SHA" ]
+check $? "nothing was pushed by the aborted merge"
+git merge --abort
+git checkout -q conflict1
+
 test_end

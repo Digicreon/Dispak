@@ -49,11 +49,11 @@ _config_pre_scripts() {
 	if [ "$CONF_CONFIG_SCRIPTS_PRE" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Execute pre-config scripts$(ansi reset)"
+	dpk_echo "$(ansi bold)Execute pre-config scripts$(ansi reset)"
 	for _SCRIPT in $CONF_CONFIG_SCRIPTS_PRE; do
 		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
 		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
-		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_EXEC" ]; then
 			chmod +x "$_EXEC"
 		fi
@@ -62,7 +62,7 @@ _config_pre_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_CONFIG_PRE
 		fi
 	done
-	echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi gree)Done$(ansi reset)"
 }
 
 # _config_post_scripts()
@@ -72,11 +72,11 @@ _config_post_scripts() {
 	if [ "$CONF_CONFIG_SCRIPTS_POST" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Execute post-config scripts$(ansi reset)"
+	dpk_echo "$(ansi bold)Execute post-config scripts$(ansi reset)"
 	for _SCRIPT in $CONF_CONFIG_SCRIPTS_POST; do
 		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
 		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
-		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_EXEC" ]; then
 			chmod +x "$_EXEC"
 		fi
@@ -85,6 +85,6 @@ _config_post_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_CONFIG_POST
 		fi
 	done
-	echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi gree)Done$(ansi reset)"
 }
 

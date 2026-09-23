@@ -4,6 +4,10 @@
 # @type bool
 _NEED_POPD=0
 
+# Tell if the last text written by dpk_echo() didn't end the line (written with the "-n" option).
+# @type bool
+_DPK_ECHO_MIDLINE=0
+
 # Exit codes returned by Dispak, to use as the second parameter of the abort() function.
 # They are documented in the README file. Each range of ten is reserved for a category of
 # errors, the "round" value being the generic code of the category; unused values are
@@ -40,7 +44,7 @@ DPK_EXIT_SCRIPT_GENERATOR=57     # generator script execution error
 # git_fetch
 # Fetch new tags and branches.
 git_fetch() {
-	echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
+	dpk_echo "$(ansi bold)Fetching new tags and branches$(ansi reset)"
 	git fetch --all --tags --prune --quiet
 }
 
@@ -289,11 +293,67 @@ ansi() {
 	esac
 }
 
+# dpk_echo_prefix()
+# Return the prefix of the lines written in verbose mode (the current date and time, followed
+# by a space), or nothing if the verbose mode is not activated. The prefix is 22 characters long.
+dpk_echo_prefix() {
+	local NOW
+	if [ "$OPT_VERBOSE" != "1" ]; then
+		return
+	fi
+	printf -v NOW '%(%Y-%m-%d %H:%M:%S)T' -1
+	echo -n "$(ansi dim)[$NOW]$(ansi reset) "
+}
+
+# dpk_echo()
+# Write a text, like the echo command. Must be used by rules to write their messages.
+# In verbose mode, the text is prefixed with the current date and time (see dpk_echo_prefix()),
+# and the next lines of a multi-line text are indented to be aligned with the first one.
+# Empty texts and empty lines are written without prefix nor indentation. A text written
+# after a "dpk_echo -n" call is not prefixed (it continues the same line).
+# @param	string	(optional) "-n" to not write the trailing newline.
+# @param	string	(optional) The text to write (several parameters are joined with a space).
+dpk_echo() {
+	local NEWLINE TEXT LINES RESULT I
+	NEWLINE=1
+	if [ "$1" = "-n" ]; then
+		NEWLINE=0
+		shift
+	fi
+	TEXT="$*"
+	if [ "$OPT_VERBOSE" = "1" ] && [ "$TEXT" != "" ]; then
+		mapfile -t LINES <<< "$TEXT"
+		RESULT=""
+		for I in "${!LINES[@]}"; do
+			if [ $I -gt 0 ]; then
+				RESULT+=$'\n'
+			fi
+			if [ "${LINES[$I]}" = "" ]; then
+				continue
+			fi
+			if [ $I -gt 0 ]; then
+				RESULT+="                      "
+			elif [ $_DPK_ECHO_MIDLINE -eq 0 ]; then
+				RESULT+="$(dpk_echo_prefix)"
+			fi
+			RESULT+="${LINES[$I]}"
+		done
+		TEXT="$RESULT"
+	fi
+	printf '%s' "$TEXT"
+	if [ $NEWLINE -eq 1 ]; then
+		printf '\n'
+		_DPK_ECHO_MIDLINE=0
+	elif [ "$TEXT" != "" ]; then
+		_DPK_ECHO_MIDLINE=1
+	fi
+}
+
 # warn()
 # Write a warning message.
 # @param	string	The text to write.
 warn() {
-	echo "$(ansi yellow)⚠$(ansi reset) $1"
+	dpk_echo "$(ansi yellow)⚠$(ansi reset) $1"
 }
 
 # abort()
@@ -301,7 +361,7 @@ warn() {
 # @param	string	(optional) The message to write.
 # @param	int	(optional) The exit code (see the DPK_EXIT_* variables; 1 by default).
 abort() {
-	echo "$(ansi red)⛔$(ansi reset) $1 $(ansi red)ABORT$(ansi reset)"
+	dpk_echo "$(ansi red)⛔$(ansi reset) $1 $(ansi red)ABORT$(ansi reset)"
 	# go back to previous directory
 	if [ "$_NEED_POPD" -eq 1 ]; then
 		popd > /dev/null
@@ -312,7 +372,7 @@ abort() {
 # success()
 # Write a success message and exit. Called by Dispak itself, no need to call it from inside a rule.
 success() {
-	echo "$(ansi green)✓ Success$(ansi reset)"
+	dpk_echo "$(ansi green)✓ Success$(ansi reset)"
 	# go back to previous directory
 	if [ "$_NEED_POPD" -eq 1 ]; then
 		popd > /dev/null

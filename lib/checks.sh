@@ -31,7 +31,8 @@ check_dbhost() {
 # check_sudo()
 # Check if the user has sudo rights.
 check_sudo() {
-	sudo echo "$(ansi green)✓ sudo rights checked$(ansi reset)" || exit $DPK_EXIT_SUDO
+	sudo true || exit $DPK_EXIT_SUDO
+	dpk_echo "$(ansi green)✓ sudo rights checked$(ansi reset)"
 }
 
 # check_git()
@@ -75,7 +76,7 @@ $(git status -s)
 	fi
 	warn "$(ansi yellow)There is some uncommitted files.$(ansi reset)"
 	git status -s
-	read -p "Do you want to proceed anyway? [y/N] " ANSWER
+	read -p "$(dpk_echo_prefix)Do you want to proceed anyway? [y/N] " ANSWER
 	if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
 		abort "" $DPK_EXIT_GIT_DIRTY
 	fi
@@ -89,7 +90,7 @@ check_git_pushed() {
 	if [ "$(git diff --stat origin/$BRANCH..)" != "" ]; then
 		warn "$(ansi yellow)Some committed files have not been pushed to the remote git repository.$(ansi reset)"
 		git diff --stat origin/$BRANCH..
-		echo
+		dpk_echo
 		abort "$(ansi red)Please, push them with the command$(ansi reset)
   git push origin $BRANCH
 " $DPK_EXIT_GIT_UNPUSHED
@@ -138,7 +139,7 @@ check_tag() {
 			abort "No tag found." $DPK_EXIT_GIT_TAG
 		fi
 		DPK_OPT["tag"]=$_TAG
-		echo "Using tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)'."
+		dpk_echo "Using tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)'."
 	elif [ "${DPK_OPT["tag"]}" != "$CONF_GIT_MAIN" ]; then
 		FOUND=$(git tag | grep "^${DPK_OPT["tag"]}$" | wc -l)
 		if [ $FOUND -eq 0 ]; then
@@ -156,15 +157,15 @@ check_next_tag() {
 	# no existing tag
 	if [ "$LAST_TAG" = "" ]; then
 		if [ "${DPK_OPT["tag"]}" = "1.0.0" ] || [ "${DPK_OPT["tag"]}" = "0.1.0" ] || [ "${DPK_OPT["tag"]}" = "0.0.1" ]; then
-			echo "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' validated."
+			dpk_echo "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' validated."
 			return
 		fi
-		echo "$(ansi yellow)No existing tag.$(ansi reset)"
-		echo "$(ansi bold)What is the number of the new version?$(ansi reset)"
-		echo " A. 0.0.1 $(ansi dim)(first $(ansi yellow)pre-alpha$(ansi reset)$(ansi dim) version)$(ansi reset)"
-		echo " B. 0.1.0 $(ansi dim)(first $(ansi yellow)alpha$(ansi reset)$(ansi dim) version)$(ansi reset)"
-		echo " C. 1.0.0 $(ansi dim)(first major version)$(ansi reset)"
-		read -p "[A] " ANSWER
+		dpk_echo "$(ansi yellow)No existing tag.$(ansi reset)"
+		dpk_echo "$(ansi bold)What is the number of the new version?$(ansi reset)"
+		dpk_echo " A. 0.0.1 $(ansi dim)(first $(ansi yellow)pre-alpha$(ansi reset)$(ansi dim) version)$(ansi reset)"
+		dpk_echo " B. 0.1.0 $(ansi dim)(first $(ansi yellow)alpha$(ansi reset)$(ansi dim) version)$(ansi reset)"
+		dpk_echo " C. 1.0.0 $(ansi dim)(first major version)$(ansi reset)"
+		read -p "$(dpk_echo_prefix)[A] " ANSWER
 		if [ "$ANSWER" = "1.0.0" ] || [ "$ANSWER" = "0.1.0" ] || [ "$ANSWER" = "0.0.1" ]; then
 			DPK_OPT["tag"]="$ANSWER"
 		elif [ "$ANSWER" = "" ] || [ "$ANSWER" = "a" ] || [ "$ANSWER" = "A" ]; then
@@ -197,40 +198,40 @@ check_next_tag() {
 	fi
 	# if a tag number was given, check if it's valid
 	if [ "${DPK_OPT["tag"]}" = "$NEXT_MAJOR" ] || [ "${DPK_OPT["tag"]}" = "$NEXT_MINOR_STABLE" ] || [ "${DPK_OPT["tag"]}" = "$NEXT_MINOR_UNSTABLE" ] || [ "${DPK_OPT["tag"]}" = "$NEXT_REVISION" ]; then
-		echo "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' validated."
+		dpk_echo "Tag '$(ansi dim)${DPK_OPT["tag"]}$(ansi reset)' validated."
 		return
 	fi
 	# no valid version number given, ask the user
-	echo -n "Last version number: $(ansi dim)$LAST_TAG$(ansi reset) "
+	dpk_echo -n "Last version number: $(ansi dim)$LAST_TAG$(ansi reset) "
 	if [ "$LAST_MAJOR" = "0" ] && [ "$LAST_MINOR" = "0" ]; then
-		echo "($(ansi red)pre-alpha$(ansi reset))"
+		dpk_echo "($(ansi red)pre-alpha$(ansi reset))"
 	elif [ "$LAST_MAJOR" = "0" ]; then
 		if [ "$VERSION_TYPE" = "stable" ]; then
-			echo "($(ansi green)stable $(ansi red)alpha$(ansi reset))"
+			dpk_echo "($(ansi green)stable $(ansi red)alpha$(ansi reset))"
 		else
-			echo "($(ansi yellow)unstable $(ansi red)alpha$(ansi reset))"
+			dpk_echo "($(ansi yellow)unstable $(ansi red)alpha$(ansi reset))"
 		fi
 	elif [ "$VERSION_TYPE" = "stable" ]; then
-		echo "($(ansi green)stable$(ansi reset))"
+		dpk_echo "($(ansi green)stable$(ansi reset))"
 	else
-		echo "($(ansi yellow)unstable$(ansi reset))"
+		dpk_echo "($(ansi yellow)unstable$(ansi reset))"
 	fi
-	echo
-	echo "$(ansi bold)What is the number of the new version?$(ansi reset)"
+	dpk_echo
+	dpk_echo "$(ansi bold)What is the number of the new version?$(ansi reset)"
 	if [ "$LAST_MAJOR" = "0" ] && [ "$LAST_MINOR" = "0" ]; then
-		echo " A. $NEXT_REVISION $(ansi dim)(new $(ansi red)pre-alpha$(ansi reset)$(ansi dim) revision)$(ansi reset)"
+		dpk_echo " A. $NEXT_REVISION $(ansi dim)(new $(ansi red)pre-alpha$(ansi reset)$(ansi dim) revision)$(ansi reset)"
 	else
-		echo " A. $NEXT_REVISION $(ansi dim)(new revision)$(ansi reset)"
+		dpk_echo " A. $NEXT_REVISION $(ansi dim)(new revision)$(ansi reset)"
 	fi
 	if [ "$VERSION_TYPE" = "stable" ]; then
-		echo " B. $NEXT_MINOR_UNSTABLE $(ansi dim)(new $(ansi yellow)unstable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
-		echo " C. $NEXT_MINOR_STABLE $(ansi dim)(new $(ansi green)stable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
+		dpk_echo " B. $NEXT_MINOR_UNSTABLE $(ansi dim)(new $(ansi yellow)unstable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
+		dpk_echo " C. $NEXT_MINOR_STABLE $(ansi dim)(new $(ansi green)stable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
 	else
-		echo " B. $NEXT_MINOR_STABLE $(ansi dim)(new $(ansi green)stable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
-		echo " C. $NEXT_MINOR_UNSTABLE $(ansi dim)(new $(ansi yellow)unstable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
+		dpk_echo " B. $NEXT_MINOR_STABLE $(ansi dim)(new $(ansi green)stable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
+		dpk_echo " C. $NEXT_MINOR_UNSTABLE $(ansi dim)(new $(ansi yellow)unstable$(ansi reset)$(ansi dim) minor version)$(ansi reset)"
 	fi
-	echo " D. $NEXT_MAJOR $(ansi dim)(new major version)$(ansi reset)"
-	read -p "[A] " ANSWER
+	dpk_echo " D. $NEXT_MAJOR $(ansi dim)(new major version)$(ansi reset)"
+	read -p "$(dpk_echo_prefix)[A] " ANSWER
 	if [ "$ANSWER" = "$NEXT_MAJOR" ] || [ "$ANSWER" = "$NEXT_MINOR_STABLE" ] || [ "$ANSWER" = "$NEXT_MINOR_UNSTABLE" ] || [ "$ANSWER" = "$NEXT_REVISION" ]; then
 		DPK_OPT["tag"]="$ANSWER"
 	elif [ "$ANSWER" = "" ] || [ "$ANSWER" = "a" ] || [ "$ANSWER" = "A" ]; then

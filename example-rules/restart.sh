@@ -19,8 +19,8 @@ rule_help_restart() {
 # Execution of the rule
 rule_exec_restart() {
 	check_sudo
-	echo "$(ansi bold)Restarting Memcache...$(ansi reset)"
+	dpk_echo "$(ansi bold)Restarting Memcache...$(ansi reset)"
 	sudo service memcached restart
-	echo "$(ansi bold)Restarting Apache...$(ansi reset)"
+	dpk_echo "$(ansi bold)Restarting Apache...$(ansi reset)"
 	sudo apache2ctl restart
 }

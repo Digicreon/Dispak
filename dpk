@@ -19,6 +19,11 @@ DPK_ROOT="$(cd "$(dirname "$(readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE
 # List of options given on the command-line.
 declare -A DPK_OPT
 
+# Tell if the verbose mode is activated (-v or --verbose option). In verbose mode, the lines
+# written by the dpk_echo() function are prefixed with the date and time.
+# @type	bool
+OPT_VERBOSE=0
+
 # Name of the asked command to execute
 COMMAND=$1
 
@@ -106,11 +111,19 @@ fi
 # (the leading colon of the getopts string enables its silent mode: unknown short options
 # fall in the default case, with the letter in OPTARG; don't remove it, a getopts string
 # starting with a dash would break the parsing of the long options)
+# (the verbose option is not stored in DPK_OPT, it is available to all rules)
 shift
-while getopts ":-:" OPTCHAR; do
+while getopts ":v-:" OPTCHAR; do
 	case "$OPTCHAR" in
+		"v")
+			OPT_VERBOSE=1
+			;;
 		"-")
 			KEY=$(echo $OPTARG | cut -d"=" -f 1)
+			if [ "$KEY" = "verbose" ]; then
+				OPT_VERBOSE=1
+				continue
+			fi
 			if [[ "${OPTARG}" == *"="* ]]; then
 				VALUE="${OPTARG#*=}"
 			else

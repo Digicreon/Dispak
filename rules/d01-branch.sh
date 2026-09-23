@@ -92,7 +92,7 @@ rule_exec_branch() {
 		# prune
 		_branch_prune
 	else
-		echo "$(ansi red)No option given.$(ansi reset)"
+		dpk_echo "$(ansi red)No option given.$(ansi reset)"
 		rule_help_branch
 		abort
 	fi
@@ -106,28 +106,28 @@ _branch_list() {
 	# show local branches that doesn't exist remotely
 	LOCAL_BRANCHES="$(git_get_branches_local_only)"
 	if [ "$LOCAL_BRANCHES" != "" ]; then
-		echo "$(ansi bold)$(ansi under)Local branches$(ansi reset)"
+		dpk_echo "$(ansi bold)$(ansi under)Local branches$(ansi reset)"
 		for BRANCH in $LOCAL_BRANCHES; do
 			if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
-				echo "* $(ansi red)$BRANCH$(ansi reset)"
+				dpk_echo "* $(ansi red)$BRANCH$(ansi reset)"
 			else
-				echo "  $BRANCH"
+				dpk_echo "  $BRANCH"
 			fi
 		done
 	fi
 	# show remote branches
 	REMOTE_BRANCHES="$(git_get_branches)"
 	if [ "$LOCAL_BRANCHES" != "" ] && [ "$REMOTE_BRANCHES" != "" ]; then
-		echo
-		echo "$(ansi bold)$(ansi under)Remote branches$(ansi reset)"
+		dpk_echo
+		dpk_echo "$(ansi bold)$(ansi under)Remote branches$(ansi reset)"
 	fi
 	if [ "$REMOTE_BRANCHES" != "" ]; then
 		for BRANCH in $REMOTE_BRANCHES; do
 			LAST_COMMIT_DATE="$(git_get_branch_last_commit_date "origin/$BRANCH")"
 			if [ "$BRANCH" = "$CURRENT_BRANCH" ]; then
-				printf "$(ansi red)*$(ansi reset) $(ansi dim)%-25s$(ansi reset)\t$(ansi red)%s$(ansi reset)\n" "$LAST_COMMIT_DATE" "$BRANCH"
+				dpk_echo "$(printf "$(ansi red)*$(ansi reset) $(ansi dim)%-25s$(ansi reset)\t$(ansi red)%s$(ansi reset)" "$LAST_COMMIT_DATE" "$BRANCH")"
 			else
-				printf "  $(ansi dim)%-25s$(ansi reset)\t%s\n" "$LAST_COMMIT_DATE" "$BRANCH"
+				dpk_echo "$(printf "  $(ansi dim)%-25s$(ansi reset)\t%s" "$LAST_COMMIT_DATE" "$BRANCH")"
 			fi
 		done
 	fi
@@ -172,10 +172,10 @@ _branch_parent() {
 	# count the commits ahead and behind the parent branch
 	COUNT_AHEAD="$(git rev-list --right-only --count "origin/$PARENT_SRC...$BRANCH_REF")"
 	COUNT_BEHIND="$(git rev-list --left-only --count "origin/$PARENT_SRC...$BRANCH_REF")"
-	echo "$(ansi bold)Branch:$(ansi reset)        $BRANCH"
-	echo "$(ansi bold)Created from:$(ansi reset)  $PARENT_SRC"
-	echo "$(ansi bold)Ahead:$(ansi reset)         $COUNT_AHEAD commit(s)"
-	echo "$(ansi bold)Behind:$(ansi reset)        $COUNT_BEHIND commit(s)"
+	dpk_echo "$(ansi bold)Branch:$(ansi reset)        $BRANCH"
+	dpk_echo "$(ansi bold)Created from:$(ansi reset)  $PARENT_SRC"
+	dpk_echo "$(ansi bold)Ahead:$(ansi reset)         $COUNT_AHEAD commit(s)"
+	dpk_echo "$(ansi bold)Behind:$(ansi reset)        $COUNT_BEHIND commit(s)"
 }
 
 # _branch_create()
@@ -221,23 +221,23 @@ _branch_create() {
 	fi
 	# create the new branch
 	if [ "$FROM_SRC" != "" ]; then
-		echo "$(ansi bold)Create the new branch (from '$FROM_SRC' branch)$(ansi reset)"
+		dpk_echo "$(ansi bold)Create the new branch (from '$FROM_SRC' branch)$(ansi reset)"
 		git checkout -b "$CREATE_BRANCH" "origin/$FROM_SRC"
 	else
 		# move to 'main' branch if needed
 		if [ "$(git_get_current_branch)" != "$CONF_GIT_MAIN" ]; then
-			echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
+			dpk_echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
 			git checkout "$CONF_GIT_MAIN"
 		fi
 		if [ "$TAG_SRC" = "" ]; then
-			echo "$(ansi bold)Create the new branch (from '$CONF_GIT_MAIN' branch)$(ansi reset)"
+			dpk_echo "$(ansi bold)Create the new branch (from '$CONF_GIT_MAIN' branch)$(ansi reset)"
 			git checkout -b "$CREATE_BRANCH"
 		else
-			echo "$(ansi bold)Create the new branch (from tag '$TAG_SRC' on '$CONF_GIT_MAIN' branch)$(ansi reset)"
+			dpk_echo "$(ansi bold)Create the new branch (from tag '$TAG_SRC' on '$CONF_GIT_MAIN' branch)$(ansi reset)"
 			git checkout -b "$CREATE_BRANCH" "$TAG_SRC"
 		fi
 	fi
-	echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
+	dpk_echo "$(ansi bold)Push the branch to remote git repository$(ansi reset)"
 	git push --set-upstream origin "$CREATE_BRANCH"
 }
 
@@ -264,16 +264,16 @@ _branch_remove() {
 		IS_REMOTE_BRANCH="yes"
 	fi
 	# move to 'main' branch
-	echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
+	dpk_echo "$(ansi bold)Move to '$CONF_GIT_MAIN' branch$(ansi reset)"
 	git checkout "$CONF_GIT_MAIN"
 	# delete the local branch
 	if [ "$(git branch | grep "$RM_BRANCH" | wc -l)" -ne 0 ]; then
-		echo "$(ansi bold)Delete the '$RM_BRANCH' branch locally$(ansi reset)"
+		dpk_echo "$(ansi bold)Delete the '$RM_BRANCH' branch locally$(ansi reset)"
 		git branch -D "$RM_BRANCH"
 	fi
 	# delete the remote branch if it exists
 	if [ "$IS_REMOTE_BRANCH" = "yes" ]; then
-		echo "$(ansi bold)Delete the '$RM_BRANCH' branch on the remote git repository$(ansi reset)"
+		dpk_echo "$(ansi bold)Delete the '$RM_BRANCH' branch on the remote git repository$(ansi reset)"
 		git push origin ":$RM_BRANCH"
 	fi
 }
@@ -302,15 +302,25 @@ _branch_merge() {
 		abort "$(ansi red)Unable to merge the '$BRANCH' branch on itself.$(ansi reset)"
 	fi
 	# merge operations
-	echo "$(ansi bold)Checking out to '$BRANCH_DEST' branch$(ansi reset)"
-	git checkout "$BRANCH_DEST"
-	git pull
-	echo "$(ansi bold)Merging '$BRANCH'$(ansi reset)"
-	git merge "$BRANCH" -Xignore-space-at-eol
-	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
-	git push origin "$BRANCH_DEST"
-	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
-	git checkout "$BRANCH"
+	dpk_echo "$(ansi bold)Checking out to '$BRANCH_DEST' branch$(ansi reset)"
+	if ! git checkout "$BRANCH_DEST"; then
+		abort "$(ansi red)Unable to checkout the '$BRANCH_DEST' branch.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+	if ! git pull; then
+		abort "$(ansi red)Unable to update the '$BRANCH_DEST' branch from the remote git repository.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+	dpk_echo "$(ansi bold)Merging '$BRANCH'$(ansi reset)"
+	if ! git merge "$BRANCH" -Xignore-space-at-eol; then
+		_branch_merge_conflict "$BRANCH_DEST" "$BRANCH"
+	fi
+	dpk_echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
+	if ! git push origin "$BRANCH_DEST"; then
+		abort "$(ansi red)Unable to push the '$BRANCH_DEST' branch to the remote git repository.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+	dpk_echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
+	if ! git checkout "$BRANCH"; then
+		abort "$(ansi red)Unable to checkout back to the '$BRANCH' branch.$(ansi reset)" $DPK_EXIT_GIT
+	fi
 }
 
 # _branch_backport()
@@ -337,15 +347,39 @@ _branch_backport() {
 		abort "$(ansi red)Unable to backport the '$BRANCH' branch on itself.$(ansi reset)"
 	fi
 	# backport operations
-	echo "$(ansi bold)Updating '$BRANCH_SRC' branch$(ansi reset)"
-	git checkout "$BRANCH_SRC"
-	git pull
-	echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
-	git checkout "$BRANCH"
-	echo "$(ansi bold)Merging '$BRANCH_SRC' branch$(ansi reset)"
-	git merge "$BRANCH_SRC" -Xignore-space-at-eol
-	echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
-	git push origin "$BRANCH"
+	dpk_echo "$(ansi bold)Updating '$BRANCH_SRC' branch$(ansi reset)"
+	if ! git checkout "$BRANCH_SRC"; then
+		abort "$(ansi red)Unable to checkout the '$BRANCH_SRC' branch.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+	if ! git pull; then
+		abort "$(ansi red)Unable to update the '$BRANCH_SRC' branch from the remote git repository.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+	dpk_echo "$(ansi bold)Checking out back to branch '$BRANCH'$(ansi reset)"
+	if ! git checkout "$BRANCH"; then
+		abort "$(ansi red)Unable to checkout back to the '$BRANCH' branch.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+	dpk_echo "$(ansi bold)Merging '$BRANCH_SRC' branch$(ansi reset)"
+	if ! git merge "$BRANCH_SRC" -Xignore-space-at-eol; then
+		_branch_merge_conflict "$BRANCH"
+	fi
+	dpk_echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
+	if ! git push origin "$BRANCH"; then
+		abort "$(ansi red)Unable to push the '$BRANCH' branch to the remote git repository.$(ansi reset)" $DPK_EXIT_GIT
+	fi
+}
+
+# _branch_merge_conflict()
+# Abort after a merge conflict, telling how to finish the merge by hand.
+# @param	string	Name of the branch to push once the conflicts are solved.
+# @param	string	(optional) Name of the branch to checkout back to afterwards.
+_branch_merge_conflict() {
+	local MSG
+	MSG="$(ansi red)The merge stopped on a conflict. Solve the conflicts (see $(ansi reset)git status$(ansi red)), add the solved files with $(ansi reset)git add$(ansi red) and commit them with $(ansi reset)git commit$(ansi red), then push the '$1' branch with $(ansi reset)git push origin $1$(ansi red)"
+	if [ "$2" != "" ]; then
+		MSG="$MSG, and checkout back to the '$2' branch with $(ansi reset)git checkout $2$(ansi red)"
+	fi
+	MSG="$MSG; or cancel everything with $(ansi reset)git merge --abort$(ansi red).$(ansi reset)"
+	abort "$MSG" $DPK_EXIT_GIT
 }
 
 # _branch_rebase()
@@ -370,7 +404,7 @@ _branch_rebase() {
 			rm -f "$GIT_DIR_PATH/dispak-rebase"
 			abort "$(ansi red)A rebase not started by Dispak is in progress. Finish it with $(ansi reset)git rebase --continue$(ansi red) or $(ansi reset)git rebase --abort$(ansi red).$(ansi reset)"
 		fi
-		echo "$(ansi bold)Resuming the rebase of the '$REBASE_BRANCH' branch on '$REBASE_SRC'$(ansi reset)"
+		dpk_echo "$(ansi bold)Resuming the rebase of the '$REBASE_BRANCH' branch on '$REBASE_SRC'$(ansi reset)"
 		if ! GIT_EDITOR=true git rebase --continue; then
 			_branch_rebase_conflict
 		fi
@@ -401,11 +435,11 @@ _branch_rebase() {
 		abort "$(ansi red)Unable to rebase '$CONF_GIT_MAIN' branch.$(ansi reset)"
 	fi
 	# update the source branch
-	echo "$(ansi bold)Updating '$REBASE_SRC' branch$(ansi reset)"
+	dpk_echo "$(ansi bold)Updating '$REBASE_SRC' branch$(ansi reset)"
 	git checkout "$REBASE_SRC"
 	git pull
 	# update the branch to rebase (fetch the commits pushed since the last synchronization)
-	echo "$(ansi bold)Updating '$REBASE_BRANCH' branch$(ansi reset)"
+	dpk_echo "$(ansi bold)Updating '$REBASE_BRANCH' branch$(ansi reset)"
 	git checkout "$REBASE_BRANCH"
 	git pull
 	# rebase and push
@@ -421,7 +455,7 @@ _branch_rebase_exec() {
 	# the rebased branch (the push will be refused if the remote branch moves away from this
 	# revision); this file is what makes it possible to resume after a conflict
 	echo "$REBASE_BRANCH $REBASE_SRC $(git rev-parse "origin/$REBASE_BRANCH" 2> /dev/null)" > "$GIT_DIR_PATH/dispak-rebase"
-	echo "$(ansi bold)Rebasing '$REBASE_BRANCH' branch on '$REBASE_SRC'$(ansi reset)"
+	dpk_echo "$(ansi bold)Rebasing '$REBASE_BRANCH' branch on '$REBASE_SRC'$(ansi reset)"
 	if ! git rebase "$REBASE_SRC"; then
 		_branch_rebase_conflict
 	fi
@@ -430,7 +464,7 @@ _branch_rebase_exec() {
 # _branch_rebase_conflict()
 # Abort after a rebase conflict, telling how to resume.
 _branch_rebase_conflict() {
-	abort "$(ansi red)The rebase stopped on a conflict. Solve the conflicts (see $(ansi reset)git status$(ansi red)), add the solved files with $(ansi reset)git add$(ansi red), then run $(ansi reset)dpk branch --rebase$(ansi red) again to resume; or cancel everything with $(ansi reset)git rebase --abort$(ansi red).$(ansi reset)"
+	abort "$(ansi red)The rebase stopped on a conflict. Solve the conflicts (see $(ansi reset)git status$(ansi red)), add the solved files with $(ansi reset)git add$(ansi red), then run $(ansi reset)dpk branch --rebase$(ansi red) again to resume; or cancel everything with $(ansi reset)git rebase --abort$(ansi red).$(ansi reset)" $DPK_EXIT_GIT
 }
 
 # _branch_rebase_push()
@@ -444,10 +478,10 @@ _branch_rebase_push() {
 		# is written back before the rebase if the operation is replayed)
 		BRANCH_REMOTE_SHA="$(cut -d' ' -f3 "$GIT_DIR_PATH/dispak-rebase" 2> /dev/null)"
 		rm -f "$GIT_DIR_PATH/dispak-rebase"
-		echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
+		dpk_echo "$(ansi bold)Pushing to remote git repository$(ansi reset)"
 		PUSH_OUTPUT="$(git push --porcelain --force-with-lease="$REBASE_BRANCH:$BRANCH_REMOTE_SHA" origin "$REBASE_BRANCH" 2>&1)"
 		PUSH_STATUS=$?
-		echo "$PUSH_OUTPUT"
+		dpk_echo "$PUSH_OUTPUT"
 		if [ $PUSH_STATUS -eq 0 ]; then
 			return
 		fi
@@ -461,10 +495,10 @@ _branch_rebase_push() {
 		# commits were pushed on the branch during the rebase: fetch them and replay the whole operation
 		warn "$(ansi yellow)Commits were pushed on the '$REBASE_BRANCH' branch during the rebase. Fetching them and replaying the rebase.$(ansi reset)"
 		git_fetch
-		echo "$(ansi bold)Updating '$REBASE_SRC' branch$(ansi reset)"
+		dpk_echo "$(ansi bold)Updating '$REBASE_SRC' branch$(ansi reset)"
 		git checkout "$REBASE_SRC"
 		git pull
-		echo "$(ansi bold)Updating '$REBASE_BRANCH' branch$(ansi reset)"
+		dpk_echo "$(ansi bold)Updating '$REBASE_BRANCH' branch$(ansi reset)"
 		git checkout "$REBASE_BRANCH"
 		git reset --hard "origin/$REBASE_BRANCH"
 		_branch_rebase_exec
@@ -498,7 +532,7 @@ _branch_rename() {
 		abort "$(ansi red)Unable to rename the '$OLD_NAME' branch to itself.$(ansi reset)"
 	fi
 	# rename operation
-	echo "$(ansi bold)Renaming '$OLD_NAME' branch to '$NEW_NAME'$(ansi reset)"
+	dpk_echo "$(ansi bold)Renaming '$OLD_NAME' branch to '$NEW_NAME'$(ansi reset)"
 	git branch -m "$NEW_NAME"
 	git push origin -u "$NEW_NAME"
 	git push origin --delete "$OLD_NAME"
@@ -535,7 +569,7 @@ _branch_prune() {
 			if ! git branch --delete "$BRANCH" 2> /dev/null; then
 				# the branch is not fully merged, ask for a confirmation before forcing its deletion
 				warn "$(ansi yellow)The branch '$BRANCH' is not fully merged.$(ansi reset)"
-				read -p "Do you want to delete it anyway? [y/N] " ANSWER
+				read -p "$(dpk_echo_prefix)Do you want to delete it anyway? [y/N] " ANSWER
 				if [ "$ANSWER" = "y" ] || [ "$ANSWER" = "Y" ]; then
 					git branch -D "$BRANCH"
 				else

@@ -47,7 +47,7 @@ rule_exec_tags() {
 			if [ "$FIRST_REVISION" != "$LAST_REVISION" ] && [ "$LAST_REVISION" != "" ]; then
 				LEN=$((${#LAST_MAJOR} + ${#LAST_MINOR} + 1))
 				SPACES=`printf "%0.s " $(seq 1 $LEN)`
-				echo " $(ansi dim)$SPACES.$LAST_REVISION		$(ansi blue)$LAST_DATE$(ansi reset)"
+				dpk_echo " $(ansi dim)$SPACES.$LAST_REVISION		$(ansi blue)$LAST_DATE$(ansi reset)"
 				SHOWN="yes"
 			fi
 			LAST_MAJOR="$TAG_MAJOR"
@@ -56,7 +56,7 @@ rule_exec_tags() {
 			LAST_REVISION=""
 		fi
 		if [ "$TAG_MINOR" = "0" ] && [ "$TAG_REVISION" = "0" ]; then
-			echo " $(ansi red)$(ansi bold)$TAG_MAJOR.0.0$(ansi reset)		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi dim)major stable$(ansi reset)"
+			dpk_echo " $(ansi red)$(ansi bold)$TAG_MAJOR.0.0$(ansi reset)		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi dim)major stable$(ansi reset)"
 			SHOWN="yes"
 			LAST_MAJOR=""
 			LAST_MINOR=""
@@ -64,9 +64,9 @@ rule_exec_tags() {
 			LAST_REVISION=""
 		elif [ "$TAG_REVISION" = "0" ]; then
 			if [ "$(($TAG_MINOR % 2))" = "0" ]; then
-				echo " $(ansi green)$TAG_MAJOR.$TAG_MINOR.0		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi green)$(ansi dim)stable$(ansi reset)"
+				dpk_echo " $(ansi green)$TAG_MAJOR.$TAG_MINOR.0		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi green)$(ansi dim)stable$(ansi reset)"
 			else
-				echo " $(ansi yellow)$TAG_MAJOR.$TAG_MINOR.0		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi yellow)$(ansi dim)unstable$(ansi reset)"
+				dpk_echo " $(ansi yellow)$TAG_MAJOR.$TAG_MINOR.0		$(ansi blue)$TAG_DATE$(ansi reset) $(ansi yellow)$(ansi dim)unstable$(ansi reset)"
 			fi
 			SHOWN="yes"
 			LAST_MAJOR=""
@@ -78,7 +78,7 @@ rule_exec_tags() {
 				FIRST_REVISION="$TAG_REVISION"
 			fi
 			if [ -v DPK_OPT["all"] ]; then
-				echo " $(ansi dim)$TAG_MAJOR.$TAG_MINOR.$TAG_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"
+				dpk_echo " $(ansi dim)$TAG_MAJOR.$TAG_MINOR.$TAG_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"
 				SHOWN="yes"
 			fi
 			LAST_REVISION="$TAG_REVISION"
@@ -87,27 +87,27 @@ rule_exec_tags() {
 		if [ "$SHOWN" = "yes" ] && [ -v DPK_OPT["all"] ]; then
 			TAGGER="$(git tag -n --format='%(tagger)' $TAG | cut -d'>' -f 1)>"
 			if [ "$(echo "$TAGGER" | grep "@" | wc -l)" == "1" ]; then
-				echo "		$(ansi dim)$TAGGER$(ansi reset)"
+				dpk_echo "		$(ansi dim)$TAGGER$(ansi reset)"
 			fi
 			git tag -n99 $TAG | sed -e "s/^$TAG//" -e 's/^\s*//' | while read -r LINE; do
-				echo "		$(ansi dim)$LINE$(ansi reset)"
+				dpk_echo "		$(ansi dim)$LINE$(ansi reset)"
 			done
-			echo
+			dpk_echo
 		fi
 		LAST_DATE="$TAG_DATE"
 	done
 	if [ ! -v DPK_OPT["all"] ] && [ "$SHOWN" = "no" ]; then
 		LEN=$((${#LAST_MAJOR} + ${#LAST_MINOR} + 1))
 		SPACES=`printf "%0.s " $(seq 1 $LEN)`
-		echo " $(ansi dim)$SPACES.$LAST_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"
+		dpk_echo " $(ansi dim)$SPACES.$LAST_REVISION		$(ansi blue)$TAG_DATE$(ansi reset)"
 	fi
 	NBR_COMMITS=$(git describe --long | cut -d"-" -f 2)
-	echo
+	dpk_echo
 	if [ $NBR_COMMITS -eq 0 ]; then
-		echo "No commit since last tag."
+		dpk_echo "No commit since last tag."
 	elif [ $NBR_COMMITS -eq 1 ]; then
-		echo "1 commit since last tag."
+		dpk_echo "1 commit since last tag."
 	else
-		echo "$NBR_COMMITS commits since last tag."
+		dpk_echo "$NBR_COMMITS commits since last tag."
 	fi
 }

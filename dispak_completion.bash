@@ -52,6 +52,10 @@ _dpk() {
 		for _ACT in $_ACTIONS; do
 			if [ "$_ACT" = "$ACTION" ]; then
 				OPTS="${_ACTIONS_OPT["$ACTION"]}"
+				# the verbose option is available to all commands (except help)
+				if [ "$ACTION" != "help" ]; then
+					OPTS="$OPTS --verbose"
+				fi
 				break
 			fi
 		done

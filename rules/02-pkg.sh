@@ -68,7 +68,7 @@ rule_exec_pkg() {
 	# minify files
 	_pkg_minify
 	# create log file
-	echo "$(ansi bold)Creating default log message...$(ansi reset)"
+	dpk_echo "$(ansi bold)Creating default log message...$(ansi reset)"
 	TAGLOGFILE="$(mktemp --tmpdir=/tmp dispak-log.XXXXXXXXXX)"
 	git log "$(git tag | sort -V | tail -1)"..HEAD --pretty=format:%s > $TAGLOGFILE
 	echo >> $TAGLOGFILE
@@ -84,12 +84,12 @@ rule_exec_pkg() {
 	$EDITOR_PROGRAM $TAGLOGFILE
 	grep -ve "^#" $TAGLOGFILE > $TAGLOGFILE.final
 	# create tag
-	echo "$(ansi bold)Creating local tag '${DPK_OPT["tag"]}'...$(ansi reset)"
+	dpk_echo "$(ansi bold)Creating local tag '${DPK_OPT["tag"]}'...$(ansi reset)"
 	git tag -a "${DPK_OPT["tag"]}" --file=$TAGLOGFILE.final
 	# delete log file
 	rm -f $TAGLOGFILE $TAGLOGFILE.final
 	# push tag to server
-	echo "$(ansi bold)Pushing tag to server...$(ansi reset)"
+	dpk_echo "$(ansi bold)Pushing tag to server...$(ansi reset)"
 	git push origin "${DPK_OPT["tag"]}"
 	# send static files to Amazon S3
 	_pkg_s3
@@ -110,11 +110,11 @@ _pkg_pre_scripts() {
 	if [ "$CONF_PKG_SCRIPTS_PRE" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Execute pre-packaging scripts$(ansi reset)"
+	dpk_echo "$(ansi bold)Execute pre-packaging scripts$(ansi reset)"
 	for _SCRIPT in $CONF_PKG_SCRIPTS_PRE; do
 		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
 		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
-		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_EXEC" ]; then
 			chmod +x "$_EXEC"
 		fi
@@ -123,7 +123,7 @@ _pkg_pre_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_PRE
 		fi
 	done
-	echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi gree)Done$(ansi reset)"
 }
 
 # _pkg_post_scripts()
@@ -133,11 +133,11 @@ _pkg_post_scripts() {
 	if [ "$CONF_PKG_SCRIPTS_POST" = "" ]; then
 		return
 	fi
-	echo "$(ansi bold)Execute post-packaging scripts$(ansi reset)"
+	dpk_echo "$(ansi bold)Execute post-packaging scripts$(ansi reset)"
 	for _SCRIPT in $CONF_PKG_SCRIPTS_POST; do
 		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
 		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
-		echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
 		if [ ! -x "$_EXEC" ]; then
 			chmod +x "$_EXEC"
 		fi
@@ -146,7 +146,7 @@ _pkg_post_scripts() {
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_POST
 		fi
 	done
-	echo "$(ansi gree)Done$(ansi reset)"
+	dpk_echo "$(ansi gree)Done$(ansi reset)"
 }
 
 # _pkg_unconcat()
@@ -187,14 +187,14 @@ _pkg_concat() {
 		fi
 	done
 	# concatenation
-	echo "$(ansi bold)Files concatenation$(ansi reset)"
+	dpk_echo "$(ansi bold)Files concatenation$(ansi reset)"
 	for _FILE in ${!CONF_PKG_CONCAT[@]}; do
 		# don't process entries with an empty list of source files
 		if [ -z "${CONF_PKG_CONCAT["$_FILE"]//[[:space:]]/}" ]; then
 			warn "Empty list of files to concatenate for the file '$(ansi dim)$_FILE$(ansi reset)'."
 			continue
 		fi
-		echo "$(ansi dim)> $_FILE$(ansi reset)"
+		dpk_echo "$(ansi dim)> $_FILE$(ansi reset)"
 		cat ${CONF_PKG_CONCAT["$_FILE"]} > "$_FILE"
 		if [ $? -ne 0 ]; then
 			abort "Unable to concatenate file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
@@ -255,9 +255,9 @@ _pkg_minify() {
 		fi
 	done
 	# minification
-	echo "$(ansi bold)Files minification$(ansi reset)"
+	dpk_echo "$(ansi bold)Files minification$(ansi reset)"
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
-		echo "$(ansi dim)> $_FILE$(ansi reset)"
+		dpk_echo "$(ansi dim)> $_FILE$(ansi reset)"
 		minify -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		if [ $? -ne 0 ]; then
 			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
@@ -298,7 +298,7 @@ _pkg_s3() {
 	# check aws program
 	check_aws
 	# loop on paths that must be copied to S3
-	echo "$(ansi bold)Copy files to Amazon S3$(ansi reset)"
+	dpk_echo "$(ansi bold)Copy files to Amazon S3$(ansi reset)"
 	for _S3 in ${!CONF_PKG_S3[@]}; do
 		# check if the source path exists
 		if [ ! -d "${CONF_PKG_S3["$_S3"]}" ]; then
@@ -311,7 +311,7 @@ _pkg_s3() {
 			FOUND_MAIN_LINK=1
 		fi
 		# copy files to Amazon S3
-		echo "$(ansi dim)> $_S3$(ansi reset)"
+		dpk_echo "$(ansi dim)> $_S3$(ansi reset)"
 		# check if the static files (in this path) must be compressed
 		if [ "$CONF_PKG_S3_COMPRESS" != "1" ]; then
 			# no compression, copy files in bulk
