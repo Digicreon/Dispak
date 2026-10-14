@@ -342,7 +342,9 @@ _install_generate_config() {
 	local _TMP_FILE
 	chmod +x "$1"
 	_TMP_FILE="$(mktemp --tmpdir=/tmp dispak-config.XXXXXXXXXX)"
-	if ! sudo bash -c "\"$1\" \"${DPK_OPT["platform"]}\" \"${DPK_OPT["tag"]}\" > \"$_TMP_FILE\""; then
+	# the generator is executed by root, but the redirection is done by the current user, who
+	# owns the temporary file (root can't open it for writing in /tmp: fs.protected_regular)
+	if ! sudo "$1" "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}" > "$_TMP_FILE"; then
 		rm -f "$_TMP_FILE"
 		return 2
 	fi
@@ -470,7 +472,7 @@ _install_xinetd() {
 	fi
 	sudo cat "$DPK_XINETD_FILE" | grep -qxF -- "$START_MARK"
 	if [ $? -ne 0 ]; then
-		sudo bash -c "(echo; echo \"$START_MARK\"; cat \"$GIT_REPO_PATH/etc/xinetd\"; echo \"$END_MARK\") >> \"$DPK_XINETD_FILE\""
+		{ echo; echo "$START_MARK"; cat "$GIT_REPO_PATH/etc/xinetd"; echo "$END_MARK"; } | sudo tee -a "$DPK_XINETD_FILE" > /dev/null
 	else
 		BEGIN_GEN=$(sudo cat "$DPK_XINETD_FILE" | grep -nxF -- "$START_MARK" | cut -d: -f 1)
 		END_GEN=$(sudo cat "$DPK_XINETD_FILE" | grep -nxF -- "$END_MARK" | cut -d: -f 1)
@@ -782,9 +784,9 @@ _install_config_apache() {
 			fi
 		fi
 		dpk_echo "$(ansi green)done$(ansi reset)"
-		if ! grep --quiet "$_CONF_FILE" /etc/apache2/sites-available/dispak.conf ; then
+		if ! sudo grep -qxF -- "Include $_CONF_FILE" /etc/apache2/sites-available/dispak.conf; then
 			dpk_echo -n "$(ansi dim)+ Adding to Apache configuration... $(ansi reset)"
-			sudo bash -c "echo 'Include $_CONF_FILE' >> /etc/apache2/sites-available/dispak.conf"
+			echo "Include $_CONF_FILE" | sudo tee -a /etc/apache2/sites-available/dispak.conf > /dev/null
 			dpk_echo "$(ansi green)done$(ansi reset)"
 		fi
 	done
