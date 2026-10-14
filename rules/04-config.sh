@@ -38,6 +38,10 @@ rule_exec_config() {
 	_install_xinetd
 	# files configuration
 	_install_config_files
+	# supervisor configuration
+	_install_supervisor
+	# systemd configuration
+	_install_systemd
 	# execute post-config scripts
 	_config_post_scripts
 }
