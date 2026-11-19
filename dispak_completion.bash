@@ -17,7 +17,7 @@ _dpk() {
 	_ACTIONS_OPT["help"]="branch tags pkg install config origin"
 	_ACTIONS_OPT["branch"]="--list --graph --parent --create --remove --merge --backport --rebase --rename --prune --from= --tag="
 	_ACTIONS_OPT["tags"]="--all"
-	_ACTIONS_OPT["pkg"]="--tag="
+	_ACTIONS_OPT["pkg"]="--tag= --s3-force"
 	_ACTIONS_OPT["install"]="--platform=dev --platform=test --platform=prod --tag=main --tag= --no-apache --no-crontab --no-xinetd --no-supervisor --no-systemd --no-db-migration"
 	_ACTIONS_OPT["config"]="--platform=dev --platform=test --platform=prod --tag=main --tag="
 	_ACTIONS_OPT["origin"]=""

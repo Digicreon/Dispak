@@ -23,6 +23,7 @@ DPK_EXIT_USAGE_VALUE=14          # invalid parameter value
 DPK_EXIT_ENV=20                  # environment error (generic)
 DPK_EXIT_ENV_PROGRAM=21          # required program not found
 DPK_EXIT_ENV_URL=22              # check URL returning an error
+DPK_EXIT_ENV_S3=23               # Amazon S3 upload error
 DPK_EXIT_GIT=30                  # git operation error (generic)
 DPK_EXIT_GIT_REPO=31             # not inside a git repository
 DPK_EXIT_GIT_BRANCH=32           # not on the right branch
@@ -40,6 +41,7 @@ DPK_EXIT_SCRIPT_CONFIG_POST=54   # post-configuration script execution error
 DPK_EXIT_SCRIPT_INSTALL_PRE=55   # pre-install script execution error
 DPK_EXIT_SCRIPT_INSTALL_POST=56  # post-install script execution error
 DPK_EXIT_SCRIPT_GENERATOR=57     # generator script execution error
+DPK_EXIT_SCRIPT_PKG_S3=58        # post-S3 upload script execution error
 
 # git_fetch
 # Fetch new tags and branches.

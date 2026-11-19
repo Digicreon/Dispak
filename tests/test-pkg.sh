@@ -78,4 +78,151 @@ check $? "post-packaging script failure reported (exit code 52)"
 git rev-parse --verify --quiet "0.1.2" > /dev/null
 check $? "the tag was created before the post-packaging script"
 
+# ########## Amazon S3 upload ##########
+# fake 'aws' program, which logs its calls (and fails if the AWS_FAIL variable is set to 1)
+mkdir -p "$TEST_DIR/bin"
+export AWS_LOG="$TEST_DIR/aws.log"
+printf '#!/bin/sh\necho "$*" >> "$AWS_LOG"\n[ "$AWS_FAIL" != "1" ]\n' > "$TEST_DIR/bin/aws"
+chmod +x "$TEST_DIR/bin/aws"
+export PATH="$TEST_DIR/bin:$PATH"
+touch "$AWS_LOG"
+# post-S3 upload script, which logs the tag it receives
+S3_SCRIPT_LOG="$TEST_DIR/s3-script.log"
+printf '#!/bin/sh\necho "$2" >> "%s"\n' "$S3_SCRIPT_LOG" > "$TEST_DIR/s3.sh"
+chmod +x "$TEST_DIR/s3.sh"
+touch "$S3_SCRIPT_LOG"
+# static files, and a concatenated file generated from a source outside of the static directory
+mkdir -p static src
+echo "body {}" > static/style.css
+echo "p {}" > src/extra.css
+# write_s3_conf()
+# Write and commit the dispak configuration file, with the given S3 behaviour.
+write_s3_conf() {
+	cat > etc/dispak.conf << EOF
+CONF_PKG_S3["bucket"]="static"
+CONF_PKG_S3_BEHAVIOUR="$1"
+CONF_PKG_SCRIPTS_S3="$TEST_DIR/s3.sh"
+CONF_PKG_CONCAT["static/all.css"]="src/extra.css"
+EOF
+	git add -A
+	git commit -qm "S3 configuration ($1)"
+	git push -q origin main
+}
+# s3_sent()
+# Tell if files were sent to S3 for the given tag (and if the post-S3 script was executed).
+s3_sent() {
+	grep -q "s3://bucket/$1" "$AWS_LOG" && grep -qx "$1" "$S3_SCRIPT_LOG"
+}
+# s3_not_sent()
+# Tell if no file was sent to S3 for the given tag (and if the post-S3 script was not executed).
+s3_not_sent() {
+	! grep -q "s3://bucket/$1" "$AWS_LOG" && ! grep -qx "$1" "$S3_SCRIPT_LOG"
+}
+
+echo "== S3 'modified' behaviour: first upload =="
+write_s3_conf modified
+EDITOR=true "$DPK" pkg --tag=0.2.0 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_sent 0.2.0
+check $? "files sent to S3 and post-S3 script executed"
+[ "$(git show 0.2.0:etc/s3_upload_last_tag)" = "0.2.0" ]
+check $? "the S3 version file is part of the tag"
+git fetch -q origin && [ "$(git show origin/main:etc/s3_upload_last_tag)" = "0.2.0" ]
+check $? "the S3 version file was pushed"
+[ ! -e static/all.css ]
+check $? "the concatenated file was removed"
+
+echo "== S3 'modified' behaviour: no modification =="
+echo "other" >> f1.txt
+git commit -qam "change outside of static files"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.2.1 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_not_sent 0.2.1
+check $? "no file sent to S3, post-S3 script not executed"
+[ "$(cat etc/s3_upload_last_tag)" = "0.2.0" ]
+check $? "the S3 version file is unchanged"
+
+echo "== S3 'modified' behaviour: forced upload =="
+echo "other" >> f1.txt
+git commit -qam "change outside of static files"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.2.2 --s3-force > /dev/null 2>&1
+check $? "the command succeeds"
+s3_sent 0.2.2
+check $? "files sent to S3 with the --s3-force option"
+
+echo "== S3 'modified' behaviour: static file modified =="
+echo "h1 {}" >> static/style.css
+git commit -qam "change in static files"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.2.3 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_sent 0.2.3
+check $? "files sent to S3"
+[ "$(git show 0.2.3:etc/s3_upload_last_tag)" = "0.2.3" ]
+check $? "the S3 version file was updated"
+
+echo "== S3 'modified' behaviour: concatenation source modified =="
+echo "h2 {}" >> src/extra.css
+git commit -qam "change in a concatenation source file"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.2.4 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_sent 0.2.4
+check $? "files sent to S3"
+
+echo "== S3 'modified' behaviour: unstable tag =="
+echo "h3 {}" >> static/style.css
+git commit -qam "change in static files"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.3.0 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_not_sent 0.3.0
+check $? "no file sent to S3 for an unstable tag"
+[ "$(cat etc/s3_upload_last_tag)" = "0.2.4" ]
+check $? "the S3 version file is unchanged"
+
+echo "== S3 'always' behaviour =="
+write_s3_conf always
+EDITOR=true "$DPK" pkg --tag=0.4.0 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_sent 0.4.0
+check $? "files sent to S3"
+echo "other" >> f1.txt
+git commit -qam "change outside of static files"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.4.1 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_sent 0.4.1
+check $? "files sent to S3 even without modification"
+
+echo "== error case: unknown S3 behaviour =="
+write_s3_conf foo
+EDITOR=true "$DPK" pkg --tag=0.4.2 > /dev/null 2>&1
+[ $? -eq 20 ]
+check $? "refused with an unknown S3 behaviour (exit code 20)"
+! git rev-parse --verify --quiet "0.4.2" > /dev/null
+check $? "the tag was not created"
+
+echo "== error case: S3 upload failure =="
+write_s3_conf always
+AWS_FAIL=1 EDITOR=true "$DPK" pkg --tag=0.4.2 > /dev/null 2>&1
+[ $? -eq 23 ]
+check $? "S3 upload failure reported (exit code 23)"
+git rev-parse --verify --quiet "0.4.2" > /dev/null
+check $? "the tag was created before the upload"
+! grep -qx "0.4.2" "$S3_SCRIPT_LOG"
+check $? "the post-S3 script was not executed"
+[ ! -e static/all.css ]
+check $? "the concatenated file was removed"
+
+echo "== error case: failing post-S3 upload script =="
+sed -i "s#^CONF_PKG_SCRIPTS_S3=.*#CONF_PKG_SCRIPTS_S3=\"./etc/fail.sh\"#" etc/dispak.conf
+git commit -qam "failing post-S3 upload script"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.4.3 > /dev/null 2>&1
+[ $? -eq 58 ]
+check $? "post-S3 upload script failure reported (exit code 58)"
+
 test_end

@@ -13,18 +13,26 @@ RULE_SECTION="Tag management"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="tag"
+RULE_OPTIONAL_PARAMS="tag s3-force"
 
 # Definition of configuration associative arrays.
 declare -A CONF_PKG_CONCAT
 declare -A CONF_PKG_MINIFY
 declare -A CONF_PKG_S3
 
+# Path to the file which contains the version number of the last upload to Amazon S3 (relative to the repository root).
+_PKG_S3_VERSION_FILE="etc/s3_upload_last_tag"
+
+# Tell if the static files must be sent to Amazon S3 (set by the _pkg_s3_prepare() function).
+# @type	bool
+_PKG_S3_SEND=0
+
 # Show help for this rule.
 rule_help_pkg() {
 	echo "   dpk $(ansi bold)pkg$(ansi reset) $(ansi dim)[$(ansi reset)--tag$(ansi dim)=X.Y.Z]$(ansi reset)"
 	echo "       $(ansi dim)Create a new tag. Upload files to AWS S3 (see configuration file) only if the tag is a stable version.$(ansi reset)"
 	echo "       --tag $(ansi dim)Use the given tag, don't ask it interactively.$(ansi reset)"
+	echo "       --s3-force $(ansi dim)Upload files to AWS S3 even if they were not modified (when CONF_PKG_S3_BEHAVIOUR is 'modified').$(ansi reset)"
 }
 
 # Execution of the rule
@@ -40,6 +48,8 @@ rule_exec_pkg() {
 	check_next_tag
 	# check URL
 	_pkg_check_url
+	# check Amazon S3 configuration
+	_pkg_s3_check_conf
 	# check 'main' branch
 	check_git_main
 	# check the repo is clean
@@ -59,6 +69,8 @@ rule_exec_pkg() {
 		git commit -m "Added database migration file for version ${DPK_OPT["tag"]}"
 		git push origin "$CONF_GIT_MAIN"
 	fi
+	# check if static files must be sent to Amazon S3 (and commit the S3 version file)
+	_pkg_s3_prepare
 	# check the minification program availability (before any file generation)
 	_pkg_check_minify
 	# remove generated files if the packaging process is interrupted
@@ -93,6 +105,8 @@ rule_exec_pkg() {
 	git push origin "${DPK_OPT["tag"]}"
 	# send static files to Amazon S3
 	_pkg_s3
+	# execute post-S3 upload scripts
+	_pkg_s3_scripts
 	# unminify (remove minified files that are not version controlled)
 	_pkg_unminify
 	# unconcat (remove concatenated files that are not version controlled)
@@ -144,6 +158,29 @@ _pkg_post_scripts() {
 		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
 		if [ $? -ne 0 ]; then
 			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_POST
+		fi
+	done
+	dpk_echo "$(ansi green)Done$(ansi reset)"
+}
+
+# _pkg_s3_scripts()
+# Execute post-S3 upload scripts (only if static files were sent to Amazon S3).
+_pkg_s3_scripts() {
+	local _SCRIPT _EXEC
+	if [ "$_PKG_S3_SEND" != "1" ] || [ "$CONF_PKG_SCRIPTS_S3" = "" ]; then
+		return
+	fi
+	dpk_echo "$(ansi bold)Execute post-S3 upload scripts$(ansi reset)"
+	for _SCRIPT in $CONF_PKG_SCRIPTS_S3; do
+		_SCRIPT="$(echo $_SCRIPT | sed 's/#/ /')"
+		_EXEC="$(echo "$_SCRIPT" | cut -d" " -f 1)"
+		dpk_echo "> $(ansi dim)$_SCRIPT$(ansi reset)"
+		if [ ! -x "$_EXEC" ]; then
+			chmod +x "$_EXEC"
+		fi
+		$_SCRIPT "${DPK_OPT["platform"]}" "${DPK_OPT["tag"]}"
+		if [ $? -ne 0 ]; then
+			abort "$(ansi red)Execution failed.$(ansi reset)" $DPK_EXIT_SCRIPT_PKG_S3
 		fi
 	done
 	dpk_echo "$(ansi green)Done$(ansi reset)"
@@ -285,10 +322,25 @@ _pkg_minify() {
 	#fi
 }
 
-# _pkg_s3()
-# Send static files to Amazon S3
-_pkg_s3() {
-	local TAG_MINOR _S3 FOUND_MAIN_LINK _FILE MUST_COMPRESS _MIME _SRC _UNZIP_MIME
+# _pkg_s3_check_conf()
+# Check the Amazon S3 configuration (abort if the upload behaviour is unknown).
+_pkg_s3_check_conf() {
+	if [ "$CONF_PKG_S3_BEHAVIOUR" != "" ] && [ "$CONF_PKG_S3_BEHAVIOUR" != "always" ] && [ "$CONF_PKG_S3_BEHAVIOUR" != "modified" ]; then
+		abort "$(ansi red)Unknown value $(ansi reset)'$CONF_PKG_S3_BEHAVIOUR'$(ansi red) for the $(ansi reset)CONF_PKG_S3_BEHAVIOUR$(ansi red) configuration variable (must be 'always' or 'modified').$(ansi reset)" $DPK_EXIT_ENV
+	fi
+}
+
+# _pkg_s3_prepare()
+# Check if static files must be sent to Amazon S3 (set the _PKG_S3_SEND variable).
+# If so, write the new tag number in the S3 version file, then commit and push it.
+_pkg_s3_prepare() {
+	local TAG_MINOR LAST_S3_TAG _FILE _SRC DIFF_STATUS
+	local -a PATHS
+	_PKG_S3_SEND=0
+	if [ ${#CONF_PKG_S3[@]} -eq 0 ]; then
+		# nothing to copy to S3
+		return
+	fi
 	if [ "${DPK_OPT["tag"]}" = "" ] || [ "${DPK_OPT["tag"]}" = "$CONF_GIT_MAIN" ]; then
 		return
 	fi
@@ -297,12 +349,70 @@ _pkg_s3() {
 		# not a stable tag
 		return
 	fi
-	if [ ${#CONF_PKG_S3[@]} -eq 0 ]; then
-		# nothing to copy to S3
-		return
+	# check if static files were modified since the last upload
+	if [ "$CONF_PKG_S3_BEHAVIOUR" = "modified" ] && [ ! -v DPK_OPT["s3-force"] ]; then
+		LAST_S3_TAG=""
+		if [ -f "$_PKG_S3_VERSION_FILE" ]; then
+			LAST_S3_TAG="$(trim "$(head -1 "$_PKG_S3_VERSION_FILE")")"
+		fi
+		if [ "$LAST_S3_TAG" != "" ] && git rev-parse --verify --quiet "refs/tags/$LAST_S3_TAG" > /dev/null; then
+			# list of watched paths: static files directories, and source files of concatenated and minified files
+			PATHS=("${CONF_PKG_S3[@]}")
+			for _FILE in "${!CONF_PKG_CONCAT[@]}"; do
+				for _SRC in ${CONF_PKG_CONCAT["$_FILE"]}; do
+					PATHS+=("$_SRC")
+				done
+			done
+			for _FILE in "${!CONF_PKG_MINIFY[@]}"; do
+				for _SRC in ${CONF_PKG_MINIFY["$_FILE"]}; do
+					PATHS+=("$_SRC")
+				done
+			done
+			git diff --quiet "$LAST_S3_TAG" HEAD -- "${PATHS[@]}" ":(exclude)$_PKG_S3_VERSION_FILE" 2> /dev/null
+			DIFF_STATUS=$?
+			if [ $DIFF_STATUS -eq 0 ]; then
+				dpk_echo "$(ansi dim)No modification of static files since tag '$LAST_S3_TAG', no upload to Amazon S3.$(ansi reset)"
+				return
+			elif [ $DIFF_STATUS -ne 1 ]; then
+				warn "$(ansi yellow)Unable to check modifications of static files since tag '$LAST_S3_TAG', they will be sent to Amazon S3.$(ansi reset)"
+			fi
+		fi
 	fi
+	_PKG_S3_SEND=1
 	# check aws program
 	check_aws
+	# write the new tag number in the S3 version file, and commit it
+	dpk_echo "$(ansi bold)Commit Amazon S3 version file$(ansi reset)"
+	mkdir -p "$(dirname "$_PKG_S3_VERSION_FILE")"
+	echo "${DPK_OPT["tag"]}" > "$_PKG_S3_VERSION_FILE"
+	git add "$_PKG_S3_VERSION_FILE" && git commit -q -m "Amazon S3 upload of static files for version ${DPK_OPT["tag"]}" -- "$_PKG_S3_VERSION_FILE" && git push -q origin "$CONF_GIT_MAIN"
+	if [ $? -ne 0 ]; then
+		abort "$(ansi red)Unable to commit and push the file $(ansi reset)$_PKG_S3_VERSION_FILE$(ansi red).$(ansi reset)" $DPK_EXIT_GIT
+	fi
+}
+
+# _pkg_s3_fail()
+# Abort after an Amazon S3 upload error. Must be called from the _pkg_s3() function
+# (re-create the "main" symlink if it was removed).
+_pkg_s3_fail() {
+	# get back to the repository root (the current directory may be the static files directory)
+	cd "$GIT_REPO_PATH"
+	if [ "$FOUND_MAIN_LINK" = "1" ]; then
+		ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
+	fi
+	abort "$(ansi red)Upload to Amazon S3 failed.$(ansi reset)
+  The tag '${DPK_OPT["tag"]}' was created, and the file '$_PKG_S3_VERSION_FILE' points to it, but its static files are not (or partially) uploaded.
+  $(ansi yellow)Fix the problem, then create a new tag with the $(ansi reset)--s3-force$(ansi yellow) option to send the files again.$(ansi reset)
+" $DPK_EXIT_ENV_S3
+}
+
+# _pkg_s3()
+# Send static files to Amazon S3
+_pkg_s3() {
+	local _S3 FOUND_MAIN_LINK _FILE MUST_COMPRESS _MIME _SRC _UNZIP_MIME _STATUS
+	if [ "$_PKG_S3_SEND" != "1" ]; then
+		return
+	fi
 	# loop on paths that must be copied to S3
 	dpk_echo "$(ansi bold)Copy files to Amazon S3$(ansi reset)"
 	for _S3 in ${!CONF_PKG_S3[@]}; do
@@ -321,7 +431,7 @@ _pkg_s3() {
 		# check if the static files (in this path) must be compressed
 		if [ "$CONF_PKG_S3_COMPRESS" != "1" ]; then
 			# no compression, copy files in bulk
-			aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000"
+			aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000" || _pkg_s3_fail
 		else
 			# process files one by one, to compress text files before sending to Amazon S3
 			# move to the source path
@@ -367,22 +477,26 @@ _pkg_s3() {
 					# the gzip'ed version of the file has just been created
 					# => sen the gzip'ed version without the ".gz" name suffix, but with a "gzip" content encoding
 					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --content-encoding gzip  --cache-control "max-age=31536000"
+					_STATUS=$?
 					# delete the gzip'ed file
 					rm -f "${_FILE}.gz"
+					if [ $_STATUS -ne 0 ]; then
+						_pkg_s3_fail
+					fi
 				elif [ "${_FILE: -3}" = ".gz" ] && [ -e "${_FILE:0:-3}" ]; then
 					# it's a gzip file, and the not-gzip'ed version exists
 					_UNZIP_MIME="$(file --mime-type -b "${_FILE:0:-3}")"
 					if [ "${_UNZIP_MIME:0:4}" = "text" ] || [ "$_UNZIP_MIME" = "application/json" ] || [ "$_UNZIP_MIME" = "image/svg+xml" ]; then
 						# the not-gzip'ed version is a text file
 						# => send the gzip file without the ".gz" name suffix, but with a "gzip" content-encoding
-						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE:0:-3}" --acl public-read --content-encoding gzip --cache-control "max-age=31536000"
+						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE:0:-3}" --acl public-read --content-encoding gzip --cache-control "max-age=31536000" || _pkg_s3_fail
 					else
 						# raw file => send as is
-						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000"
+						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000" || _pkg_s3_fail
 					fi
 				else
 					# raw file => send as is
-					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000"
+					aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE}" --acl public-read --cache-control "max-age=31536000" || _pkg_s3_fail
 				fi
 			done <<< $(find . -type f)
 			# get back to the previous directory

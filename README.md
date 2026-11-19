@@ -148,8 +148,10 @@ Dispak will check several things and perform some operations, depending of the c
 - Commit the database migration file (see [below](#31-database-migrations)).
 - Concatenate files (see [below](#36-javascript-and-css-files-concatenation-and-minification)).
 - Minify JS/CSS files (see [below](#36-javascript-and-css-files-concatenation-and-minification)).
+- Check if static files must be sent to Amazon S3, and commit the `etc/s3_upload_last_tag` file (see [below](#35-static-files-symlinks-and-amazon-s3)).
 - **Create the tag.**
 - Send static files to Amazon S3 (see [below](#35-static-files-symlinks-and-amazon-s3)).
+- Execute post-S3 upload scripts, if static files were sent (see [below](#33-prepost-scripts-execution)).
 - Unminify files (delete minified files if they are not version controlled).
 - Remove concatenated files (if they are not version controlled).
 - Execute post-packaging files (see [below](#33-prepost-scripts-execution)).
@@ -356,6 +358,7 @@ When everything went fine, `dpk` exits with a 0 status. When an error occurs, th
 | 20   | Environment error (generic)                          |
 | 21   | Required program not found                           |
 | 22   | Check URL returning an error                         |
+| 23   | Amazon S3 upload error                               |
 | 30   | Git operation error (generic)                        |
 | 31   | Not inside a git repository                          |
 | 32   | Not on the right branch                              |
@@ -373,6 +376,7 @@ When everything went fine, `dpk` exits with a 0 status. When an error occurs, th
 | 55   | Pre-install script execution error                   |
 | 56   | Post-install script execution error                  |
 | 57   | Generator script execution error                     |
+| 58   | Post-S3 upload script execution error                |
 
 These codes are available as `DPK_EXIT_*` variables in the rules' code (see [below](#48-provided-variables)).
 
@@ -563,20 +567,20 @@ If you need to generate the crontab file dynamically, you can create an `etc/cro
 
 ### 3.3 Pre/post scripts execution
 
-Dispak can execute scripts before and after packaging (the action of creating a new tag), configuration and installation.
+Dispak can execute scripts before and after packaging (the action of creating a new tag), configuration and installation. It can also execute scripts after static files were sent to Amazon S3 during packaging (see [below](#35-static-files-symlinks-and-amazon-s3)).
 
 These scripts could be written in any language. Their return status must be equal to 0 (zero); any other value will make Dispak to abort its processing.
 
 Dispak gives two parameters to these scripts:
 1. The platform environment (`dev`, `test` or `prod`).
-2. The tag version number. For pre/post-packaging scripts it is the number of the created tag; for pre/post-config and pre/post-install scripts it is the number of the installed tag.
+2. The tag version number. For pre/post-packaging and post-S3 upload scripts it is the number of the created tag; for pre/post-config and pre/post-install scripts it is the number of the installed tag.
 
 Pre/post configuration and installation scripts get two additional parameters:
 1. The old tag version number.
 2. A character that describes the tag evolution: "+" if the new tag is more recent than the old one; "-" if the new tag is older then the one that was installed.
 If the installation is done over a `main` branch install, the first extra parameter contains the branch's name and the second one is empty.
 
-See all these variables in the [configuration file](#311-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`, `CONF_CONFIG_SCRIPTS_PRE`, `CONF_CONFIG_SCRIPTS_POST`
+See all these variables in the [configuration file](#311-configuration-file): `CONF_PKG_SCRIPTS_PRE`, `CONF_PKG_SCRIPTS_POST`, `CONF_PKG_SCRIPTS_S3`, `CONF_INSTALL_SCRIPTS_PRE`, `CONF_INSTALL_SCRIPTS_POST`, `CONF_CONFIG_SCRIPTS_PRE`, `CONF_CONFIG_SCRIPTS_POST`
 
 
 ### 3.4 Files generation
@@ -655,6 +659,19 @@ The cleanup rules are the same as for the symbolic links above: before each depl
 
 #### Amazon S3
 It is also possible to define a bucket on Amazon S3 where your static files will be copied each time you create a *stable* version (or even for *unstable* version if you defined the `CONF_PKG_S3_UNSTABLE` configuration variable). A subdirectory will be created, named as the tag version number, and all configured files will be copied there.
+
+Each time the files are sent, the tag version number is written in the `etc/s3_upload_last_tag` file. This file is committed and pushed *before* the tag creation, so it is part of the tag: your application can read it to know in which subdirectory of the bucket its static files are stored.
+
+The `CONF_PKG_S3_BEHAVIOUR` configuration variable defines when the files are sent:
+- `always` (default value): The files are sent each time a (stable) tag is created.
+- `modified`: The files are sent only if they were modified since the last upload (the tag number written in the `etc/s3_upload_last_tag` file). Dispak checks the modifications with Git, on the directories listed in `CONF_PKG_S3` and on the source files of concatenated and minified files (see [below](#36-javascript-and-css-files-concatenation-and-minification)); generated files which are not version controlled are not checked. When any file is modified, *all* files are sent, in all buckets. The files are also sent if the `etc/s3_upload_last_tag` file doesn't exist or doesn't contain an existing tag. You can force the upload with the `--s3-force` option:
+```shell
+$ dpk pkg --s3-force
+```
+
+Scripts listed in the `CONF_PKG_SCRIPTS_S3` configuration variable are executed after the files were sent, and only if they were sent (see [above](#33-prepost-scripts-execution)).
+
+If an upload fails, Dispak aborts (the tag is already created, and the `etc/s3_upload_last_tag` file points to it). Once the problem is fixed, create a new tag with the `--s3-force` option, to be sure the files will be sent again.
 
 Then, you can adapt your templates (see previous section) to use the copied assets.
 
@@ -774,10 +791,12 @@ Here are the definable variables:
   - `CONF_PKG_CHECK_URL`: You can ask Dispak to check the return status of the given URL before creating a new tag. This is convenient if you have a local page that show the result of your unit tests; if the HTTP status of this page is an error (not equal to 200), the tag is not created.
   - `CONF_PKG_SCRIPTS_PRE`: You can ask Dispak to execute a list of scripts before creating a new tag.
   - `CONF_PKG_SCRIPTS_POST`: You can ask Dispak to execute a list of scripts after creating a new tag. These scripts are not executed if there was an error during the process.
+  - `CONF_PKG_SCRIPTS_S3`: You can ask Dispak to execute a list of scripts after static files were sent to Amazon S3. These scripts are executed only if the files were sent.
   - `CONF_PKG_CONCAT`: It is possible to concatenate many files into one file. The `CONF_PKG_CONCAT` variable is an associative array. For each entry, the key is the path to the generated file, and the value is the list of source files.
   - `CONF_PKG_MINIFY`: It is possible to concatenate many files into one Javascript or CSS file, and then to minify this file. The `CONF_PKG_MINIFY` variable is an associative array. For each entry, the key is the path to the generated file, and the value is the list of source files.
   - `CONF_PKG_S3`: If you want to copy static files to Amazon S3, use this variable. It is an associative array; for each entry, the key is the S3 bucket where the files will be copied, and the value is the path to the file or the directory that will be recursively copied. The files are copied in a sub-directory of the bucket's root, which name is the tag's version number.
   - `CONF_PKG_S3_COMPRESS`: Set this variable to 1 if you want to compress text files (raw text, HTML, JSON, SVG…) sent to Amazon S3. Files are compressed with GZIP. Note that files are compressed and sent one by one, whereas folder synchronization is used when there is no compression. As a result, upload is quite slower with compression.
+  - `CONF_PKG_S3_BEHAVIOUR`: Set this variable to `modified` if you want to send static files to Amazon S3 only when they were modified since the last upload. The default value (`always`) sends the files each time a tag is created. See [above](#amazon-s3).
   - `CONF_PKG_S3_UNSTABLE`: Set this variable to 1 if you want to copy static files to Amazon S3 for stable *and* unstable versions (not only for stable versions).
 - **install rule**
   - `CONF_INSTALL_SYMLINK`: Use this variable if you need to create symlinks when you install a new version. It is an associative array; the key is the path to the link's directory; the value is the path pointed by the link (interpreted relative to the link's directory). The link will be created in its destination directory, and its name is the installed tag's version number (or the main branch's name when the main branch is deployed). Links created by previous deployments are removed, unless they are committed.
