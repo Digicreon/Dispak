@@ -233,7 +233,13 @@ _pkg_check_minify() {
 	if ! which minify > /dev/null; then
 		# minifier program not found
 		abort "Minification program '$(ansi dim)minify$(ansi reset)' not found.
-  Please install NodeJS with NPM, and the 'minifier' package. See https://www.npmjs.com/package/minifier
+  Please install it (on Ubuntu: $(ansi dim)apt install minify$(ansi reset)). See https://github.com/tdewolff/minify
+  " $DPK_EXIT_ENV_PROGRAM
+	fi
+	if ! minify --version < /dev/null 2> /dev/null | grep -q "^minify v"; then
+		# another 'minify' program (like the obsolete NPM 'minifier' package)
+		abort "The '$(ansi dim)minify$(ansi reset)' program found in the path ($(which minify)) is not tdewolff/minify.
+  Please install it (on Ubuntu: $(ansi dim)apt install minify$(ansi reset)). See https://github.com/tdewolff/minify
   " $DPK_EXIT_ENV_PROGRAM
 	fi
 }
@@ -258,7 +264,7 @@ _pkg_minify() {
 	dpk_echo "$(ansi bold)Files minification$(ansi reset)"
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		dpk_echo "$(ansi dim)> $_FILE$(ansi reset)"
-		minify -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
+		minify -b -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
 		if [ $? -ne 0 ]; then
 			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
 		fi

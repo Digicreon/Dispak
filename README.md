@@ -417,13 +417,14 @@ To install `git` on Ubuntu:
 ```
 
 #### 2.1.2 Minifier
-If you want to use Dispak for Javascript and/or CSS files minification, you need to install [`NodeJS`](https://en.wikipedia.org/wiki/Node.js) with the [`minifier` package](https://www.npmjs.com/package/minifier).
+If you want to use Dispak for Javascript and/or CSS files minification, you need to install the [`minify` program](https://github.com/tdewolff/minify) (by tdewolff).
 
-To install these tools on Ubuntu:
+To install it on Ubuntu:
 ```shell
-# apt install nodejs
-# npm install -g minifier
+# apt install minify
 ```
+
+The obsolete `minifier` NPM package (which also provides a `minify` program) is no longer supported. If it is installed, remove it (`npm uninstall -g minifier`).
 
 #### 2.1.3 Amazon Web Services
 If you want to upload static files on [Amazon S3](https://aws.amazon.com/s3/), you have to follow these steps:
@@ -664,7 +665,7 @@ Dispak can concatenate files. The files are generated during the packaging proce
 
 In the [Dispak configuration file](#311-configuration-file), the `CONF_PKG_CONCAT` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate.
 
-Dispak can also concatenate and minify Javascript and CSS files, using the [`minifier` program](https://www.npmjs.com/package/minifier) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
+Dispak can also concatenate and minify Javascript and CSS files, using the [`minify` program](https://github.com/tdewolff/minify) (see [Installation prerequisites](#21-prerequisites) above). The files are generated (concatenated and minified) during the packaging process.
 
 In the [Dispak configuration file](#311-configuration-file), the `CONF_PKG_MINIFY` is an associative array. Each key is the path to the generated file, and the value is a space-separated list of paths to the files to concatenate and minify.
 

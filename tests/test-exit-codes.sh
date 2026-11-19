@@ -37,8 +37,13 @@ CONF_PKG_MINIFY["a.min.js"]="a.js"
 ( _pkg_check_minify ) > /dev/null 2>&1
 [ $? -eq 21 ]
 check $? "missing minifier program (exit code 21)"
+which() { return 0; }
+minify() { echo "1.0.0"; }
+( _pkg_check_minify ) > /dev/null 2>&1
+[ $? -eq 21 ]
+check $? "minify program which is not tdewolff/minify (exit code 21)"
 CONF_PKG_MINIFY=()
-unset -f which
+unset -f which minify
 
 echo "== failing user scripts =="
 CONF_CONFIG_SCRIPTS_PRE="$FAIL_SCRIPT"
