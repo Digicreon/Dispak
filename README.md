@@ -199,6 +199,9 @@ Options are available to disable some operations:
 - `--no-systemd`: systemd services are not installed.
 - `--no-db-migration`: Database migration is not performed.
 
+Another option changes the database migration behavior:
+- `--force-migration`: Migration files are not stopped by errors due to already applied statements (see [below](#31-database-migrations)).
+
 
 ### 1.6 Refresh configuration
 
@@ -529,6 +532,8 @@ The migration is done right after the deployment of the source code, before any 
 Each migration file is executed inside a transaction (`START TRANSACTION`/`COMMIT`). Be aware of a MySQL limitation: DDL statements (`CREATE`, `ALTER`, `DROP`...) generate implicit commits, so only pure-DML migrations are really atomic. It is thus a good practice to write re-runnable migration files (`CREATE TABLE IF NOT EXISTS`...).
 
 If a migration file fails, the installation stops immediately, displaying the MySQL error message (exit code 42). The migration is *not* marked as done: its tracking row is kept with a NULL `dbm_d_done` field (as a trace of the failed attempt) and the MySQL error message is stored in its `dbm_s_error` column. The migration will be executed again at the next install, with a new tracking row; keep in mind that the statements executed before the error may still be applied (see the transaction limitation above).
+
+With the `--force-migration` option, each migration file is executed with the `--force` option of the MySQL client: the execution goes on after an error, and the errors due to already applied statements are ignored (table, column, index, foreign key, primary key or check constraint already existing; table, column, index or check constraint already removed). Any other error (syntax error, for example) is still fatal. It is useful on testing platforms, where the statements of a migration file may already have been applied while working on a branch; it should not be used on production servers. Be aware that a failing pure-DML migration file is then no longer atomic: the statements following the error are executed and committed.
 
 The `dbm_s_error` column is automatically added to migration tables created before its introduction. The configured database user then needs the `ALTER` privilege; otherwise a warning is displayed and the error messages are simply not stored in the database.
 

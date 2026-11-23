@@ -3,7 +3,8 @@
 # Tests of the database migration process of the 'dpk install' rule: nominal migration
 # inside a transaction, automatic addition of the error storage column, failed migration
 # (clear abort, exit code 42, no completion mark, error stored, new attempt at the next
-# run), connection error (exit code 41), and degradation when the column can't be added.
+# run), already applied statements (fatal by default, ignored with --force-migration
+# unlike syntax errors), connection error (exit code 41), and degradation when the column can't be added.
 # The real functions of the install rule are used, with a scriptable mysql stub which
 # logs every received query and simulates the server state with files.
 
@@ -19,9 +20,9 @@ abort() { echo "ABORT: $1"; exit "${2:-1}"; }
 # mysql stub: reads the queries on its standard input, logs them, and simulates a MySQL
 # server which state is stored in $STATE_DIR files
 mysql() {
-	local QUERY VERSION
+	local QUERY VERSION LINE RET
 	QUERY="$(cat)"
-	printf '%s\n----\n' "$QUERY" >> "$STATE_DIR/queries.log"
+	printf 'ARGS: %s\n%s\n----\n' "$*" "$QUERY" >> "$STATE_DIR/queries.log"
 	if [ -f "$STATE_DIR/down" ]; then
 		echo "ERROR 2002 (HY000): Can't connect to MySQL server" >&2
 		return 1
@@ -30,10 +31,19 @@ mysql() {
 		*"START TRANSACTION"*)
 			# execution of a migration file (its content may contain any SQL keyword,
 			# so this pattern must be checked first)
-			if echo "$QUERY" | grep -q "TRIGGER_SQL_ERROR"; then
-				echo "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax" >&2
-				return 1
-			fi
+			# simulated errors are raised in the order of the file; without --force, the
+			# execution stops at the first one
+			RET=0
+			while read -r LINE; do
+				case "$LINE" in
+					TRIGGER_SQL_ERROR*) echo "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax" >&2 ;;
+					TRIGGER_EXISTS_ERROR*) echo "ERROR 1050 (42S01) at line 2: Table 't2' already exists" >&2 ;;
+					*) continue ;;
+				esac
+				RET=1
+				[[ " $* " == *" --force "* ]] || return 1
+			done <<< "$QUERY"
+			return $RET
 			;;
 		*"SHOW COLUMNS"*)
 			[ -f "$STATE_DIR/error-column" ] && echo "dbm_s_error"
@@ -129,6 +139,38 @@ RET=$?
 check $? "the failed migration is tried again (exit code 42)"
 [ "$(grep "INSERT INTO" "$STATE_DIR/queries.log" | grep -c "0.3.0")" -eq 2 ]
 check $? "a new tracking row is created for the new attempt"
+
+echo "== already applied statement, without --force-migration =="
+rm -f "$GIT_REPO_PATH/etc/database/migrations/0.3.0"
+printf 'TRIGGER_EXISTS_ERROR;\nINSERT INTO t2 VALUES (1);\n' > "$GIT_REPO_PATH/etc/database/migrations/0.4.0"
+OUT="$(_install_db_migration 2>&1)"
+RET=$?
+[ $RET -eq 42 ] && echo "$OUT" | grep -q "ERROR 1050"
+check $? "aborts with exit code 42 (default behavior unchanged)"
+! grep -q -- "^ARGS: .*--force" "$STATE_DIR/queries.log"
+check $? "the mysql client is not called with --force"
+
+echo "== already applied statement, with --force-migration =="
+DPK_OPT["force-migration"]=""
+OUT="$(_install_db_migration 2>&1)"
+check $? "the migration succeeds"
+grep -q "^0.4.0$" "$STATE_DIR/done"
+check $? "the migration is marked as done"
+grep -q -- "^ARGS: --force " "$STATE_DIR/queries.log"
+check $? "the mysql client is called with --force"
+
+echo "== syntax error, with --force-migration =="
+printf 'TRIGGER_EXISTS_ERROR;\nTRIGGER_SQL_ERROR;\n' > "$GIT_REPO_PATH/etc/database/migrations/0.5.0"
+OUT="$(_install_db_migration 2>&1)"
+RET=$?
+[ $RET -eq 42 ]
+check $? "aborts with exit code 42"
+echo "$OUT" | grep -q "ERROR 1064"
+check $? "the syntax error is displayed"
+! grep -q "^0.5.0$" "$STATE_DIR/done"
+check $? "the failed migration is not marked as done"
+rm -f "$GIT_REPO_PATH/etc/database/migrations/0.4.0" "$GIT_REPO_PATH/etc/database/migrations/0.5.0"
+unset 'DPK_OPT[force-migration]'
 
 echo "== connection error =="
 touch "$STATE_DIR/down"

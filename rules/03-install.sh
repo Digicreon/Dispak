@@ -13,7 +13,7 @@ RULE_SECTION="Tag management"
 RULE_MANDATORY_PARAMS=""
 
 # Rule's optional parameters.
-RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-systemd no-supervisor no-xinetd no-db-migration"
+RULE_OPTIONAL_PARAMS="platform tag no-apache no-crontab no-systemd no-supervisor no-xinetd no-db-migration force-migration"
 
 # Definition of configuration associative arrays.
 declare -A CONF_INSTALL_SYMLINK
@@ -38,7 +38,7 @@ DPK_XINETD_FILE="/etc/xinetd.d/dispak"
 
 # Show help for this rule.
 rule_help_install() {
-	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-systemd$(ansi dim)] [$(ansi reset)--no-supervisor$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)]$(ansi reset)"
+	echo "   dpk $(ansi bold)install$(ansi reset) $(ansi dim)[--$(ansi reset)platform$(ansi dim)=dev|test|prod] [$(ansi reset)--tag$(ansi dim)=$CONF_GIT_MAIN|X.Y.Z] [$(ansi reset)--no-apache$(ansi dim)] [$(ansi reset)--no-crontab$(ansi dim)] [$(ansi reset)--no-systemd$(ansi dim)] [$(ansi reset)--no-supervisor$(ansi dim)] [$(ansi reset)--no-xinetd$(ansi dim)] [$(ansi reset)--no-db-migration$(ansi dim)] [$(ansi reset)--force-migration$(ansi dim)]$(ansi reset)"
 	echo "       $(ansi dim)Deploy source code (pull tag from GitHub, generate files, set files rights).$(ansi reset)"
 	echo "       --platform        $(ansi dim)Definition of the current platform. Otherwise, Dispak will try to detect it.$(ansi reset)"
 	echo "       --tag             $(ansi dim)Tag to install (or $(ansi reset)$CONF_GIT_MAIN$(ansi dim) to use its last revision). Otherwise, the last tagged version will be installed.$(ansi reset)"
@@ -48,6 +48,7 @@ rule_help_install() {
 	echo "       --no-supervisor   $(ansi dim)Don't install supervisor daemon configurations.$(ansi reset)"
 	echo "       --no-xinetd       $(ansi dim)Don't install xinetd configuration.$(ansi reset)"
 	echo "       --no-db-migration $(ansi dim)Don't perform database migration.$(ansi reset)"
+	echo "       --force-migration $(ansi dim)Don't stop a migration file on errors due to already applied statements (existing table, column, index...).$(ansi reset)"
 	echo "       $(ansi yellow)⚠ Needs sudo rights$(ansi reset)"
 }
 
@@ -691,6 +692,14 @@ _install_db_query() {
 	echo "$1" | MYSQL_PWD="$CONF_DB_PWD" mysql --skip-column-names -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" 2> /dev/null
 }
 
+# _install_db_errors()
+# Print the MySQL error lines of a mysql client output, except the errors raised by
+# statements already applied (object already existing, or already removed).
+# @param	string	Output of the mysql client.
+_install_db_errors() {
+	echo "$1" | grep '^ERROR ' | grep -Ev '^ERROR (1022|1050|1051|1060|1061|1068|1091|1826|3821|3822) '
+}
+
 # _install_db_migration()
 # Do the migration of a new version of the database.
 # The database connection is checked first. Each migration file is executed inside a
@@ -699,8 +708,11 @@ _install_db_query() {
 # the MySQL error message: the migration is not marked as done (its tracking row is kept
 # with a NULL dbm_d_done field, and the error message is stored in its dbm_s_error column),
 # so it will be executed again at the next install, with a new tracking row.
+# With the '--force-migration' option, each file is executed with the '--force' option
+# of the mysql client, and the errors due to already applied statements are ignored
+# (see _install_db_errors()); any other error is still fatal.
 _install_db_migration() {
-	local ERROR_COLUMN MIGRATION MIGRATION_FILE NBR MIGRATION_ID OUTPUT ERROR_SQL
+	local ERROR_COLUMN MIGRATION MIGRATION_FILE NBR MIGRATION_ID OUTPUT STATUS FORCE ERROR_SQL
 	if [ ! -d "$GIT_REPO_PATH/etc/database/migrations" ] || [ -v DPK_OPT["no-db-migration"] ] || [ "$CONF_DB_HOST" = "" ] || [ "$CONF_DB_PORT" = "" ] || [ "$CONF_DB_USER" = "" ] || [ "$CONF_DB_PWD" = "" ] || [ "$CONF_DB_MIGRATION_BASE" = "" ] || [ "$CONF_DB_MIGRATION_TABLE" = "" ]; then
 		return
 	fi
@@ -734,8 +746,16 @@ _install_db_migration() {
 		fi
 		# execute the migration file inside a transaction
 		# (DDL statements are not transactional in MySQL: they generate implicit commits)
-		OUTPUT="$({ echo "START TRANSACTION;"; cat "$MIGRATION_FILE"; echo; echo "COMMIT;"; } | MYSQL_PWD="$CONF_DB_PWD" mysql --skip-column-names -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" 2>&1)"
-		if [ $? -ne 0 ]; then
+		FORCE=""
+		[ -v DPK_OPT["force-migration"] ] && FORCE="--force"
+		OUTPUT="$({ echo "START TRANSACTION;"; cat "$MIGRATION_FILE"; echo; echo "COMMIT;"; } | MYSQL_PWD="$CONF_DB_PWD" mysql $FORCE --skip-column-names -u "$CONF_DB_USER" -h "$CONF_DB_HOST" -P "$CONF_DB_PORT" 2>&1)"
+		STATUS=$?
+		if [ "$FORCE" ]; then
+			# the exit status of 'mysql --force' is not reliable, only its output is checked
+			[ -z "$(_install_db_errors "$OUTPUT")" ]
+			STATUS=$?
+		fi
+		if [ $STATUS -ne 0 ]; then
 			# the migration failed: display the MySQL error, store it in the tracking row
 			# (which keeps a NULL dbm_d_done field, so the migration will be executed again
 			# at the next install, with a new tracking row), and stop the installation
