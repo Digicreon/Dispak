@@ -455,7 +455,7 @@ _pkg_s3() {
 		else
 			# process files one by one, to compress text files before sending to Amazon S3
 			# move to the source path
-			pushd "${CONF_PKG_S3["$_S3"]}" > /dev/null
+			pushd "${CONF_PKG_S3["$_S3"]}" > /dev/null || _pkg_s3_fail
 			# loop on the files to compress them (only text files) and send them to Amazon S3
 			while read -r _FILE; do
 				MUST_COMPRESS=1

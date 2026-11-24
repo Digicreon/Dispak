@@ -270,5 +270,22 @@ s3_gzipped pre.js && [ "$(grep -cF "s3://bucket/0.4.4/pre.js" "$AWS_LOG")" -eq 1
 check $? "already compressed Javascript file sent in place of the original one"
 [ "$(git status --porcelain)" = "" ]
 check $? "no temporary file left in the repository"
+# static directory which can't be entered (not relevant for the root user)
+if [ "$(id -u)" -ne 0 ]; then
+	mkdir "$TEST_DIR/locked"
+	chmod 000 "$TEST_DIR/locked"
+	sed -i "s#^CONF_PKG_S3\[.*#CONF_PKG_S3[\"bucket\"]=\"$TEST_DIR/locked\"#" etc/dispak.conf
+	git commit -qam "locked static directory"
+	git push -q origin main
+	EDITOR=true "$DPK" pkg --tag=0.4.5 > /dev/null 2>&1
+	[ $? -eq 23 ]
+	check $? "failure reported when the static directory can't be entered (exit code 23)"
+	! grep -q "s3://bucket/0.4.5" "$AWS_LOG"
+	check $? "no file sent from another directory"
+	chmod 700 "$TEST_DIR/locked"
+else
+	git commit -q --allow-empty -m "root user"
+	git tag 0.4.5
+fi
 
 test_end
