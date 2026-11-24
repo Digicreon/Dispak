@@ -33,17 +33,27 @@ check $? "sudo rights error (exit code 3)"
 
 echo "== missing program =="
 which() { return 1; }
-CONF_PKG_MINIFY["a.min.js"]="a.js"
-( _pkg_check_minify ) > /dev/null 2>&1
+( check_aws ) > /dev/null 2>&1
 [ $? -eq 21 ]
-check $? "missing minifier program (exit code 21)"
+check $? "missing aws program (exit code 21)"
+minify() { echo "minify v2.25.0"; }
+[ "$(_pkg_minify_version)" = "" ]
+check $? "missing minification program"
 which() { return 0; }
+[ "$(_pkg_minify_version)" = "2.25.0" ]
+check $? "version of the minification program"
 minify() { echo "1.0.0"; }
-( _pkg_check_minify ) > /dev/null 2>&1
-[ $? -eq 21 ]
-check $? "minify program which is not tdewolff/minify (exit code 21)"
-CONF_PKG_MINIFY=()
+[ "$(_pkg_minify_version)" = "" ]
+check $? "minify program which is not tdewolff/minify"
 unset -f which minify
+
+echo "== minification program versions =="
+_pkg_minify_support 2.25.0 js && _pkg_minify_support 2.25.1 mjs && _pkg_minify_support 2.100.0 html && _pkg_minify_support 10.0.0 js
+check $? "Javascript supported by recent versions"
+! _pkg_minify_support 2.20.17 js && ! _pkg_minify_support 2.24.25 mjs && ! _pkg_minify_support 2.3.0 html && ! _pkg_minify_support 2.20.17 htm
+check $? "Javascript (and HTML) not supported by older versions"
+_pkg_minify_support 2.20.17 css && _pkg_minify_support 2.20.17 json && _pkg_minify_support 2.20.17 svg
+check $? "other files supported by any version"
 
 echo "== failing user scripts =="
 CONF_CONFIG_SCRIPTS_PRE="$FAIL_SCRIPT"

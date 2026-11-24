@@ -26,6 +26,25 @@ _PKG_S3_VERSION_FILE="etc/s3_upload_last_tag"
 # Minimum size (in bytes) of the files which are compressed before being sent to Amazon S3.
 _PKG_S3_COMPRESS_MIN_SIZE=1024
 
+# Extensions of the files minified by default before being sent to Amazon S3 (when CONF_PKG_S3_MINIFY is set to 1).
+_PKG_S3_MINIFY_DEFAULT="js mjs css json"
+
+# Extensions that can be listed in the CONF_PKG_S3_MINIFY configuration variable.
+_PKG_S3_MINIFY_ALLOWED="js mjs css json svg html htm xml"
+
+# Minimum version of the minification program needed to process files which contain Javascript
+# (older versions generate invalid Javascript code, without reporting any error).
+_PKG_MINIFY_JS_VERSION="2.25.0"
+
+# Extensions of the files which may contain Javascript.
+_PKG_MINIFY_JS_EXT="js mjs html htm"
+
+# Error message of the last call to the _pkg_minify_file() function.
+_PKG_MINIFY_ERROR=""
+
+# Path to the temporary directory used to minify files.
+_PKG_TMP_DIR=""
+
 # Tell if the static files must be sent to Amazon S3 (set by the _pkg_s3_prepare() function).
 # @type	bool
 _PKG_S3_SEND=0
@@ -74,10 +93,8 @@ rule_exec_pkg() {
 	fi
 	# check if static files must be sent to Amazon S3 (and commit the S3 version file)
 	_pkg_s3_prepare
-	# check the minification program availability (before any file generation)
-	_pkg_check_minify
 	# remove generated files if the packaging process is interrupted
-	trap 'cd "$GIT_REPO_PATH" 2> /dev/null; _pkg_unminify; _pkg_unconcat' EXIT
+	trap 'cd "$GIT_REPO_PATH" 2> /dev/null; _pkg_clean_tmp; _pkg_unminify; _pkg_unconcat' EXIT
 	# concat files
 	_pkg_concat
 	# minify files
@@ -263,31 +280,67 @@ _pkg_unminify() {
 	done
 }
 
-# _pkg_check_minify()
-# Check that the minification program is installed.
-_pkg_check_minify() {
-	if [ ${#CONF_PKG_MINIFY[@]} -eq 0 ]; then
-		# no file to minify
-		return
-	fi
-	if ! which minify > /dev/null; then
-		# minifier program not found
-		abort "Minification program '$(ansi dim)minify$(ansi reset)' not found.
-  Please install it (on Ubuntu: $(ansi dim)apt install minify$(ansi reset)). See https://github.com/tdewolff/minify
-  " $DPK_EXIT_ENV_PROGRAM
-	fi
-	if ! minify --version < /dev/null 2> /dev/null | grep -q "^minify v"; then
-		# another 'minify' program (like the obsolete NPM 'minifier' package)
-		abort "The '$(ansi dim)minify$(ansi reset)' program found in the path ($(which minify)) is not tdewolff/minify.
-  Please install it (on Ubuntu: $(ansi dim)apt install minify$(ansi reset)). See https://github.com/tdewolff/minify
-  " $DPK_EXIT_ENV_PROGRAM
+# _pkg_create_tmp()
+# Create the temporary directory used to minify files (with its "files" subdirectory).
+# @return	int	0 if the directory was created, 1 otherwise.
+_pkg_create_tmp() {
+	_PKG_TMP_DIR="$(mktemp -d /tmp/dispak-pkg.XXXXXXXXXX)" || return 1
+	mkdir "$_PKG_TMP_DIR/files" || return 1
+}
+
+# _pkg_clean_tmp()
+# Remove the temporary directory used to minify files.
+_pkg_clean_tmp() {
+	if [ "$_PKG_TMP_DIR" != "" ]; then
+		# read-only directories may have been copied
+		chmod -R u+rwX "$_PKG_TMP_DIR" 2> /dev/null
+		rm -rf "$_PKG_TMP_DIR"
+		_PKG_TMP_DIR=""
 	fi
 }
 
+# _pkg_minify_version()
+# Display the version number of the minification program (nothing if tdewolff/minify is not installed).
+_pkg_minify_version() {
+	if which minify > /dev/null; then
+		# another 'minify' program may be installed (like the obsolete NPM 'minifier' package)
+		minify --version < /dev/null 2> /dev/null | sed -n 's/^minify v\([0-9][0-9.]*\).*$/\1/p' | head -1
+	fi
+}
+
+# _pkg_minify_support()
+# Tell if a version of the minification program is able to process a type of file.
+# @param	string	Version number of the minification program.
+# @param	string	Extension of the file.
+# @return	int	0 if the file can be minified, 1 otherwise.
+_pkg_minify_support() {
+	if [[ " $_PKG_MINIFY_JS_EXT " != *" $2 "* ]]; then
+		return 0
+	fi
+	[ "$(printf "%s\n" "$1" "$_PKG_MINIFY_JS_VERSION" | sort -V | head -1)" = "$_PKG_MINIFY_JS_VERSION" ]
+}
+
+# _pkg_minify_file()
+# Minify (in place) a file of the "files" subdirectory of the temporary directory.
+# If an error occurs, the file is not modified, and the _PKG_MINIFY_ERROR variable is set.
+# @param	string	Path to the file (relative to the "files" subdirectory).
+# @return	int	0 if the file was minified, 1 otherwise.
+_pkg_minify_file() {
+	# the result is written by "cat", because "minify" doesn't report write errors
+	if _PKG_MINIFY_ERROR="$(set -o pipefail; cd "$_PKG_TMP_DIR/files" && { minify "./$1" < /dev/null | cat > "$_PKG_TMP_DIR/minified"; } 2>&1)" &&
+	   mv -f "$_PKG_TMP_DIR/minified" "$_PKG_TMP_DIR/files/$1"; then
+		return 0
+	fi
+	_PKG_MINIFY_ERROR="$(echo "$_PKG_MINIFY_ERROR" | head -1)"
+	rm -f "$_PKG_TMP_DIR/minified"
+	return 1
+}
+
 # _pkg_minify()
-# Minify files. If the generated files are already version controlled, they are committed.
+# Concatenate and minify files. If the minification is not possible, a warning is displayed
+# and the generated files are only concatenated.
 _pkg_minify() {
-	local _FILE
+	local _FILE _SRC _EXT _BUNDLE _VERSION
 	if [ ${#CONF_PKG_MINIFY[@]} -eq 0 ]; then
 		# no file to minify
 		return
@@ -302,12 +355,40 @@ _pkg_minify() {
 	done
 	# minification
 	dpk_echo "$(ansi bold)Files minification$(ansi reset)"
+	_VERSION="$(_pkg_minify_version)"
+	if [ "$_VERSION" = "" ]; then
+		warn "$(ansi yellow)Minification program '$(ansi reset)minify$(ansi yellow)' (tdewolff/minify) not found, files are concatenated but not minified.$(ansi reset)"
+	fi
 	for _FILE in ${!CONF_PKG_MINIFY[@]}; do
 		dpk_echo "$(ansi dim)> $_FILE$(ansi reset)"
-		minify -b -o "$_FILE" ${CONF_PKG_MINIFY["$_FILE"]} > /dev/null
-		if [ $? -ne 0 ]; then
-			abort "Unable to minify file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
+		_pkg_create_tmp || abort "Unable to create a temporary directory." $DPK_EXIT_ENV
+		# concatenation (the type of the file is given by the extension of its first source)
+		read -r _SRC _ <<< "$(echo ${CONF_PKG_MINIFY["$_FILE"]})"
+		_EXT="${_SRC##*.}"
+		_BUNDLE="$_PKG_TMP_DIR/files/bundle.$_EXT"
+		for _SRC in ${CONF_PKG_MINIFY["$_FILE"]}; do
+			cat "$_SRC" >> "$_BUNDLE" || abort "Unable to read file '$(ansi dim)$_SRC$(ansi reset)' to generate '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
+			# separator (the last statement of a Javascript file may not be ended by a semicolon)
+			if [ "$_EXT" = "js" ] || [ "$_EXT" = "mjs" ]; then
+				printf "\n;\n" >> "$_BUNDLE"
+			else
+				printf "\n" >> "$_BUNDLE"
+			fi
+		done
+		# minification
+		if [ "$_VERSION" != "" ]; then
+			if ! _pkg_minify_support "$_VERSION" "$_EXT"; then
+				warn "$(ansi yellow)The version $_VERSION of 'minify' is too old for this type of file ($_PKG_MINIFY_JS_VERSION needed), file '$_FILE' is not minified.$(ansi reset)"
+			elif ! _pkg_minify_file "bundle.$_EXT"; then
+				warn "$(ansi yellow)Unable to minify file '$_FILE', it is only concatenated.$(ansi reset) $(ansi dim)$_PKG_MINIFY_ERROR$(ansi reset)"
+			fi
 		fi
+		# write the generated file
+		mkdir -p "$(dirname "$_FILE")" && cat "$_BUNDLE" > "$_FILE"
+		if [ $? -ne 0 ]; then
+			abort "Unable to write file '$(ansi dim)$_FILE$(ansi reset)'." $DPK_EXIT_ENV
+		fi
+		_pkg_clean_tmp
 	done
 	# commit minified files that were alreay version controlled (only if the source and minified files are not the same)
 	#if [ "$_FILE" != "${CONF_PKG_MINIFY["$_FILE"]}" ]; then
@@ -326,11 +407,38 @@ _pkg_minify() {
 }
 
 # _pkg_s3_check_conf()
-# Check the Amazon S3 configuration (abort if the upload behaviour is unknown).
+# Check the Amazon S3 configuration (abort if the upload behaviour or a minified extension is unknown).
 _pkg_s3_check_conf() {
+	local _EXT
+	local -a _EXTENSIONS
 	if [ "$CONF_PKG_S3_BEHAVIOUR" != "" ] && [ "$CONF_PKG_S3_BEHAVIOUR" != "always" ] && [ "$CONF_PKG_S3_BEHAVIOUR" != "modified" ]; then
 		abort "$(ansi red)Unknown value $(ansi reset)'$CONF_PKG_S3_BEHAVIOUR'$(ansi red) for the $(ansi reset)CONF_PKG_S3_BEHAVIOUR$(ansi red) configuration variable (must be 'always' or 'modified').$(ansi reset)" $DPK_EXIT_ENV
 	fi
+	read -r -a _EXTENSIONS <<< "$(_pkg_s3_minify_ext)"
+	for _EXT in "${_EXTENSIONS[@]}"; do
+		if [[ " $_PKG_S3_MINIFY_ALLOWED " != *" $_EXT "* ]]; then
+			abort "$(ansi red)Unknown value $(ansi reset)'$_EXT'$(ansi red) in the $(ansi reset)CONF_PKG_S3_MINIFY$(ansi red) configuration variable (must be 0, 1, or a list of extensions among: $_PKG_S3_MINIFY_ALLOWED).$(ansi reset)" $DPK_EXIT_ENV
+		fi
+	done
+}
+
+# _pkg_s3_minify_ext()
+# Display the space-separated list of extensions of the files that must be minified before being
+# sent to Amazon S3 (nothing if the minification is not activated).
+_pkg_s3_minify_ext() {
+	local -a _LIST
+	# split on spaces and line feeds (without file name expansion)
+	read -r -d "" -a _LIST <<< "${CONF_PKG_S3_MINIFY[*]}"
+	case "${_LIST[*]}" in
+		"" | 0)
+			;;
+		1)
+			printf "%s\n" "$_PKG_S3_MINIFY_DEFAULT"
+			;;
+		*)
+			printf "%s\n" "${_LIST[*]}"
+			;;
+	esac
 }
 
 # _pkg_s3_prepare()
@@ -426,12 +534,79 @@ _pkg_s3_is_text() {
 	return 1
 }
 
+# _pkg_s3_minify()
+# Copy a directory of static files in a temporary directory (the "files" subdirectory of
+# _PKG_TMP_DIR), and minify the copied files. The original files are not modified.
+# If a file can't be minified, a warning is displayed and the file is kept unchanged.
+# @param	string	Path to the directory of static files.
+# @param	string	Space-separated list of extensions of the files to minify.
+# @return	int	0 if the copy succeeded, 1 otherwise.
+_pkg_s3_minify() {
+	local _DIR="$1"
+	local _EXTENSIONS="$2"
+	local _FILE _NAME _EXT _GENERATED
+	# "aws s3 sync" sends the files pointed by symlinks, the file by file upload ignores them
+	local _CP_OPT="-RL"
+	if [ "$CONF_PKG_S3_COMPRESS" = "1" ]; then
+		_CP_OPT="-RP"
+	fi
+	_pkg_create_tmp && cp "$_CP_OPT" "$_DIR/." "$_PKG_TMP_DIR/files/" && chmod -R u+rwX "$_PKG_TMP_DIR/files" || return 1
+	# remove the remaining symlinks (they are not sent, and relative ones are broken by the copy)
+	find "$_PKG_TMP_DIR/files" -type l -exec rm -f {} + || return 1
+	dpk_echo "$(ansi dim)  Files minification$(ansi reset)"
+	while read -r _FILE; do
+		# remove "./" at the beginning of the file name
+		_FILE="${_FILE#./}"
+		_NAME="${_FILE##*/}"
+		_EXT="${_NAME##*.}"
+		# check the extension, and don't process files which are already minified
+		if [[ "$_NAME" != *.* ]] || [[ "$_EXT" == *[[:space:]]* ]] || [[ " $_EXTENSIONS " != *" $_EXT "* ]] || [[ "$_NAME" == *.min.* ]]; then
+			continue
+		fi
+		# don't process files which have an already compressed version
+		if [ -e "$_DIR/$_FILE.gz" ]; then
+			continue
+		fi
+		# don't process files generated by CONF_PKG_MINIFY
+		for _GENERATED in "${!CONF_PKG_MINIFY[@]}"; do
+			if [ "$_DIR/$_FILE" -ef "$_GENERATED" ]; then
+				continue 2
+			fi
+		done
+		# minification
+		if ! _pkg_minify_file "$_FILE"; then
+			warn "$(ansi yellow)Unable to minify file '$_FILE', it is sent unminified.$(ansi reset) $(ansi dim)$_PKG_MINIFY_ERROR$(ansi reset)"
+		fi
+	done <<< "$(cd "$_PKG_TMP_DIR/files" && find . -type f)"
+	return 0
+}
+
 # _pkg_s3()
 # Send static files to Amazon S3
 _pkg_s3() {
-	local _S3 FOUND_MAIN_LINK _FILE MUST_COMPRESS _SRC _STATUS
+	local _S3 _S3_DIR FOUND_MAIN_LINK _FILE MUST_COMPRESS _SRC _STATUS _VERSION _EXT
+	local _EXTENSIONS="" _UNSUPPORTED=""
 	if [ "$_PKG_S3_SEND" != "1" ]; then
 		return
+	fi
+	# list the extensions of the static files that must be minified (the files are sent unminified if
+	# the program is not available, or if its version is too old)
+	if [ "$(_pkg_s3_minify_ext)" != "" ]; then
+		_VERSION="$(_pkg_minify_version)"
+		if [ "$_VERSION" = "" ]; then
+			warn "$(ansi yellow)Minification program '$(ansi reset)minify$(ansi yellow)' (tdewolff/minify) not found, static files are sent unminified to Amazon S3.$(ansi reset)"
+		else
+			for _EXT in $(_pkg_s3_minify_ext); do
+				if _pkg_minify_support "$_VERSION" "$_EXT"; then
+					_EXTENSIONS="$_EXTENSIONS $_EXT"
+				else
+					_UNSUPPORTED="$_UNSUPPORTED $_EXT"
+				fi
+			done
+			if [ "$_UNSUPPORTED" != "" ]; then
+				warn "$(ansi yellow)The version $_VERSION of 'minify' is too old for some types of files ($_PKG_MINIFY_JS_VERSION needed), they are sent unminified to Amazon S3:$_UNSUPPORTED$(ansi reset)"
+			fi
+		fi
 	fi
 	# loop on paths that must be copied to S3
 	dpk_echo "$(ansi bold)Copy files to Amazon S3$(ansi reset)"
@@ -448,14 +623,24 @@ _pkg_s3() {
 		fi
 		# copy files to Amazon S3
 		dpk_echo "$(ansi dim)> $_S3$(ansi reset)"
+		# minify the static files (in a temporary copy) if needed
+		_S3_DIR="${CONF_PKG_S3["$_S3"]}"
+		if [ "$_EXTENSIONS" != "" ]; then
+			if _pkg_s3_minify "$_S3_DIR" "$_EXTENSIONS"; then
+				_S3_DIR="$_PKG_TMP_DIR/files"
+			else
+				_pkg_clean_tmp
+				warn "$(ansi yellow)Unable to create a temporary copy of '$_S3_DIR', its files are sent unminified to Amazon S3.$(ansi reset)"
+			fi
+		fi
 		# check if the static files (in this path) must be compressed
 		if [ "$CONF_PKG_S3_COMPRESS" != "1" ]; then
 			# no compression, copy files in bulk
-			aws s3 sync "${CONF_PKG_S3["$_S3"]}" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000" || _pkg_s3_fail
+			aws s3 sync "$_S3_DIR" "s3://${_S3}/${DPK_OPT["tag"]}" --acl public-read --cache-control "max-age=31536000" || _pkg_s3_fail
 		else
 			# process files one by one, to compress text files before sending to Amazon S3
 			# move to the source path
-			pushd "${CONF_PKG_S3["$_S3"]}" > /dev/null || _pkg_s3_fail
+			pushd "$_S3_DIR" > /dev/null || _pkg_s3_fail
 			# loop on the files to compress them (only text files) and send them to Amazon S3
 			while read -r _FILE; do
 				MUST_COMPRESS=1
@@ -515,6 +700,8 @@ _pkg_s3() {
 			# get back to the previous directory
 			popd > /dev/null
 		fi
+		# remove the temporary copy of the static files
+		_pkg_clean_tmp
 		# re-create the "main" symlink if it was found before
 		if [ $FOUND_MAIN_LINK -eq 1 ]; then
 			ln -s "${CONF_PKG_S3["$_S3"]}" "${CONF_PKG_S3["$_S3"]}/$CONF_GIT_MAIN"
