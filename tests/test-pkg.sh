@@ -225,4 +225,50 @@ EDITOR=true "$DPK" pkg --tag=0.4.3 > /dev/null 2>&1
 [ $? -eq 58 ]
 check $? "post-S3 upload script failure reported (exit code 58)"
 
+echo "== S3 compression =="
+# s3_gzipped()
+# Tell if the given file was sent compressed to S3, under its original name.
+s3_gzipped() {
+	grep -F "s3://bucket/0.4.4/$1 " "$AWS_LOG" | grep -q -- "--content-encoding gzip"
+}
+# s3_raw()
+# Tell if the given file was sent uncompressed to S3.
+s3_raw() {
+	grep -F "s3://bucket/0.4.4/$1 " "$AWS_LOG" | grep -qv -- "--content-encoding gzip"
+}
+# Javascript module (seen as 'application/javascript' by the 'file' program, not as plain text)
+echo 'import { foo } from "./foo.js";' > static/app.js
+for I in $(seq 1 60); do
+	echo "export const value$I = foo($I);" >> static/app.js
+	echo ".class$I { color: red; }" >> static/big.css
+done
+# Javascript file with an already compressed version
+cp static/app.js static/pre.js
+gzip -k static/pre.js
+# files around the minimum size
+head -c 1024 static/big.css > static/limit.css
+head -c 1023 static/big.css > static/small.css
+# binary file
+head -c 8192 /dev/urandom > static/data.bin
+write_s3_conf always
+echo 'CONF_PKG_S3_COMPRESS=1' >> etc/dispak.conf
+git commit -qam "S3 compression"
+git push -q origin main
+EDITOR=true "$DPK" pkg --tag=0.4.4 > /dev/null 2>&1
+check $? "the command succeeds"
+s3_gzipped app.js
+check $? "Javascript file compressed"
+s3_gzipped big.css
+check $? "CSS file compressed"
+s3_gzipped limit.css
+check $? "1024 bytes file compressed"
+s3_raw small.css
+check $? "1023 bytes file not compressed"
+s3_raw data.bin
+check $? "binary file not compressed"
+s3_gzipped pre.js && [ "$(grep -cF "s3://bucket/0.4.4/pre.js" "$AWS_LOG")" -eq 1 ] && grep -q "^s3 cp pre\.js\.gz " "$AWS_LOG"
+check $? "already compressed Javascript file sent in place of the original one"
+[ "$(git status --porcelain)" = "" ]
+check $? "no temporary file left in the repository"
+
 test_end

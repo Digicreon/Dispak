@@ -23,6 +23,9 @@ declare -A CONF_PKG_S3
 # Path to the file which contains the version number of the last upload to Amazon S3 (relative to the repository root).
 _PKG_S3_VERSION_FILE="etc/s3_upload_last_tag"
 
+# Minimum size (in bytes) of the files which are compressed before being sent to Amazon S3.
+_PKG_S3_COMPRESS_MIN_SIZE=1024
+
 # Tell if the static files must be sent to Amazon S3 (set by the _pkg_s3_prepare() function).
 # @type	bool
 _PKG_S3_SEND=0
@@ -406,10 +409,27 @@ _pkg_s3_fail() {
 " $DPK_EXIT_ENV_S3
 }
 
+# _pkg_s3_is_text()
+# Tell if a file is a text file (which can be compressed before being sent to Amazon S3).
+# @param	string	Path to the file.
+# @return	int	0 if it's a text file, 1 otherwise.
+_pkg_s3_is_text() {
+	case "$(file --mime-type -b "$1")" in
+		text/* | \
+		application/javascript | application/x-javascript | \
+		application/json | application/manifest+json | \
+		application/xml | application/xhtml+xml | application/rss+xml | application/atom+xml | \
+		image/svg+xml)
+			return 0
+			;;
+	esac
+	return 1
+}
+
 # _pkg_s3()
 # Send static files to Amazon S3
 _pkg_s3() {
-	local _S3 FOUND_MAIN_LINK _FILE MUST_COMPRESS _MIME _SRC _UNZIP_MIME _STATUS
+	local _S3 FOUND_MAIN_LINK _FILE MUST_COMPRESS _SRC _STATUS
 	if [ "$_PKG_S3_SEND" != "1" ]; then
 		return
 	fi
@@ -442,8 +462,7 @@ _pkg_s3() {
 				# remove "./" at the beginning of the file name
 				_FILE="${_FILE#./}"
 				# check if it's a text file
-				_MIME="$(file --mime-type -b "$_FILE")"
-				if [ "${_MIME:0:4}" != "text" ] && [ "$_MIME" != "application/json" ] && [ "$_MIME" != "image/svg+xml" ]; then
+				if ! _pkg_s3_is_text "$_FILE"; then
 					# it's not a text file => don't compress it
 					MUST_COMPRESS=0
 				else
@@ -453,13 +472,8 @@ _pkg_s3() {
 						continue
 					fi
 					# don't compress small files and gzip files
-					if [ "$(wc -c < "$_FILE")" -lt 4096 ] || [ "${_FILE: -3}" = ".gz" ]; then
+					if [ "$(wc -c < "$_FILE")" -lt $_PKG_S3_COMPRESS_MIN_SIZE ] || [ "${_FILE: -3}" = ".gz" ]; then
 						MUST_COMPRESS=0
-					else
-						# don't compress this file if it's under Git and has been modified (and is not a minified file)
-						if [ "$(git status --porcelain "$_FILE" 2> /dev/null)" != "" ] && [[ -v CONF_PKG_MINIFY["$_FILE"] ]]; then
-							MUST_COMPRESS=0
-						fi
 					fi
 				fi
 				# compress the file if needed
@@ -485,8 +499,7 @@ _pkg_s3() {
 					fi
 				elif [ "${_FILE: -3}" = ".gz" ] && [ -e "${_FILE:0:-3}" ]; then
 					# it's a gzip file, and the not-gzip'ed version exists
-					_UNZIP_MIME="$(file --mime-type -b "${_FILE:0:-3}")"
-					if [ "${_UNZIP_MIME:0:4}" = "text" ] || [ "$_UNZIP_MIME" = "application/json" ] || [ "$_UNZIP_MIME" = "image/svg+xml" ]; then
+					if _pkg_s3_is_text "${_FILE:0:-3}"; then
 						# the not-gzip'ed version is a text file
 						# => send the gzip file without the ".gz" name suffix, but with a "gzip" content-encoding
 						aws s3 cp "$_SRC" "s3://${_S3}/${DPK_OPT["tag"]}/${_FILE:0:-3}" --acl public-read --content-encoding gzip --cache-control "max-age=31536000" || _pkg_s3_fail
