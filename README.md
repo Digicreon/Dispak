@@ -334,6 +334,7 @@ $ dpk branch --prune
 # delete the given local-only branch
 $ dpk branch --prune=name_of_the_branch
 ```
+A branch whose remote branch was deleted (after a merged pull request, for example) is always deleted, even if it was squashed or rebased when merged. A branch that was never pushed is deleted only if it is fully merged in the current branch; otherwise a confirmation is asked.
 
 
 ### 1.8 Show remote origin

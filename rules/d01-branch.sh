@@ -566,8 +566,12 @@ _branch_prune() {
 	# remove the given local-only branche, or all local-only branches (if no branch was given)
 	for BRANCH in $LOCAL_BRANCHES; do
 		if [ "${DPK_OPT["prune"]}" = "" ] || [ "${DPK_OPT["prune"]}" = "$BRANCH" ]; then
-			if ! git branch --delete "$BRANCH" 2> /dev/null; then
-				# the branch is not fully merged, ask for a confirmation before forcing its deletion
+			if [ "$(git config "branch.$BRANCH.merge")" = "refs/heads/$BRANCH" ]; then
+				# the branch was tracking a remote branch which doesn't exist anymore: its deletion is forced
+				# (its commits can't be found in the current branch if it was squashed or rebased when merged)
+				git branch -D "$BRANCH"
+			elif ! git branch --delete "$BRANCH" 2> /dev/null; then
+				# the branch was never pushed and is not fully merged, ask for a confirmation before forcing its deletion
 				warn "$(ansi yellow)The branch '$BRANCH' is not fully merged.$(ansi reset)"
 				read -p "$(dpk_echo_prefix)Do you want to delete it anyway? [y/N] " ANSWER
 				if [ "$ANSWER" = "y" ] || [ "$ANSWER" = "Y" ]; then
