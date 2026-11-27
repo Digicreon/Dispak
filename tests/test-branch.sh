@@ -133,6 +133,29 @@ check $? "prune of all local-only branches succeeds"
 ! git rev-parse --verify --quiet localonly > /dev/null && ! git rev-parse --verify --quiet lp2 > /dev/null
 check $? "all local-only branches removed (with confirmation for the unmerged one)"
 
+echo "== prune a branch whose remote branch was deleted =="
+# unmerged branch, pushed then deleted on the remote repository (as after a squashed pull request)
+"$DPK" branch --create=gone1 > /dev/null 2>&1
+echo "gone1 content" > gone.txt
+git add gone.txt
+git commit -qm "gone1 commit"
+git push -q origin gone1
+git -C "$REMOTE" branch -q -D gone1
+# unmerged branch, never pushed
+git checkout -q main
+git checkout -qb neverpushed
+echo "neverpushed content" > np.txt
+git add np.txt
+git commit -qm "neverpushed commit"
+git checkout -q main
+echo "n" | "$DPK" branch --prune > /dev/null 2>&1
+check $? "the command succeeds"
+! git rev-parse --verify --quiet gone1 > /dev/null
+check $? "unmerged branch removed without confirmation when its remote branch was deleted"
+git rev-parse --verify --quiet neverpushed > /dev/null
+check $? "unmerged branch kept when it was never pushed and the confirmation is refused"
+git branch -q -D neverpushed
+
 echo "== exit codes of the git checks =="
 "$DPK" branch --merge > /dev/null 2>&1
 [ $? -eq 32 ]
